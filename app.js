@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getFirestore, doc, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* ✅ 네 Firebase 설정 */
+/* ✅ Firebase 설정 */
 const firebaseConfig = {
   apiKey: "AIzaSyDXZM15ex4GNFdf2xjVOW-xopMHf_AMYGc",
   authDomain: "box-board.firebaseapp.com",
@@ -18,6 +18,8 @@ const stateRef = doc(db, "boxboard", "state");
 const $ = (id) => document.getElementById(id);
 
 const el = {
+  appRoot: $("appRoot"),
+
   syncLine: $("syncLine"),
   syncBadge: $("syncBadge"),
   cntWaiting: $("cntWaiting"),
@@ -61,38 +63,72 @@ const el = {
 };
 
 let state = null;
-let isPanelOpen = true;
-
 let zoom = 1;
 let activeBoardId = "b1";
 let selectedBoxIds = new Set();
 let selectionModeMobile = false;
 
-let drag = null; // {pointerId,startX,startY, originBoxes:[{id,x,y}]}
+let isPanelOpen = true;
+let drag = null; // {pointerId, startX, startY, originBoxes:[{id,x,y}]}
 
-/* ---------- iOS/모바일에서 "안 눌림" 방지용 바인더 ---------- */
+/* ---------- 모바일 클릭 안정 (iOS) ---------- */
 function bindTap(element, handler) {
   if (!element) return;
   element.addEventListener("click", (e) => handler(e));
   element.addEventListener("touchend", (e) => {
-    e.preventDefault(); // 300ms/ghost click 방지 + click 누락 방지
+    e.preventDefault();
     handler(e);
   }, { passive: false });
 }
 
-/* ---------- 기본 상태 생성 ---------- */
+/* ---------- 유틸 ---------- */
+function uid(prefix="id"){ return prefix + "_" + Math.random().toString(36).slice(2, 10); }
+function nowMs(){ return Date.now(); }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function escapeHtml(str){
+  return String(str)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+function fmtElapsed(ms) {
+  const s = Math.max(0, Math.floor(ms/1000));
+  const hh = Math.floor(s/3600);
+  const mm = Math.floor((s%3600)/60);
+  const ss = s%60;
+  if (hh > 0) return `${hh}:${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+  return `${mm}:${String(ss).padStart(2,"0")}`;
+}
+function hexToRgba(hex, a=1){
+  const h = hex.replace("#","");
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ---------- 상태 접근 ---------- */
+function getBoard() {
+  return state.boards.find(b => b.id === activeBoardId) || state.boards[0];
+}
+function getAllBoxes() { return getBoard().boxes; }
+function findBox(id) { return getAllBoxes().find(b => b.id === id); }
+
+/* ---------- 초기 상태 생성 ---------- */
 async function ensureState() {
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(stateRef);
     if (snap.exists()) return;
 
     const mkBox = (label, x, y) => ({
-      id: "bx_" + Math.random().toString(36).slice(2, 10),
+      id: uid("bx"),
       label, x, y, w: 260, h: 160,
       color: "#4aa3ff",
       text: "",
       seat: null,
-      createdAt: Date.now()
+      createdAt: nowMs()
     });
 
     tx.set(stateRef, {
@@ -134,43 +170,6 @@ async function updateState(mutator) {
   });
 }
 
-function uid(prefix="id"){ return prefix + "_" + Math.random().toString(36).slice(2, 10); }
-function nowMs(){ return Date.now(); }
-function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
-function escapeHtml(str){
-  return String(str)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-function fmtElapsed(ms) {
-  const s = Math.max(0, Math.floor(ms/1000));
-  const hh = Math.floor(s/3600);
-  const mm = Math.floor((s%3600)/60);
-  const ss = s%60;
-  if (hh > 0) return `${hh}:${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
-  return `${mm}:${String(ss).padStart(2,"0")}`;
-}
-function hexToRgba(hex, a=1){
-  const h = hex.replace("#","");
-  const r = parseInt(h.substring(0,2),16);
-  const g = parseInt(h.substring(2,4),16);
-  const b = parseInt(h.substring(4,6),16);
-  return `rgba(${r},${g},${b},${a})`;
-}
-
-function getBoard() {
-  return state.boards.find(b => b.id === activeBoardId) || state.boards[0];
-}
-function getAllBoxes() {
-  return getBoard().boxes;
-}
-function findBox(id) {
-  return getAllBoxes().find(b => b.id === id);
-}
-
 /* ---------- 탭 ---------- */
 document.querySelectorAll(".tab").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -183,12 +182,16 @@ document.querySelectorAll(".tab").forEach(btn => {
   });
 });
 
-/* ---------- 패널 토글 ---------- */
+/* ---------- 패널 토글 + 애니메이션 ---------- */
+function applyPanelState() {
+  el.appRoot.classList.toggle("panel-collapsed", !isPanelOpen);
+  el.btnTogglePanel.textContent = isPanelOpen ? "목록 닫기" : "목록 열기";
+}
 bindTap(el.btnTogglePanel, () => {
   isPanelOpen = !isPanelOpen;
-  el.leftPanel.style.display = isPanelOpen ? "" : "none";
-  el.btnTogglePanel.textContent = isPanelOpen ? "목록 닫기" : "목록 열기";
+  applyPanelState();
 });
+applyPanelState();
 
 /* ---------- 모바일 선택모드 ---------- */
 bindTap(el.btnSelectionMode, () => {
@@ -196,7 +199,7 @@ bindTap(el.btnSelectionMode, () => {
   el.btnSelectionMode.textContent = `선택모드: ${selectionModeMobile ? "ON" : "OFF"}`;
 });
 
-/* ---------- 대기 추가 (문제 핵심: 여기 무조건 눌리게) ---------- */
+/* ---------- 대기 추가 ---------- */
 async function addWaiting() {
   const name = (el.inpName.value || "").trim();
   if (!name) return;
@@ -206,9 +209,7 @@ async function addWaiting() {
   });
 }
 bindTap(el.btnAdd, addWaiting);
-el.inpName.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") addWaiting();
-});
+el.inpName.addEventListener("keydown", (e) => { if (e.key === "Enter") addWaiting(); });
 
 /* ---------- 박스 추가 ---------- */
 bindTap(el.btnAddBox, async () => {
@@ -241,6 +242,7 @@ bindTap(el.btnAddBoard, async () => {
     s.boards.push({ id, name, boxes: [] });
     s.activeBoardId = id;
   });
+  selectedBoxIds.clear();
 });
 async function setActiveBoard(id) {
   await updateState((s) => { s.activeBoardId = id; });
@@ -257,15 +259,66 @@ bindTap(el.zoomOut, () => { zoom = Math.max(0.5, zoom - 0.1); applyZoom(); });
 bindTap(el.zoomReset, () => { zoom = 1; applyZoom(); });
 applyZoom();
 
+/* Ctrl/Cmd + wheel 줌 */
 el.stageWrap.addEventListener("wheel", (e) => {
-  if (!e.ctrlKey) return;
+  if (!e.ctrlKey && !e.metaKey) return;
   e.preventDefault();
   const delta = Math.sign(e.deltaY);
   zoom = Math.max(0.5, Math.min(2.0, zoom + (delta > 0 ? -0.06 : 0.06)));
   applyZoom();
 }, { passive:false });
 
-/* ---------- 다이얼로그 ---------- */
+/* ---------- 선택/삭제/단축키 ---------- */
+async function deleteSelectedBoxes() {
+  if (selectedBoxIds.size === 0) return;
+  if (!confirm("선택한 박스를 삭제할까요?")) return;
+  const ids = new Set(selectedBoxIds);
+  selectedBoxIds.clear();
+  await updateState((s) => {
+    const b = s.boards.find(x => x.id === activeBoardId);
+    b.boxes = b.boxes.filter(x => !ids.has(x.id));
+  });
+}
+
+document.addEventListener("keydown", (e) => {
+  // 입력 중이면 단축키 일부 무시
+  const tag = (document.activeElement?.tagName || "").toLowerCase();
+  const typing = tag === "input" || tag === "textarea";
+
+  if (e.key === "Tab") {
+    e.preventDefault();
+    isPanelOpen = !isPanelOpen;
+    applyPanelState();
+    return;
+  }
+
+  if (typing) return;
+
+  if (e.key === "Escape") {
+    selectedBoxIds.clear();
+    renderStage();
+    return;
+  }
+
+  if (e.key === "Delete" || e.key === "Backspace") {
+    // Backspace는 브라우저 뒤로가기 위험, 여기서는 Delete만 권장인데
+    // 사용자가 눌러도 동작하도록 막아줌.
+    e.preventDefault();
+    deleteSelectedBoxes();
+    return;
+  }
+
+  if ((e.ctrlKey || e.metaKey) && e.key === "0") {
+    e.preventDefault();
+    zoom = 1;
+    applyZoom();
+  }
+});
+
+/* 버튼 삭제 */
+bindTap(el.btnDelete, deleteSelectedBoxes);
+
+/* ---------- 다이얼로그 (텍스트/컬러) ---------- */
 bindTap(el.btnText, () => {
   if (selectedBoxIds.size === 0) return alert("선택된 박스가 없습니다.");
   const first = findBox([...selectedBoxIds][0]);
@@ -298,17 +351,6 @@ el.dlgColor.addEventListener("click", async (e) => {
   });
 });
 
-bindTap(el.btnDelete, async () => {
-  if (selectedBoxIds.size === 0) return alert("선택된 박스가 없습니다.");
-  if (!confirm("선택한 박스를 삭제할까요?")) return;
-  const ids = new Set(selectedBoxIds);
-  selectedBoxIds.clear();
-  await updateState((s) => {
-    const b = s.boards.find(x => x.id === activeBoardId);
-    b.boxes = b.boxes.filter(x => !ids.has(x.id));
-  });
-});
-
 /* ---------- 배치/해제 ---------- */
 async function assignWaitingToBox(waitId, boxId) {
   await updateState((s) => {
@@ -318,13 +360,16 @@ async function assignWaitingToBox(waitId, boxId) {
     const box = b.boxes.find(x => x.id === boxId);
     if (!box) return;
 
+    // ✅ 이미 앉아있으면 자동으로 대기로 되돌림
     if (box.seat) {
       s.waiting.unshift({ id: uid("w"), name: box.seat.name, createdAt: nowMs() });
     }
+
     box.seat = { id: uid("p"), name: w.name, assignedAt: nowMs() };
     s.waiting = s.waiting.filter(x => x.id !== waitId);
   });
 }
+
 async function unseatToWaiting(boxId) {
   await updateState((s) => {
     const b = s.boards.find(x => x.id === activeBoardId);
@@ -437,7 +482,11 @@ function scrollBoxIntoView(boxId){
   if (!boxEl) return;
   const rect = boxEl.getBoundingClientRect();
   const wrapRect = el.stageWrap.getBoundingClientRect();
-  el.stageWrap.scrollBy({ left: rect.left - wrapRect.left - 40, top: rect.top - wrapRect.top - 40, behavior:"smooth" });
+  el.stageWrap.scrollBy({
+    left: rect.left - wrapRect.left - 40,
+    top: rect.top - wrapRect.top - 40,
+    behavior:"smooth"
+  });
 }
 
 function renderStage() {
@@ -452,7 +501,8 @@ function renderStage() {
     node.style.top = box.y + "px";
     node.style.width = (box.w || 260) + "px";
     node.style.height = (box.h || 160) + "px";
-    node.style.background = `linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.22)), radial-gradient(circle at 30% 10%, ${hexToRgba(box.color, .35)}, transparent 55%)`;
+    node.style.background = `linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.22)),
+      radial-gradient(circle at 30% 10%, ${hexToRgba(box.color, .35)}, transparent 55%)`;
 
     if (selectedBoxIds.has(box.id)) node.classList.add("sel");
 
@@ -461,11 +511,11 @@ function renderStage() {
         <div class="boxTop">
           <div>
             <div class="boxTitle">${escapeHtml(box.label)}</div>
-            <div class="boxSub">${box.text ? escapeHtml(box.text) : "더블클릭: 텍스트 편집"}</div>
+            <div class="boxSub">${box.text ? escapeHtml(box.text) : "더블클릭/더블탭: 텍스트 편집"}</div>
           </div>
         </div>
 
-        <div class="seat" data-drop="seat">
+        <div class="seat" data-drop="seat" title="대기자를 드래그해서 배치">
           ${
             box.seat
               ? `
@@ -486,10 +536,11 @@ function renderStage() {
       </div>
     `;
 
-    // select
+    /* 선택 */
     node.addEventListener("click", (e) => {
       const id = box.id;
-      if (e.shiftKey || selectionModeMobile) {
+      const multi = e.shiftKey || selectionModeMobile;
+      if (multi) {
         selectedBoxIds.has(id) ? selectedBoxIds.delete(id) : selectedBoxIds.add(id);
       } else {
         selectedBoxIds.clear();
@@ -498,6 +549,7 @@ function renderStage() {
       renderStage();
     });
 
+    /* 더블클릭/더블탭: 텍스트 편집 */
     node.addEventListener("dblclick", () => {
       selectedBoxIds.clear();
       selectedBoxIds.add(box.id);
@@ -505,10 +557,11 @@ function renderStage() {
       el.dlgText.showModal();
     });
 
-    // drag move (pointer)
+    /* 박스 이동 (포인터 드래그) */
     node.addEventListener("pointerdown", (e) => {
       const id = box.id;
-      if (!selectedBoxIds.has(id) && !(e.shiftKey || selectionModeMobile)) {
+      const multi = e.shiftKey || selectionModeMobile;
+      if (!selectedBoxIds.has(id) && !multi) {
         selectedBoxIds.clear();
         selectedBoxIds.add(id);
         renderStage();
@@ -521,7 +574,6 @@ function renderStage() {
         const b = findBox(bid);
         if (b) originBoxes.push({ id: b.id, x: b.x, y: b.y });
       }
-
       drag = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, originBoxes };
     });
 
@@ -557,7 +609,7 @@ function renderStage() {
       });
     });
 
-    // drop
+    /* 드롭 배치 */
     const seat = node.querySelector('[data-drop="seat"]');
     seat.addEventListener("dragover", (e) => e.preventDefault());
     seat.addEventListener("drop", async (e) => {
@@ -569,16 +621,42 @@ function renderStage() {
       }catch(_){}
     });
 
+    /* 좌석: 대기로 */
     const unseatBtn = node.querySelector('[data-act="unseat"]');
-    if (unseatBtn) unseatBtn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      await unseatToWaiting(box.id);
-    });
+    if (unseatBtn) {
+      unseatBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await unseatToWaiting(box.id);
+      });
+
+      // ✅ 좌석 더블클릭/더블탭으로도 대기로 (모바일 편의)
+      seat.addEventListener("dblclick", async (e) => {
+        e.stopPropagation();
+        await unseatToWaiting(box.id);
+      });
+      seat.addEventListener("touchend", (e) => {
+        // 더블탭 감지(간단)
+        const now = performance.now();
+        const prev = seat._lastTap || 0;
+        seat._lastTap = now;
+        if (now - prev < 260) {
+          e.preventDefault();
+          e.stopPropagation();
+          unseatToWaiting(box.id);
+        }
+      }, { passive:false });
+    }
 
     el.stage.appendChild(node);
   }
+
   refreshCounts();
 }
+
+/* ---------- 보드/버튼 바인딩 ---------- */
+bindTap(el.btnText, () => {}); // 이미 위에서 bindTap 했으니 안전하게
+bindTap(el.btnColor, () => {});
+bindTap(el.btnDelete, () => {});
 
 /* ---------- 실시간 구독 ---------- */
 function subscribe() {
@@ -586,14 +664,15 @@ function subscribe() {
     if (!snap.exists()) return;
     state = snap.data();
     activeBoardId = state.activeBoardId || "b1";
+
     el.syncLine.textContent = "연결됨";
     el.syncBadge.textContent = "동기화됨 (Firestore)";
 
-    renderLists();
-    renderStage();
-
     el.btnBoard1.classList.toggle("active", activeBoardId === "b1");
     el.btnBoard2.classList.toggle("active", activeBoardId === "b2");
+
+    renderLists();
+    renderStage();
   }, (err) => {
     console.error(err);
     el.syncLine.textContent = "연결 오류";
@@ -601,7 +680,7 @@ function subscribe() {
   });
 }
 
-/* ---------- 타이머 표시 갱신 ---------- */
+/* ---------- 타이머 갱신(카운트업 표시) ---------- */
 setInterval(() => {
   if (!state) return;
   renderLists();
