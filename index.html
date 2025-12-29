@@ -31,17 +31,16 @@
 
   <main class="app">
     <!-- LEFT PANEL -->
-    <section class="panel" id="leftPanel">
+    <aside class="panel" id="leftPanel">
       <div class="panelHead">
         <div class="panelTitle">목록</div>
-        <div class="panelTabs" role="tablist">
+        <div class="panelTabs">
           <button class="tab active" type="button" data-tab="waiting">대기</button>
           <button class="tab" type="button" data-tab="assigned">배치</button>
           <button class="tab" type="button" data-tab="boxes">박스(목록)</button>
         </div>
       </div>
 
-      <!-- WAITING -->
       <div class="panelBody tabPane active" data-pane="waiting">
         <div class="row">
           <input id="inpName" class="input" placeholder="이름 입력 (Enter로 추가)" autocomplete="off" />
@@ -50,13 +49,11 @@
         <div class="list" id="waitingList"></div>
       </div>
 
-      <!-- ASSIGNED -->
       <div class="panelBody tabPane" data-pane="assigned">
         <div class="hint">배치된 사람 목록</div>
         <div class="list" id="assignedList"></div>
       </div>
 
-      <!-- BOX LIST -->
       <div class="panelBody tabPane" data-pane="boxes">
         <div class="row">
           <input id="inpBoxName" class="input" placeholder="박스 이름(예: BOX 7)" autocomplete="off" />
@@ -65,23 +62,26 @@
         <div class="hint">박스 목록에서 클릭하면 해당 박스로 이동</div>
         <div class="list" id="boxList"></div>
       </div>
-    </section>
+    </aside>
 
     <!-- BOARD -->
     <section class="board">
       <div class="boardHead">
-        <div class="boardTitle">
-          <div class="h1">테이블 배치도</div>
-          <div class="h2">박스 드래그 이동 / PC: Shift+클릭 멀티선택 / 모바일: 선택모드 ON</div>
-        </div>
+        <div class="boardHeadTop">
+          <div class="boardTitle">
+            <div class="h1">테이블 배치도</div>
+            <div class="h2">드래그 이동 / PC: Shift 멀티선택 / 모바일: 선택모드 ON</div>
+          </div>
 
-        <div class="boardControls">
-          <div class="seg">
+          <div class="boardQuick">
             <button class="chip active" id="btnBoard1" type="button">배치도 1</button>
             <button class="chip" id="btnBoard2" type="button">배치도 2</button>
             <button class="chip ghost" id="btnAddBoard" type="button">+ 배치도 추가</button>
           </div>
+        </div>
 
+        <!-- ✅ 원래 느낌: 컨트롤을 한 줄에 정렬 -->
+        <div class="boardControlsRow">
           <div class="seg">
             <button class="chip" id="zoomOut" type="button">-</button>
             <div class="chip mono" id="zoomLabel">Zoom 100%</div>
