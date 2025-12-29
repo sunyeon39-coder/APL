@@ -165,6 +165,13 @@ const Firestore = {
       onSnapshot(ref, (snap)=>{
         const data = snap.data();
         if (!data) return;
+        // ✅ 초기 setDoc(메타만) 또는 불완전 payload가 로컬 state를 덮어쓰지 않게 보호
+        const hasCore = Array.isArray(data.boards) || Array.isArray(data.people);
+        if (!hasCore) {
+          const el = document.getElementById("syncLabel");
+          if (el) el.textContent = "연결됨 (Firestore)";
+          return;
+        }
         applyRemoteState(data, "Firestore");
       });
 
@@ -1223,6 +1230,12 @@ function makeResizable(el, box){
 
     el.style.width = box.w + "px";
     el.style.height = box.h + "px";
+    // CSS 계산용 사이즈 변수
+    el.style.setProperty("--bw", box.w + "px");
+    el.style.setProperty("--bh", box.h + "px");
+    el.style.setProperty("--wmUser", Math.round(box.text.titleSize) + "px");
+    el.style.setProperty("--wmScale", String(state.wmScale || 1));
+    el.style.setProperty("--wmAuto", Math.max(18, Math.round(Math.min(box.w, box.h) * 0.38)) + "px");
 
     lastDW = 0; lastDH = 0;
 
@@ -1287,6 +1300,12 @@ function renderBoard(){
     el.style.top  = box.y + "px";
     el.style.width = box.w + "px";
     el.style.height = box.h + "px";
+    // CSS 계산용 사이즈 변수
+    el.style.setProperty("--bw", box.w + "px");
+    el.style.setProperty("--bh", box.h + "px");
+    el.style.setProperty("--wmUser", Math.round(box.text.titleSize) + "px");
+    el.style.setProperty("--wmScale", String(state.wmScale || 1));
+    el.style.setProperty("--wmAuto", Math.max(18, Math.round(Math.min(box.w, box.h) * 0.38)) + "px");
     if (box.color) el.style.background = box.color;
 
     // 선택 표시
@@ -1300,10 +1319,7 @@ function renderBoard(){
     el.innerHTML = `
       <button class="box-close" data-close title="삭제" aria-label="삭제">✕</button>
 
-      <div class="wm-title"
-           style="font-size:${Math.round(box.text.titleSize * (state.wmScale||1))}px;
-                  color:${box.text.titleColor};
-                  --wmOpacity:${state.wmOpacity};">
+      <div class="wm-title" style="color:${box.text.titleColor}; --wmOpacity:${state.wmOpacity};">
         ${escapeHtml(box.title)}
       </div>
 
@@ -1528,5 +1544,8 @@ bindUI();
 renderAll();
 applyGridUI();
 updateToolbarHeight();
+// ✅ 카운트업 타이머 시작
+try{ tickTimers(); }catch(e){}
+setInterval(()=>{ try{ tickTimers(); }catch(e){} }, 250);
 Firestore.start();
 startStateChangeDetector();

@@ -947,3 +947,94 @@ button.slimbtn{
   background: rgba(255,255,255,.10) !important;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.16) !important;
 }
+
+
+/* ===== v1.4.7 fixes ===== */
+
+/* 워터마크: 박스 정중앙 + 자동 가독성 */
+.table-box .wm-title{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%, -50%);
+  pointer-events:none;
+  user-select:none;
+  font-weight:800;
+  letter-spacing:0.02em;
+  line-height:1;
+  opacity: var(--wmOpacity, .18);
+  /* 사용자 크기 vs 박스 자동 크기 중 작은 값 */
+  font-size: min(calc(var(--wmUser, 42px) * var(--wmScale, 1)), var(--wmAuto, 42px));
+  text-shadow: 0 1px 0 rgba(0,0,0,.25);
+  filter: saturate(1.05);
+  white-space:nowrap;
+}
+
+/* 상단 설명/힌트 텍스트는 완전히 제거 (혹시 남아있으면 숨김) */
+.table-box .sub,
+.table-box .hint,
+.table-box .help,
+.table-box .desc,
+.table-box .subtitle,
+.table-box [data-help],
+.table-box .wm-sub{ display:none !important; }
+
+/* 좌석/태그: 박스가 작아져도 읽히게 clamp */
+.table-box .seat .who{
+  font-size: clamp(11px, calc((var(--bw, 260px) / 18)), 16px);
+}
+.table-box .pill.slim{
+  font-size: clamp(10px, calc((var(--bw, 260px) / 28)), 12px);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+/* 박스 우하단 리사이즈 핸들 표시 (모서리 잡기 쉬움) */
+.table-box::after{
+  content:"";
+  position:absolute;
+  right:8px;
+  bottom:8px;
+  width:16px;
+  height:16px;
+  border-right:2px solid rgba(255,255,255,.16);
+  border-bottom:2px solid rgba(255,255,255,.16);
+  border-radius:2px;
+  opacity:.85;
+  pointer-events:none;
+}
+.table-box:hover::after,
+.table-box.selected::after{
+  border-right-color: rgba(255,255,255,.28);
+  border-bottom-color: rgba(255,255,255,.28);
+}
+
+/* 우상단 X 버튼: 연한 원형 */
+.table-box .box-close{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:28px;
+  height:28px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.18);
+  color: rgba(255,255,255,.70);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  backdrop-filter: blur(6px);
+}
+.table-box .box-close:hover{
+  background: rgba(0,0,0,.28);
+  border-color: rgba(255,255,255,.22);
+  color: rgba(255,255,255,.85);
+}
+
+/* 대기 리스트 태그 더 얇게 */
+.row .pill, .row .tag{
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
