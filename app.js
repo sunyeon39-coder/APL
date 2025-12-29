@@ -339,6 +339,9 @@ function snap(n, grid){ return Math.round(n / grid) * grid; }
 function snapBoxXY(box){
   box.x = snap(box.x, state.gridSize);
   box.y = snap(box.y, state.gridSize);
+  // prevent negative coords (can make boxes 'disappear' due to overflow hidden)
+  box.x = Math.max(0, box.x);
+  box.y = Math.max(0, box.y);
 }
 function snapBoxWH(box){
   box.w = snap(box.w ?? DEFAULT_BOX_W, state.gridSize);
@@ -1011,8 +1014,8 @@ function resizeBoardCanvas(){
   const board = getActiveBoard();
   const canvas = $("#boardCanvas");
   if (!board || !canvas) return;
-  const pad = 40;
-  let maxX = 900, maxY = 600;
+  const pad = 60;
+  let maxX = 1400, maxY = 900;
   for (const box of board.boxes){
     const w = box.w ?? DEFAULT_BOX_W;
     const h = box.h ?? DEFAULT_BOX_H;
@@ -1128,6 +1131,10 @@ function makeDraggable(el, box){
     if (state.snapEnabled && !(e?.altKey)){
       snapBoxXY(box);
     }
+
+    // clamp: prevent boxes going outside (negative coords)
+    box.x = Math.max(0, box.x);
+    box.y = Math.max(0, box.y);
 
     el.style.left = box.x + "px";
     el.style.top  = box.y + "px";
