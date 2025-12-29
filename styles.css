@@ -13,11 +13,7 @@
 }
 
 *{ box-sizing:border-box; }
-html,body{
-  width:100%;
-  max-width:100%;
-  overflow-x:hidden;
-}
+html,body{ width:100%; max-width:100%; overflow-x:hidden; }
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo","Noto Sans KR", Arial, sans-serif;
@@ -28,11 +24,10 @@ body{
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
-
-/* iOS input zoom 방지 */
-input, textarea, select { font-size:16px; }
 button, input, textarea{ font: inherit; color: inherit; }
+input, textarea, select { font-size:16px; } /* iOS 확대 방지 */
 
+/* Topbar */
 .topbar{
   position: sticky;
   top: 0;
@@ -46,12 +41,7 @@ button, input, textarea{ font: inherit; color: inherit; }
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
-
-.brand{
-  display:flex;
-  gap: 10px;
-  align-items:center;
-}
+.brand{ display:flex; gap:10px; align-items:center; }
 .logo{
   width: 34px; height: 34px;
   border-radius: 10px;
@@ -81,61 +71,49 @@ button, input, textarea{ font: inherit; color: inherit; }
 
 .topActions{ display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
 
+/* Buttons */
 .btn, .chip{
   border: 1px solid var(--border);
   background: rgba(255,255,255,.06);
   border-radius: 12px;
   padding: 10px 12px;
-  min-height: 44px;           /* ✅ 모바일 클릭 안정 */
+  min-height: 44px;
   cursor: pointer;
   transition: .15s ease;
-  touch-action: manipulation;  /* ✅ click 누락 방지 */
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 .btn:hover, .chip:hover{ background: rgba(255,255,255,.09); }
 .btn:active, .chip:active{ transform: translateY(1px); }
 .btn.ghost, .chip.ghost{ background: transparent; }
-.chip.active{
-  border-color: rgba(74,163,255,.45);
-  background: rgba(74,163,255,.14);
-}
-.chip.danger{
-  border-color: rgba(255,92,124,.45);
-  background: rgba(255,92,124,.16);
-}
+.chip.active{ border-color: rgba(74,163,255,.45); background: rgba(74,163,255,.14); }
+.chip.danger{ border-color: rgba(255,92,124,.45); background: rgba(255,92,124,.16); }
 .chip.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; }
 
+/* Layout: ✅ 원래 느낌 (PC) */
 .app{
   display:grid;
   grid-template-columns: 360px 1fr;
   gap: 14px;
   padding: 14px;
+  align-items: start;
 }
 
-/* ✅ 패널이 항상 위 레이어 (버튼 안눌림의 흔한 원인: 보드 레이어가 덮음) */
+/* Panel: ✅ 클릭 안정용 z-index 유지 */
 .panel{
-  position: relative;
+  position: sticky;
+  top: 72px;
   z-index: 50;
   background: rgba(23,26,43,.92);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
-  min-height: calc(100vh - 90px);
-  pointer-events: auto;
+  height: calc(100vh - 92px);
 }
-
-.panelHead{
-  padding: 12px 12px 10px;
-  border-bottom: 1px solid var(--border);
-}
+.panelHead{ padding: 12px 12px 10px; border-bottom: 1px solid var(--border); }
 .panelTitle{ font-weight: 900; margin-bottom: 10px; }
-
-.panelTabs{
-  display:flex;
-  flex-wrap:wrap;
-  gap: 8px;
-}
+.panelTabs{ display:flex; flex-wrap:wrap; gap: 8px; }
 .tab{
   flex: 1 1 auto;
   min-width: 95px;
@@ -146,18 +124,21 @@ button, input, textarea{ font: inherit; color: inherit; }
   min-height: 44px;
   cursor:pointer;
 }
-.tab.active{
-  border-color: rgba(74,163,255,.45);
-  background: rgba(74,163,255,.14);
-}
+.tab.active{ border-color: rgba(74,163,255,.45); background: rgba(74,163,255,.14); }
 
-.panelBody{ padding: 12px; display:none; }
+.panelBody{
+  padding: 12px;
+  display:none;
+  height: calc(100% - 86px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .panelBody.active{ display:block; }
 
-.row{ display:flex; gap: 10px; align-items:center; margin-bottom: 10px; }
+.row{ display:flex; gap:10px; align-items:center; margin-bottom:10px; }
 .input{
   flex: 1;
-  padding: 12px 12px;
+  padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: rgba(255,255,255,.04);
@@ -166,7 +147,7 @@ button, input, textarea{ font: inherit; color: inherit; }
 
 .hint{ color: var(--muted); font-size: 12px; margin: 10px 0; line-height: 1.4; }
 
-.list{ display:flex; flex-direction:column; gap: 10px; }
+.list{ display:flex; flex-direction:column; gap:10px; }
 .item{
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -177,10 +158,9 @@ button, input, textarea{ font: inherit; color: inherit; }
   justify-content: space-between;
   gap: 10px;
 }
-.itemLeft{ min-width: 0; display:flex; flex-direction:column; gap: 4px; }
-.itemName{ font-weight: 900; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
-.itemMeta{ display:flex; gap: 8px; flex-wrap:wrap; align-items:center; color: var(--muted); font-size: 12px; }
-
+.itemLeft{ min-width:0; display:flex; flex-direction:column; gap:4px; }
+.itemName{ font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.itemMeta{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; color: var(--muted); font-size: 12px; }
 .badge{
   display:inline-flex;
   align-items:center;
@@ -191,10 +171,10 @@ button, input, textarea{ font: inherit; color: inherit; }
 }
 .badge.good{ border-color: rgba(56,211,159,.35); background: rgba(56,211,159,.12); }
 .badge.warn{ border-color: rgba(255,209,102,.35); background: rgba(255,209,102,.12); }
-
-.itemActions{ display:flex; gap: 8px; flex-wrap:wrap; justify-content:flex-end; }
+.itemActions{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .mini{ padding: 8px 10px; border-radius: 12px; min-height: 36px; font-size: 13px; }
 
+/* Board */
 .board{
   position: relative;
   z-index: 1;
@@ -203,24 +183,31 @@ button, input, textarea{ font: inherit; color: inherit; }
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow:hidden;
-  min-height: calc(100vh - 90px);
+  min-height: calc(100vh - 92px);
 }
-
 .boardHead{
   padding: 12px;
   border-bottom: 1px solid var(--border);
   background: rgba(0,0,0,.18);
 }
+.boardHeadTop{
+  display:flex;
+  align-items:flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
 .boardTitle .h1{ font-weight: 900; font-size: 16px; }
-.boardTitle .h2{ color: var(--muted); font-size: 12px; margin-top: 4px; }
+.boardTitle .h2{ color: var(--muted); font-size: 12px; margin-top:4px; }
+.boardQuick{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-end; }
 
-.boardControls{
+/* ✅ 원래 느낌: 컨트롤은 한 줄 */
+.boardControlsRow{
   margin-top: 12px;
   display:flex;
-  flex-wrap:wrap;
-  gap: 10px;
   align-items:center;
   justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .seg{ display:flex; flex-wrap:wrap; gap: 8px; align-items:center; }
 
@@ -229,7 +216,7 @@ button, input, textarea{ font: inherit; color: inherit; }
   height: calc(100vh - 210px);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y; /* ✅ 스크롤 안정 */
+  touch-action: pan-x pan-y;
   background:
     radial-gradient(circle at 30% 10%, rgba(74,163,255,.10), transparent 40%),
     radial-gradient(circle at 70% 0%, rgba(56,211,159,.08), transparent 35%),
@@ -246,7 +233,7 @@ button, input, textarea{ font: inherit; color: inherit; }
   background-size: 50px 50px;
 }
 
-/* boxes */
+/* Boxes */
 .box{
   position:absolute;
   width: 260px;
@@ -257,7 +244,7 @@ button, input, textarea{ font: inherit; color: inherit; }
   box-shadow: 0 12px 24px rgba(0,0,0,.30);
   overflow:hidden;
   user-select:none;
-  touch-action:none; /* box drag only */
+  touch-action:none;
 }
 .box::before{
   content: attr(data-label);
@@ -283,7 +270,6 @@ button, input, textarea{ font: inherit; color: inherit; }
 .boxTop{ display:flex; justify-content: space-between; gap: 10px; }
 .boxTitle{ font-weight: 900; font-size: 16px; line-height: 1.1; }
 .boxSub{ color: var(--muted); font-size: 12px; }
-
 .seat{
   margin-top:auto;
   border-radius: 16px;
@@ -295,10 +281,9 @@ button, input, textarea{ font: inherit; color: inherit; }
   justify-content: space-between;
   gap: 10px;
 }
-.seatName{ font-weight: 900; white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
-.seatMeta{ margin-top: 3px; color: var(--muted); font-size: 12px; display:flex; gap: 8px; flex-wrap:wrap; }
+.seatName{ font-weight: 900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.seatMeta{ margin-top:3px; color: var(--muted); font-size: 12px; display:flex; gap: 8px; flex-wrap:wrap; }
 .seatHint{ color: var(--muted); font-size: 12px; }
-
 .sel{ outline: 2px solid rgba(74,163,255,.9); outline-offset: 2px; }
 
 /* dialogs */
@@ -324,12 +309,20 @@ button, input, textarea{ font: inherit; color: inherit; }
 .palette{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .sw{ height: 52px; border-radius: 14px; border: 1px solid rgba(255,255,255,.18); cursor:pointer; }
 
-/* MOBILE */
+/* ✅ Mobile: 깨짐 방지 스택 */
 @media (max-width: 900px){
   .app{ grid-template-columns: 1fr; }
+  .panel{
+    position: relative;
+    top: auto;
+    height: auto;
+  }
+  .panelBody{ height: auto; max-height: 46vh; }
   .topbar{ flex-wrap: wrap; justify-content: flex-start; }
   .statusRow{ justify-content:flex-start; }
-  .boardControls{ display:grid; grid-template-columns: 1fr; gap: 10px; }
+  .boardHeadTop{ flex-direction: column; align-items:flex-start; }
+  .boardQuick{ justify-content:flex-start; }
+  .boardControlsRow{ flex-direction: column; align-items:flex-start; }
   .stageWrap{ height: 62vh; }
   .tab{ min-width: 110px; }
 }
