@@ -196,25 +196,25 @@ button.blue:hover{background:rgba(74,163,255,.24)}
 /* ===== List rows ===== */
 .row{
   display:flex;
-  gap:8px;
+  gap:6px;
   align-items:center;
   justify-content:space-between;
-  padding:6px 10px;
-  margin-bottom:6px;
+  padding:4px 8px;
+  margin-bottom:5px;
   border:1px solid rgba(255,255,255,.08);
   background:rgba(255,255,255,.04);
-  border-radius:12px;
+  border-radius:10px;
 }
 .row .left{
   display:flex; flex-direction:column; gap:4px; min-width:0;
 }
 .row .name{
-  font-weight:800; font-size:14px;
+  font-weight:800; font-size:13px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .row .meta{
-  font-size:12px; color:var(--muted);
-  display:flex; gap:8px; flex-wrap:wrap;
+  font-size:11px; color:var(--muted);
+  display:flex; gap:6px; flex-wrap:wrap;
   align-items:center;
 }
 .pill{
@@ -236,7 +236,8 @@ button.blue:hover{background:rgba(74,163,255,.24)}
 
 /* compact “pill row” look (like your 5th screenshot) */
 .row .meta{ gap:6px; flex-wrap:nowrap; }
-.row .pill, .row .tag{ padding:3px 10px; border-radius:999px; }
+.row .pill, .row .tag{ padding:4px 8px; border-radius:999px; 
+  font-size:11px;}
 
 .row.unassigned{border-color: rgba(255,209,102,.35); background: rgba(255,209,102,.12);}
 .row.inplay{border-color: rgba(56,211,159,.35); background: rgba(56,211,159,.12);}
@@ -635,15 +636,15 @@ button.blue:hover{background:rgba(74,163,255,.24)}
   flex-direction:row;
   align-items:center;
   justify-content:space-between;
-  gap:10px;
-  padding:6px 10px;
-  margin-bottom:6px;
-  border-radius:12px;
+  gap:8px;
+  padding:4px 8px;
+  margin-bottom:5px;
+  border-radius:10px;
   border:1px solid rgba(255,255,255,.08);
   background:rgba(255,255,255,.04);
 }
-.box-card b{font-size:13px}
-.box-card span{font-size:12px;color:var(--muted)}
+.box-card b{font-size:12px}
+.box-card span{font-size:11px;color:var(--muted)}
 
 .box-card-left{display:flex; flex-direction:column; gap:4px; min-width:0;}
 .box-card-titleline{display:flex; align-items:center; gap:8px; min-width:0;}
@@ -660,8 +661,8 @@ button.blue:hover{background:rgba(74,163,255,.24)}
 .box-title-edit:focus{ outline:none; border-color: rgba(74,163,255,.55); box-shadow: 0 0 0 3px rgba(74,163,255,.18); }
 .box-card .btns{display:flex;gap:6px; flex-wrap:nowrap; align-items:center}
 .icon-btn{
-  width:36px;
-  height:36px;
+  width:28px;
+  height:28px;
   border-radius:999px;
   display:inline-flex;
   align-items:center;
@@ -669,7 +670,7 @@ button.blue:hover{background:rgba(74,163,255,.24)}
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.04);
   color:rgba(233,236,255,.88);
-  font-size:16px;
+  font-size:14px;
 }
 .icon-btn:hover{ background:rgba(74,163,255,.10); border-color:rgba(74,163,255,.25); }
 .icon-btn.danger{ color:rgba(233,236,255,.9); background:rgba(255,92,124,.10); border-color:rgba(255,92,124,.22); }
@@ -865,15 +866,16 @@ input[type="color"]{
   flex-direction:row;
   align-items:center;
   justify-content:flex-start;
-  gap:10px;
-  flex-wrap:wrap;
+  gap:8px;
+  flex-wrap:nowrap;
 }
 .row .name-line .meta{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:6px;
   flex:0 0 auto;
-}
+
+  flex-wrap:nowrap;}
 .tag{
   display:inline-flex;
   align-items:center;
@@ -898,13 +900,13 @@ input[type="color"]{
   color: rgba(233,236,255,.92);
   background: rgba(255,255,255,.05);
 }
-.tag.slim{ height:20px; padding:0 9px; font-size:11px; }
+.tag.slim{ height:20px; padding:3px 7px; font-size:11px; }
 
 /* 버튼도 조금 더 얇게 */
 button.slimbtn{
-  padding:8px 12px !important;
-  border-radius:12px !important;
-  font-size:12px !important;
+  padding:5px 10px !important;
+  border-radius:10px !important;
+  font-size:11px !important;
 }
 
 /* 박스 워터마크: 정중앙 + 연하지만 선명 */
