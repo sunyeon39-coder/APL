@@ -530,14 +530,12 @@ body{
   .toolbar{ display:none; }
 }
 
+/* === Box Board custom patches === */
 
-/* === Wait/Assigned list: single-line row + actions === */
-.item{
-  padding:10px 12px;
-  align-items:center;
-}
-.item .meta{ display:none; }
+/* Prevent layout jump when list becomes non-empty */
+.list{ min-height: 220px; }
 
+/* Wait/Assigned list: single line + actions */
 .waitLine{
   display:flex;
   align-items:center;
@@ -582,32 +580,5 @@ body{
   background: rgba(255,92,124,.12);
 }
 
-/* Remove any leftover drag pill/button in lists */
+/* Hide old "드래그" pill in wait list if it exists anywhere */
 .item .pill.warn{ display:none !important; }
-
-
-/* === Board slot action buttons (Drag | Edit | Delete) === */
-.slotActions{
-  display:flex;
-  gap:6px;
-  align-items:center;
-  justify-content:flex-end;
-}
-.smallBtn{
-  padding:6px 8px;
-  font-size:12px;
-  border-radius:10px;
-}
-/* === Empty state to avoid "sudden" layout jump === */
-.list{
-  min-height: 220px;
-}
-.emptyState{
-  padding:14px 10px;
-  border-radius:14px;
-  border:1px dashed rgba(255,255,255,.14);
-  background: rgba(10,12,24,.28);
-  color: rgba(169,176,214,.9);
-  font-size:13px;
-  text-align:center;
-}

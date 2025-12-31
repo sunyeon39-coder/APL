@@ -94,13 +94,6 @@ function escapeHtml(str){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
-
-function renderEmptyState(listEl, text){
-  const div = document.createElement("div");
-  div.className = "emptyState";
-  div.textContent = text;
-  listEl.appendChild(div);
-}
 function setSaveHint(text="저장됨"){
   if(!saveHintEl) return;
   saveHintEl.textContent = text;
@@ -211,13 +204,13 @@ addBoxBtn.addEventListener("click", ()=>{
 boxNameInput.addEventListener("keydown", (e)=>{ if(e.key === "Enter") addBoxBtn.click(); });
 
 waitSearchInput.addEventListener("input", ()=>{ ui.waitFilter = (waitSearchInput.value||"").trim().toLowerCase(); renderWaiters(); });
-clearWaitSearchBtn.addEventListener("click", ()=>{ waitSearchInput.value=""; ui.waitFilter=""; renderWaiters(); });
+if(clearWaitSearchBtn) clearWaitSearchBtn.addEventListener("click", ()=>{ waitSearchInput.value=""; ui.waitFilter=""; renderWaiters(); });
 
 assignedSearchInput.addEventListener("input", ()=>{ ui.assignedFilter = (assignedSearchInput.value||"").trim().toLowerCase(); renderAssignedList(); });
-clearAssignedSearchBtn.addEventListener("click", ()=>{ assignedSearchInput.value=""; ui.assignedFilter=""; renderAssignedList(); });
+if(clearAssignedSearchBtn) clearAssignedSearchBtn.addEventListener("click", ()=>{ assignedSearchInput.value=""; ui.assignedFilter=""; renderAssignedList(); });
 
 boxSearchInput.addEventListener("input", ()=>{ ui.boxFilter = (boxSearchInput.value||"").trim().toLowerCase(); renderBoxList(); });
-clearBoxSearchBtn.addEventListener("click", ()=>{ boxSearchInput.value=""; ui.boxFilter=""; renderBoxList(); });
+if(clearBoxSearchBtn) clearBoxSearchBtn.addEventListener("click", ()=>{ boxSearchInput.value=""; ui.boxFilter=""; renderBoxList(); });
 
 /* ---------- Assign / Unassign ---------- */
 function assignWaiterToBox(waiterId, boxId){
@@ -235,36 +228,6 @@ function assignWaiterToBox(waiterId, boxId){
   b.assigned = { id: uid("a"), name: w.name, assignedAt: now() };
   state.waiters.splice(wIdx, 1);
 
-  render();
-  saveState();
-}
-
-
-function moveAssignedToBox(fromBoxId, toBoxId){
-  if(fromBoxId === toBoxId) return;
-  const from = getBoxById(fromBoxId);
-  const to = getBoxById(toBoxId);
-  if(!from || !to || !from.assigned) return;
-
-  if(to.assigned){
-    state.waiters.unshift({ id: uid("w"), name: to.assigned.name, createdAt: to.assigned.assignedAt ?? now() });
-  }
-
-  to.assigned = { id: uid("a"), name: from.assigned.name, assignedAt: now() };
-  from.assigned = null;
-
-  render();
-  saveState();
-}
-
-function editAssignedName(boxId){
-  const b = getBoxById(boxId);
-  if(!b || !b.assigned) return;
-  const next = prompt("이름 수정", b.assigned.name || "");
-  if(next == null) return;
-  const v = (next || "").trim();
-  if(!v) return;
-  b.assigned.name = v;
   render();
   saveState();
 }
@@ -460,10 +423,6 @@ function render(){
 
 function renderWaiters(){
   waitListEl.innerHTML = "";
-  if(items.length === 0){
-    renderEmptyState(waitListEl, "대기 없음");
-    return;
-  }
   const f = ui.waitFilter;
   const items = state.waiters.filter(w => !f || (w.name||"").toLowerCase().includes(f));
 
@@ -481,19 +440,15 @@ function renderWaiters(){
   for(const w of items){
     const el = document.createElement("div");
     el.className = "item";
-    el.dataset.id = w.id;
     el.draggable = true;
     el.dataset.waiterId = w.id;
 
     el.innerHTML = `
-      <div class="waitLine">
-        <div class="waitName">${escapeHtml(w.name)}</div>
-        <div class="waitTime">대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
+      <div class="left">
+        <div class="name">${escapeHtml(w.name)}</div>
+        <div class="meta">대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
       </div>
-      <div class="itemActions">
-        <button class="itemBtn" data-wedit>수정</button>
-        <button class="itemBtn danger" data-wdel>삭제</button>
-      </div>
+      <div class="pill warn">드래그</div>
     `;
 
     el.addEventListener("dragstart", (e)=>{
@@ -508,12 +463,6 @@ function renderWaiters(){
 
 function renderAssignedList(){
   assignedListEl.innerHTML = "";
-  const q = (assignedSearchEl?.value || "").trim().toLowerCase();
-  const items = q ? state.assigned.filter(a => ((a.name||"")+ " " + (a.boxName||"")).toLowerCase().includes(q)) : state.assigned;
-  if(items.length === 0){
-    renderEmptyState(assignedListEl, "배치 없음");
-    return;
-  }
   const f = ui.assignedFilter;
 
   const assigned = state.boxes
@@ -538,9 +487,9 @@ function renderAssignedList(){
     el.className = "item clickable";
     el.dataset.boxId = a.boxId;
     el.innerHTML = `
-      <div class="left rowInline">
-        <div class="name">${escapeHtml(a.name)} <span style="opacity:.85">${escapeHtml(a.boxName)}</span></div>
-        <div class="timeInline">배치 ${fmtTime(now() - a.assignedAt)}</div>
+      <div class="left">
+        <div class="name">${escapeHtml(a.name)} <span style="opacity:.75;font-weight:900">·</span> <span style="opacity:.85">${escapeHtml(a.boxName)}</span></div>
+        <div class="meta">배치 ${fmtTime(now() - a.assignedAt)}</div>
       </div>
       <div class="pill blue">이동</div>
     `;
@@ -551,12 +500,6 @@ function renderAssignedList(){
 
 function renderBoxList(){
   boxListEl.innerHTML = "";
-  const q = (boxSearchEl?.value || "").trim().toLowerCase();
-  const items = q ? state.boxes.filter(b => (b.title||"").toLowerCase().includes(q)) : state.boxes;
-  if(items.length === 0){
-    renderEmptyState(boxListEl, "박스 없음");
-    return;
-  }
   const f = ui.boxFilter;
   const items = state.boxes
     .filter(b=> !f || (b.name||"").toLowerCase().includes(f))
@@ -619,11 +562,7 @@ function renderBoardBoxes(){
       </div>` : `<div class="dropHint">여기에 대기자를 드롭</div>`;
 
     const actionHtml = b.assigned
-      ? `
-          <button class="smallBtn dragBtn" data-drag draggable="true">드래그</button>
-          <button class="smallBtn editBtn" data-edit>수정</button>
-          <button class="smallBtn danger deleteBtn" data-unassign>삭제</button>
-        `
+      ? `<button class="smallBtn" data-unassign>대기로</button>`
       : `<span class="pill good">DROP</span>`;
 
     boxEl.innerHTML = `
@@ -669,22 +608,6 @@ function renderBoardBoxes(){
       });
     }
 
-    const editBtn = boxEl.querySelector("[data-edit]");
-    if(editBtn){
-      editBtn.addEventListener("click", (e)=>{
-        e.stopPropagation();
-        editAssignedName(b.id);
-      });
-    }
-
-    const dragBtn = boxEl.querySelector("[data-drag]");
-    if(dragBtn){
-      dragBtn.addEventListener("dragstart", (e)=>{
-        e.stopPropagation();
-        try{ e.dataTransfer.setData("text/plain", `assigned:${b.id}`); }catch{}
-      });
-    }
-
     // dblclick name -> unassign
     const nameEl = boxEl.querySelector("[data-name]");
     if(nameEl){
@@ -702,11 +625,6 @@ function renderBoardBoxes(){
       e.preventDefault();
       boxEl.classList.remove("dropOver");
       const idFromDT = (()=>{ try{return e.dataTransfer.getData("text/plain");}catch{return "";} })();
-      if(idFromDT && idFromDT.startsWith("assigned:")){
-        const fromBoxId = idFromDT.split(":")[1];
-        if(fromBoxId) moveAssignedToBox(fromBoxId, b.id);
-        return;
-      }
       const wid = ui.dragWaiterId || idFromDT;
       if(wid) assignWaiterToBox(wid, b.id);
     });
@@ -866,44 +784,38 @@ render();
 setInterval(tickTimers, 500);
 window.addEventListener("beforeunload", ()=>{ try{ saveState(); }catch{} });
 
-// === Wait list action buttons (edit/delete) ===
-let __waitActionsBound = false;
-function bindWaitActions(){
-  if(__waitActionsBound) return;
-  __waitActionsBound = true;
+/* Wait item edit/delete delegation */
+document.addEventListener("click", (e)=>{
+  const t = e.target;
+  if(!(t instanceof HTMLElement)) return;
 
-  document.addEventListener("click", (e)=>{
-    const btn = e.target;
-    if(!(btn instanceof HTMLElement)) return;
+  const widEdit = t.getAttribute("data-wedit");
+  const widDel  = t.getAttribute("data-wdel");
+  if(!widEdit && !widDel) return;
 
-    if(btn.hasAttribute("data-wedit") || btn.hasAttribute("data-wdel")){
-      e.preventDefault();
-      e.stopPropagation();
+  e.preventDefault();
+  e.stopPropagation();
 
-      const item = btn.closest(".item");
-      const wid = item?.getAttribute("data-id");
-      if(!wid) return;
+  const wid = widEdit || widDel;
+  if(!wid) return;
 
-      if(btn.hasAttribute("data-wdel")){
-        const idx = state.waiters.findIndex(w => w.id === wid);
-        if(idx >= 0) state.waiters.splice(idx, 1);
-        render();
-        saveState();
-        return;
-      }
+  if(widDel){
+    const idx = state.waiters.findIndex(w => w.id === wid);
+    if(idx >= 0) state.waiters.splice(idx, 1);
+    saveState();
+    renderWaiters();
+    return;
+  }
 
-      if(btn.hasAttribute("data-wedit")){
-        const w = state.waiters.find(w => w.id === wid);
-        if(!w) return;
-        const next = prompt("이름 수정", w.name || "");
-        if(next == null) return;
-        const v = (next || "").trim();
-        if(!v) return;
-        w.name = v;
-        render();
-        saveState();
-      }
-    }
-  });
-}
-bindWaitActions();
+  if(widEdit){
+    const w = state.waiters.find(w => w.id === wid);
+    if(!w) return;
+    const next = prompt("이름 수정", w.name || "");
+    if(next == null) return;
+    const v = (next || "").trim();
+    if(!v) return;
+    w.name = v;
+    saveState();
+    renderWaiters();
+  }
+});
