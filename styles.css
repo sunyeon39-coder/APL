@@ -1142,3 +1142,9 @@ button.slimbtn{
   padding: 3px 8px;
   border-radius: 999px;
 }
+
+
+/* v1.5.8 safety: keep toolbar clickable even if overlays exist */
+#toolbar, #toolbar *{ pointer-events:auto !important; }
+#toolbar{ position:sticky; }
+button{ touch-action: manipulation; }

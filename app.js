@@ -534,37 +534,62 @@ function bindUI(){
   });
 
   // Box actions (기본 기능만)
-  const btnAddBox = $("#btnAddBox");
-  if (btnAddBox){
-    btnAddBox.addEventListener("click", ()=>{
-      let board = getActiveBoard();
-      if (!board){
-        const bid = uid();
-        state.boards.push({ id: bid, name: "배치도 1", boxes: [] });
-        state.activeBoardId = bid;
-        board = getActiveBoard();
-      }
-      if (!board) return;
-      const t = now();
-      const idx = board.boxes.length + 1;
-      board.boxes.push({
-        id: uid(),
-        title: `BOX ${idx}`,
-        x: 40 + (idx%3)*240,
-        y: 40 + (Math.floor(idx/3))*200,
-        w: DEFAULT_BOX_W,
-        h: DEFAULT_BOX_H,
-        color: COLORS[(idx-1)%COLORS.length],
-        createdAt: t,
-        seat: { personId: null, startedAt: null },
-        text: structuredClone(DEFAULT_TEXT),
-      });
-      renderAll();
-      // ✅ ensure persistence immediately (GitHub Pages + Firestore)
-      try{ scheduleWriteAll(toSerializableState()); }catch(e){}
+  const bindPress = (el, fn)=>{
+    if (!el) return;
+    // Safari에서 click이 가끔 씹히는 케이스가 있어 pointerup도 같이 바인딩
+    const handler = (e)=>{
+      // 버튼/입력은 기본 동작 유지하되, 드래그 캡처가 꼬여있으면 먼저 해제
+      try{
+        if (window.Interaction && Interaction.active){
+          // hardCancel은 클로저라 직접 접근 불가 → 안전하게 stop만
+          Interaction.stop?.();
+          document.body.classList.remove('bb-interacting');
+        }
+      }catch(_){}
+      fn(e);
+    };
+    el.addEventListener('pointerup', handler);
+    el.addEventListener('click', handler);
+  };
+
+  const doAddBox = ()=>{
+    let board = getActiveBoard();
+    if (!board){
+      const bid = uid();
+      state.boards.push({ id: bid, name: "배치도 1", boxes: [] });
+      state.activeBoardId = bid;
+      board = getActiveBoard();
+    }
+    if (!board) return;
+    const t = now();
+    const idx = board.boxes.length + 1;
+    board.boxes.push({
+      id: uid(),
+      title: `BOX ${idx}`,
+      x: 40 + (idx%3)*240,
+      y: 40 + (Math.floor(idx/3))*200,
+      w: DEFAULT_BOX_W,
+      h: DEFAULT_BOX_H,
+      color: COLORS[(idx-1)%COLORS.length],
+      createdAt: t,
+      seat: { personId: null, startedAt: null },
+      text: structuredClone(DEFAULT_TEXT),
     });
-  }
-  const btnDeleteSelected = $("#btnDeleteSelected");
+    renderAll();
+    try{ scheduleWriteAll(toSerializableState()); }catch(e){}
+  };
+
+  // direct bind + delegated bind(혹시 DOM이 교체되는 경우 대비)
+  bindPress($("#btnAddBox"), (e)=>{ e && e.preventDefault?.(); doAddBox(); });
+  document.addEventListener('pointerup', (e)=>{
+    const btn = e.target && e.target.closest && e.target.closest('#btnAddBox');
+    if (btn){
+      e.preventDefault?.();
+      doAddBox();
+    }
+  }, true);
+
+const btnDeleteSelected = $("#btnDeleteSelected");
   if (btnDeleteSelected){
     btnDeleteSelected.addEventListener("click", ()=>{
       const board = getActiveBoard();
