@@ -1085,25 +1085,22 @@ function makeDraggable(el, box){
   let pid = null;
   let dragging = false;
   let startX=0, startY=0, ox=0, oy=0;
-  let lastDX=0, lastDY=0;
+  let lastDX=0, lastDY=0; // screen transform (deprecated)
+  let lastLDX=0, lastLDY=0; // local coords (zoom-adjusted)
   let raf = 0;
 
   const applyTransform = ()=>{
     raf = 0;
-    el.style.transform = `translate(${lastDX}px, ${lastDY}px)`;
+    el.style.transform = `translate(${lastLDX}px, ${lastLDY}px)`;
   };
 
   const onMove = (e)=>{
     if (!dragging || e.pointerId !== pid) return;
 
-    // zoom이 걸려있으므로 화면 이동량을 캔버스 좌표로 환산
+    // ✅ zoom 보정: 화면 이동량을 '로컬 좌표'로 변환
     const z = state.zoom || 1;
-    const dx = (e.clientX - startX) / z;
-    const dy = (e.clientY - startY) / z;
-
-    // transform은 픽셀 단위이므로 다시 zoom 반영해서 화면 이동량으로 적용
-    lastDX = dx * z;
-    lastDY = dy * z;
+    lastLDX = (e.clientX - startX) / z;
+    lastLDY = (e.clientY - startY) / z;
 
     if (!raf) raf = requestAnimationFrame(applyTransform);
     e.preventDefault();
@@ -1121,12 +1118,8 @@ function makeDraggable(el, box){
     if (raf){ cancelAnimationFrame(raf); raf = 0; }
     el.style.transform = "";
 
-    // lastDX/lastDY are already in local coords (zoom-adjusted)
-    const dx = lastDX;
-    const dy = lastDY;
-
-    box.x = ox + dx;
-    box.y = oy + dy;
+    box.x = ox + lastLDX;
+    box.y = oy + lastLDY;
 
     if (state.snapEnabled && !(e?.altKey)){
       snapBoxXY(box);
@@ -1139,7 +1132,7 @@ function makeDraggable(el, box){
     el.style.left = box.x + "px";
     el.style.top  = box.y + "px";
 
-    lastDX = 0; lastDY = 0;
+    lastDX = 0; lastDY = 0; lastLDX = 0; lastLDY = 0;
 
     resizeBoardCanvas();
     e.preventDefault();
@@ -1165,7 +1158,7 @@ function makeDraggable(el, box){
     ox = box.x;
     oy = box.y;
 
-    lastDX = 0; lastDY = 0;
+    lastDX = 0; lastDY = 0; lastLDX = 0; lastLDY = 0;
     el.style.willChange = "transform";
 
     el.addEventListener("pointermove", onMove);
@@ -1371,6 +1364,14 @@ function renderBoard(){
 
     // 좌석 더블클릭: 대기로 이동
     const seatEl = el.querySelector("[data-seat]");
+
+    // ✅ 이름이 길 때 '종..'처럼 잘리는 문제 완화: title로 풀네임 제공(hover 툴팁)
+    const whoEl = el.querySelector(".who");
+    if (whoEl && box.seat?.personId){
+      const p = state.people.find(x=>x.id===box.seat.personId);
+      if (p) whoEl.title = p.name;
+    }
+
     seatEl.addEventListener("dblclick", ()=>{
       if (!box.seat?.personId) return;
       const p = state.people.find(x=>x.id===box.seat.personId);
