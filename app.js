@@ -460,6 +460,10 @@ function render(){
 
 function renderWaiters(){
   waitListEl.innerHTML = "";
+  if(items.length === 0){
+    renderEmptyState(waitListEl, "대기 없음");
+    return;
+  }
   const f = ui.waitFilter;
   const items = state.waiters.filter(w => !f || (w.name||"").toLowerCase().includes(f));
 
@@ -504,6 +508,12 @@ function renderWaiters(){
 
 function renderAssignedList(){
   assignedListEl.innerHTML = "";
+  const q = (assignedSearchEl?.value || "").trim().toLowerCase();
+  const items = q ? state.assigned.filter(a => ((a.name||"")+ " " + (a.boxName||"")).toLowerCase().includes(q)) : state.assigned;
+  if(items.length === 0){
+    renderEmptyState(assignedListEl, "배치 없음");
+    return;
+  }
   const f = ui.assignedFilter;
 
   const assigned = state.boxes
@@ -541,6 +551,12 @@ function renderAssignedList(){
 
 function renderBoxList(){
   boxListEl.innerHTML = "";
+  const q = (boxSearchEl?.value || "").trim().toLowerCase();
+  const items = q ? state.boxes.filter(b => (b.title||"").toLowerCase().includes(q)) : state.boxes;
+  if(items.length === 0){
+    renderEmptyState(boxListEl, "박스 없음");
+    return;
+  }
   const f = ui.boxFilter;
   const items = state.boxes
     .filter(b=> !f || (b.name||"").toLowerCase().includes(f))

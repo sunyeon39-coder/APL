@@ -600,7 +600,7 @@ body{
 }
 /* === Empty state to avoid "sudden" layout jump === */
 .list{
-  min-height: 88px;
+  min-height: 220px;
 }
 .emptyState{
   padding:14px 10px;
