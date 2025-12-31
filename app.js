@@ -1,4 +1,15 @@
-const VERSION = '1.5.7';
+/* ===== escapeAttr FIX (global) ===== */
+window.escapeAttr = window.escapeAttr || function escapeAttr(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+const escapeAttr = window.escapeAttr;
+/* ================================== */
+const VERSION = '1.5.8';
 /* =========================================================
    Box Board v1.4.9 - app.js (FULL)
    - ✅ Fix: Pointer Events로 박스 이동/리사이즈 (모바일 드래그 OK)
