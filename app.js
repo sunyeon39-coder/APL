@@ -1215,13 +1215,13 @@ function tickTimers(){
     if (!box?.seat?.startedAt) { el.textContent = "--:--:--"; return; }
     el.textContent = fmtElapsed(t - box.seat.startedAt);
   });
-  $$('[data-seatelapsed]').forEach(el=>{
-    const seatEl = el.closest('.seat');
-    const pid = seatEl?.dataset?.personId;
-    const p = state.people.find(x=>x.id===pid);
-    if (!p?.assignedStartedAt) { el.textContent = "--:--:--"; return; }
-    el.textContent = fmtElapsed(t - p.assignedStartedAt);
-  });
+ $$('[data-seatelapsed]').forEach(el=>{
+  const seatNode = el.closest('.seat');
+  const pid = seatNode?.dataset?.personId;
+  const p = state.people.find(x=>x.id===pid);
+  if (!p?.assignedStartedAt) { el.textContent = "—:—:—"; return; }
+  el.textContent = fmtElapsed(t - p.assignedStartedAt);
+});
 }
 
 function focusBox(boxId){
