@@ -1236,6 +1236,7 @@ function makeResizable(el, box){
     el.style.setProperty("--wmUser", Math.round(box.text.titleSize) + "px");
     el.style.setProperty("--wmScale", String(state.wmScale || 1));
     el.style.setProperty("--wmAuto", Math.max(18, Math.round(Math.min(box.w, box.h) * 0.38)) + "px");
+    el.style.setProperty("--nameUser", Math.round(box.text.nameSize) + "px");
 
     lastDW = 0; lastDH = 0;
 
@@ -1329,21 +1330,56 @@ function renderBoard(){
 
       <div class="body">
         <div class="seat ${seatIsEmpty ? "empty" : "occupied"}" data-seat>
-          <div class="who" style="font-size:${box.text.nameSize}px; color:${box.text.nameColor};">
-            ${seatIsEmpty ? "대기자 드래그해서 넣기" : escapeHtml(seatedPerson.name)}
+          <div class="seat-top">
+            <div class="who" title="${seatIsEmpty ? "" : escapeHtml(seatedPerson.name)}" style="color:${box.text.nameColor};">
+              ${seatIsEmpty ? "대기자 드래그해서 넣기" : escapeHtml(seatedPerson.name)}
+            </div>
           </div>
-          <div class="seat-meta">
+          <div class="seat-bottom">
             <span class="pill slim ${seatIsEmpty ? "blue" : "good"}" data-seatelapsed>--:--:--</span>
             ${seatIsEmpty ? `<span class="pill slim">DROP</span>` : ``}
             ${seatIsEmpty ? `` : `<button class="pill slimbtn" data-seat-to-wait>대기로</button>`}
           </div>
         </div>
-      </div>
+ </div>
 
       <div class="resize-handle" title="크기 조절"></div>
     `;
 
-    // 선택(Shift+클릭 멀티)
+    
+    // ✅ 박스 이름(타이틀) 수정: 워터마크 더블클릭/더블탭
+    const titleEl = el.querySelector(".wm-title");
+    if (titleEl){
+      titleEl.addEventListener("dblclick", (ev)=>{
+        ev.stopPropagation();
+        const next = prompt("박스 이름을 입력하세요", box.title || "");
+        if (next === null) return;
+        const t = (next || "").trim();
+        if (!t) return;
+        box.title = t;
+        renderBoard(); // 즉시 반영
+      });
+
+      // 모바일 더블탭 (300ms)
+      let _lastTap = 0;
+      titleEl.addEventListener("pointerup", (ev)=>{
+        if (ev.pointerType === "mouse") return;
+        const t = Date.now();
+        if (t - _lastTap < 320){
+          _lastTap = 0;
+          ev.stopPropagation();
+          const next = prompt("박스 이름을 입력하세요", box.title || "");
+          if (next === null) return;
+          const s = (next || "").trim();
+          if (!s) return;
+          box.title = s;
+          renderBoard();
+        }else{
+          _lastTap = t;
+        }
+      });
+    }
+// 선택(Shift+클릭 멀티)
     el.addEventListener("pointerdown", (e)=>{
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (e.target.closest(".resize-handle")) return;
