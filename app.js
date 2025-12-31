@@ -1,3 +1,17 @@
+/* === Legacy state migration (DO NOT REMOVE) === */
+(function migrateLegacyState(){
+  try {
+    if (!localStorage.getItem("state")) {
+      const legacy = localStorage.getItem("BOX_BOARD_SYNC_STATE_V1");
+      if (legacy) {
+        console.log("[migrate] legacy state loaded");
+        localStorage.setItem("state", legacy);
+      }
+    }
+  } catch (e) {
+    console.warn("Legacy state migration failed", e);
+  }
+})();
 /* ===== escapeAttr FIX (global) ===== */
 window.escapeAttr = window.escapeAttr || function escapeAttr(value) {
   return String(value ?? "")
