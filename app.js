@@ -94,6 +94,13 @@ function escapeHtml(str){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
+
+function renderEmptyState(listEl, text){
+  const div = document.createElement("div");
+  div.className = "emptyState";
+  div.textContent = text;
+  listEl.appendChild(div);
+}
 function setSaveHint(text="저장됨"){
   if(!saveHintEl) return;
   saveHintEl.textContent = text;

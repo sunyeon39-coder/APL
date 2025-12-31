@@ -598,3 +598,16 @@ body{
   font-size:12px;
   border-radius:10px;
 }
+/* === Empty state to avoid "sudden" layout jump === */
+.list{
+  min-height: 88px;
+}
+.emptyState{
+  padding:14px 10px;
+  border-radius:14px;
+  border:1px dashed rgba(255,255,255,.14);
+  background: rgba(10,12,24,.28);
+  color: rgba(169,176,214,.9);
+  font-size:13px;
+  text-align:center;
+}
