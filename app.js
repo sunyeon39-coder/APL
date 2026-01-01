@@ -58,12 +58,6 @@ let state = loadState() ?? {
   boxes: [],   // {id,name,x,y,color, assigned: {id,name,assignedAt}|null}
 };
 
-
-// --- migrate / defaults (added v20260102-18) ---
-state.boxes.forEach(b=>{
-  if(b.w == null) b.w = 360;
-  if(b.h == null) b.h = 220;
-});
 let ui = {
   activeTab: "wait",
   waitFilter: "",
@@ -74,7 +68,6 @@ let ui = {
   drag: null,
   dragWaiterId: null,
   ctxTargetBoxId: null,
-  resize: null,
 };
 
 const boxEls = new Map(); // boxId -> element (for fast updates)
@@ -203,7 +196,7 @@ addBoxBtn.addEventListener("click", ()=>{
   const color = colors[state.boxes.length % colors.length];
   const baseX = 120 + (state.boxes.length % 4) * 410;
   const baseY = 120 + Math.floor(state.boxes.length / 4) * 260;
-  state.boxes.push({ id: uid("b"), name, x: baseX, y: baseY, color, assigned: null });
+  state.boxes.push({ id: uid("b"), name, x: baseX, y: baseY, w: 360, h: 220, color, assigned: null });
   boxNameInput.value = "";
   render();
   saveState();
@@ -498,9 +491,16 @@ function renderAssignedList(){
         <div class="name">${escapeHtml(a.name)} <span style="opacity:.75;font-weight:900">·</span> <span style="opacity:.85">${escapeHtml(a.boxName)}</span></div>
         <div class="meta">배치 ${fmtTime(now() - a.assignedAt)}</div>
       </div>
-      <div class="pill blue">이동</div>
+      <button class="btn mini" data-to-wait>대기</button>
     `;
-    el.addEventListener("click", ()=> focusBox(a.boxId));
+    el.addEventListener("click", (e)=>{
+      if(e.target.closest("button")) return;
+      focusBox(a.boxId);
+    });
+    el.querySelector("[data-to-wait]").addEventListener("click", (e)=>{
+      e.stopPropagation();
+      unassignBoxToWaiting(a.boxId);
+    });
     assignedListEl.appendChild(el);
   }
 }
@@ -560,8 +560,10 @@ function renderBoardBoxes(){
     boxEl.dataset.color = b.color || "green";
     boxEl.style.setProperty("--x", `${b.x}px`);
     boxEl.style.setProperty("--y", `${b.y}px`);
-    boxEl.style.setProperty("--w", `${b.w ?? 360}px`);
-    boxEl.style.setProperty("--h", `${b.h ?? 220}px`);
+    const bw = (typeof b.w === "number") ? b.w : 360;
+    const bh = (typeof b.h === "number") ? b.h : 220;
+    boxEl.style.setProperty("--w", `${bw}px`);
+    boxEl.style.setProperty("--h", `${bh}px`);
 
     const assignedHtml = b.assigned ? `
       <div class="slotName" data-name>${escapeHtml(b.assigned.name)}</div>
@@ -570,27 +572,29 @@ function renderBoardBoxes(){
         <span style="color:rgba(169,176,214,.9)">배치 시간</span>
       </div>` : `<div class="dropHint">여기에 대기자를 드롭</div>`;
 
-    const actionHtml = b.assigned
-      ? `<button class="smallBtn" data-unassign>대기로</button>`
-      : `<span class="pill good">DROP</span>`;
+    const topUnassignHtml = b.assigned
+      ? `<button class="smallBtn" data-unassign title="대기로">대기로</button>`
+      : ``;
 
     boxEl.innerHTML = `
       <div class="boxInner">
         <div class="watermark">${escapeHtml(b.name)}</div>
 
         <div class="boxTop">
-          <div class="boxTitle">${escapeHtml(b.name)}</div>
+          <div class="boxTitle"></div>
           <div class="boxRight">
-            <button class="iconBtn" title="메뉴" data-menu>⋯</button>
-            <button class="iconBtn" title="삭제" data-delete>×</button>
+            ${topUnassignHtml}
+            <button class="iconBtn" title="수정" data-edit>✎</button>
+            <button class="iconBtn" title="삭제" data-delete>🗑</button>
           </div>
         </div>
 
+
+        <div class="boxResizer" data-resize title="크기 조절"></div>
         <div class="slot" data-dropzone>
           <div class="slotLeft">${assignedHtml}</div>
-          <div class="slotActions">${actionHtml}</div>
-        
-        <div class="resizeHandle" title="크기 조절" data-resize></div>
+          <div class="slotActions">${b.assigned ? `` : `<span class="pill good">DROP</span>`}</div>
+        </div>
       </div>
     `;
 
@@ -603,13 +607,29 @@ function renderBoardBoxes(){
       deleteBox(b.id);
     });
 
-    // menu
-    boxEl.querySelector("[data-menu]").addEventListener("click", (e)=>{
+    // edit (assigned name if exists, else box name)
+    boxEl.querySelector("[data-edit]").addEventListener("click", (e)=>{
       e.stopPropagation();
-      showCtx(e.clientX, e.clientY, b.id);
+      const bb = getBoxById(b.id);
+      if(!bb) return;
+      if(bb.assigned){
+        const nn = prompt("이름 수정", bb.assigned.name);
+        if(nn && nn.trim()){
+          bb.assigned.name = nn.trim();
+          render();
+          saveState();
+        }
+      }else{
+        const bn = prompt("BOX 이름 변경", bb.name);
+        if(bn && bn.trim()){
+          bb.name = bn.trim();
+          render();
+          saveState();
+        }
+      }
     });
 
-    // unassign
+    // top unassign
     const unBtn = boxEl.querySelector("[data-unassign]");
     if(unBtn){
       unBtn.addEventListener("click", (e)=>{
@@ -617,6 +637,58 @@ function renderBoardBoxes(){
         unassignBoxToWaiting(b.id);
       });
     }
+
+
+    // resize (corner) - adjust width & height together
+    const resizeEl = boxEl.querySelector("[data-resize]");
+    if(resizeEl){
+      resizeEl.addEventListener("pointerdown", (e)=>{
+        e.stopPropagation();
+        e.preventDefault();
+        resizeEl.setPointerCapture(e.pointerId);
+
+        const start = getBoardPointFromClient(e.clientX, e.clientY);
+        const box0 = state.boxes.find(x=>x.id===b.id);
+        const startW = (box0 && typeof box0.w==="number") ? box0.w : 360;
+        const startH = (box0 && typeof box0.h==="number") ? box0.h : 220;
+
+        ui.resize = { pointerId: e.pointerId, boxId: b.id, start, startW, startH };
+      });
+
+      resizeEl.addEventListener("pointermove", (e)=>{
+        if(!ui.resize || ui.resize.pointerId !== e.pointerId) return;
+        const p = getBoardPointFromClient(e.clientX, e.clientY);
+        const dx = p.x - ui.resize.start.x;
+        const dy = p.y - ui.resize.start.y;
+
+        const b2 = state.boxes.find(x=>x.id===ui.resize.boxId);
+        if(!b2) return;
+
+        const minW = 240, minH = 160;
+        const maxW = 1200, maxH = 900;
+
+        b2.w = clamp(ui.resize.startW + dx, minW, maxW);
+        b2.h = clamp(ui.resize.startH + dy, minH, maxH);
+
+        updateBoxPosition(b2); // updates vars
+        // also update size vars immediately
+        const el = boxEls.get(b2.id);
+        if(el){
+          el.style.setProperty("--w", `${b2.w}px`);
+          el.style.setProperty("--h", `${b2.h}px`);
+        }
+        saveStateDebounced();
+      });
+
+      resizeEl.addEventListener("pointerup", (e)=>{
+        if(ui.resize && ui.resize.pointerId === e.pointerId){
+          ui.resize = null;
+          saveState();
+        }
+      });
+      resizeEl.addEventListener("pointercancel", ()=>{ ui.resize = null; });
+    }
+
 
     // dblclick name -> unassign
     const nameEl = boxEl.querySelector("[data-name]");
@@ -656,8 +728,7 @@ function renderBoardBoxes(){
     });
 
     // move (multi)
-
-    attachResize(boxEl, b.id);
+    attachMove(boxEl, b.id);
 
     board.appendChild(boxEl);
   }
@@ -668,7 +739,7 @@ function renderBoardBoxes(){
 /* ---------- Move (multi) ---------- */
 function attachMove(boxEl, boxId){
   boxEl.addEventListener("pointerdown", (e)=>{
-    if(e.target.closest("button")) return;
+    if(e.target.closest("button") || e.target.closest("[data-resize]")) return;
 
     // selection behavior
     if(!e.shiftKey){
@@ -718,88 +789,6 @@ function attachMove(boxEl, boxId){
   boxEl.addEventListener("pointercancel", end);
 }
 
-
-/* ---------- Resize (corner, X/Y) ---------- */
-let _resizeBound = false;
-
-function attachResize(boxEl, boxId){
-  const handle = boxEl.querySelector("[data-resize]");
-  if(!handle) return;
-
-  // ensure handle never triggers move
-  handle.addEventListener("pointerdown", (e)=>{
-    e.preventDefault();
-    e.stopPropagation();
-
-    const b = state.boxes.find(x=>x.id===boxId);
-    if(!b) return;
-
-    const z = state.zoom || 1;
-    ui.resize = {
-      boxId,
-      pointerId: e.pointerId,
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startW: b.w ?? 360,
-      startH: b.h ?? 220,
-      zoom: z,
-    };
-
-    boxEl.classList.add("resizing");
-    handle.setPointerCapture(e.pointerId);
-    if(!_resizeBound){
-      _resizeBound = true;
-      window.addEventListener("pointermove", onResizeMove, {passive:false});
-      window.addEventListener("pointerup", onResizeUp, {passive:false});
-      window.addEventListener("pointercancel", onResizeUp, {passive:false});
-    }
-  });
-}
-
-let _resizeRAF = 0;
-function onResizeMove(e){
-  if(!ui.resize) return;
-  if(e.pointerId !== ui.resize.pointerId) return;
-  e.preventDefault();
-
-  // Convert client delta to board delta (undo zoom)
-  const z = ui.resize.zoom || (state.zoom||1);
-  const dx = (e.clientX - ui.resize.startClientX) / z;
-  const dy = (e.clientY - ui.resize.startClientY) / z;
-
-  const b = state.boxes.find(x=>x.id===ui.resize.boxId);
-  if(!b) return;
-
-  const minW = 220, minH = 140;
-  const maxW = 1200, maxH = 900;
-
-  b.w = clamp(ui.resize.startW + dx, minW, maxW);
-  b.h = clamp(ui.resize.startH + dy, minH, maxH);
-
-  if(!_resizeRAF){
-    _resizeRAF = requestAnimationFrame(()=>{
-      _resizeRAF = 0;
-      const el = boxEls.get(b.id);
-      if(el){
-        el.style.setProperty("--w", `${b.w}px`);
-        el.style.setProperty("--h", `${b.h}px`);
-      }
-    });
-  }
-}
-
-function onResizeUp(e){
-  if(!ui.resize) return;
-  if(e.pointerId !== ui.resize.pointerId) return;
-  e.preventDefault();
-
-  const b = state.boxes.find(x=>x.id===ui.resize.boxId);
-  const el = boxEls.get(ui.resize.boxId);
-  if(el) el.classList.remove("resizing");
-
-  ui.resize = null;
-  saveState(state);
-}
 /* ---------- Focus box ---------- */
 function focusBox(boxId){
   const b = getBoxById(boxId);
@@ -808,7 +797,8 @@ function focusBox(boxId){
   selectOnly(boxId);
 
   const z = state.zoom || 1;
-  const boxW = 360, boxH = 220;
+  const boxW = (typeof b.w==="number") ? b.w : 360;
+  const boxH = (typeof b.h==="number") ? b.h : 220;
   const targetX = (b.x + boxW/2) * z;
   const targetY = (b.y + boxH/2) * z;
 

@@ -366,13 +366,16 @@ body{
 
 .watermark{
   position:absolute;
-  inset:auto 14px 18px 14px;
-  font-size:72px;
+  left:18px;
+  top:50%;
+  transform: translateY(-50%);
+  font-size: clamp(56px, 18vw, 150px);
   font-weight:900;
   letter-spacing:1px;
   color: rgba(233,236,255,.18);
   pointer-events:none;
   white-space:nowrap;
+  z-index: 1;
 }
 
 .boxTop{
@@ -380,6 +383,8 @@ body{
   align-items:flex-start;
   justify-content:space-between;
   gap:10px;
+  position: relative;
+  z-index: 5;
 }
 .boxTitle{
   font-weight:900;
@@ -406,7 +411,12 @@ body{
 .iconBtn:active{transform: translateY(1px)}
 
 .slot{
-  margin-top:16px;
+  /* 오른쪽 카드(배치/드롭 영역) - 박스 크기 변화에 맞춰 같이 이동 */
+  position:absolute;
+  right:14px;
+  top:64px;
+  width: min(390px, calc(100% - 170px));
+  margin-top:0;
   padding:12px;
   border-radius:18px;
   border:1px solid rgba(255,255,255,.10);
@@ -416,7 +426,10 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:10px;
+  z-index: 4;
 }
+
+.boxResizer{ z-index: 6; }
 .slotLeft{ display:flex; flex-direction:column; gap:6px; min-width:0; }
 .slotName{
   font-weight:900;
@@ -429,6 +442,7 @@ body{
   display:flex;
   gap:6px;
   align-items:center;
+  flex-wrap:wrap;
   font-size:13px;
   color: rgba(233,236,255,.9);
 }
@@ -584,41 +598,27 @@ body{
 .item .pill.warn{ display:none !important; }
 
 
-/* --- v20260102-18 Resize handle (corner X/Y) --- */
-.box{ touch-action: none; } /* keep pointer events predictable inside scaled board */
-.resizeHandle{
+.boxResizer{
   position:absolute;
-  right: 12px;
-  bottom: 12px;
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  right:12px;
+  bottom:12px;
+  width:28px;
+  height:28px;
+  border-radius:10px;
   border:1px solid rgba(255,255,255,.18);
   background: rgba(0,0,0,.18);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
   cursor: nwse-resize;
-  z-index: 6;
+  z-index: 9;
+  pointer-events: auto;
 }
-.resizeHandle::before{
+.boxResizer:before{
   content:"";
   position:absolute;
-  right: 10px;
-  bottom: 10px;
-  width: 10px;
-  height: 10px;
-  border-right: 2px solid rgba(233,236,255,.65);
-  border-bottom: 2px solid rgba(233,236,255,.65);
+  right:8px; bottom:8px;
+  width:10px; height:10px;
+  border-right:2px solid rgba(255,255,255,.55);
+  border-bottom:2px solid rgba(255,255,255,.55);
   transform: rotate(0deg);
-}
-.box.resizing .resizeHandle{
-  border-color: rgba(74,163,255,.7);
-}
-
-/* slot should adapt when box gets small */
-.slot{ flex-wrap: wrap; align-items: center; }
-.slotLeft{ min-width: 0; }
-.slotName{ max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.slotActions{ margin-left: auto; }
-@media (max-width: 480px){
-  .slot{ gap: 10px; }
+  opacity:.9;
 }
