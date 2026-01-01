@@ -116,23 +116,6 @@ function loadState(){
 }
 function getBoxById(id){ return state.boxes.find(b=>b.id===id); }
 
-function getBoxSizeKey(b){
-  const k = (b && b.size) ? String(b.size) : "m";
-  return (k === "s" || k === "m" || k === "l") ? k : "m";
-}
-
-function getBoxDims(b){
-  const k = getBoxSizeKey(b);
-  if(k === "s") return { w: 300, h: 190 };
-  if(k === "l") return { w: 440, h: 270 };
-  return { w: 360, h: 220 };
-}
-
-function nextBoxSizeKey(current){
-  const k = (current === "s" || current === "m" || current === "l") ? current : "m";
-  return k === "s" ? "m" : k === "m" ? "l" : "s";
-}
-
 /* client -> board local (zoom corrected) */
 function getBoardPointFromClient(clientX, clientY){
   const rect = board.getBoundingClientRect();
@@ -213,7 +196,7 @@ addBoxBtn.addEventListener("click", ()=>{
   const color = colors[state.boxes.length % colors.length];
   const baseX = 120 + (state.boxes.length % 4) * 410;
   const baseY = 120 + Math.floor(state.boxes.length / 4) * 260;
-  state.boxes.push({ id: uid("b"), name, x: baseX, y: baseY, color, size: "m", assigned: null });
+  state.boxes.push({ id: uid("b"), name, x: baseX, y: baseY, color, assigned: null });
   boxNameInput.value = "";
   render();
   saveState();
@@ -461,14 +444,11 @@ function renderWaiters(){
     el.dataset.waiterId = w.id;
 
     el.innerHTML = `
-      <div class="waitLine">
-        <div class="waitName">${escapeHtml(w.name)}</div>
-        <div class="waitTime" data-wtime>대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
+      <div class="left">
+        <div class="name">${escapeHtml(w.name)}</div>
+        <div class="meta">대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
       </div>
-      <div class="itemActions">
-        <button class="itemBtn" data-wedit="${w.id}">수정</button>
-        <button class="itemBtn danger" data-wdel="${w.id}">삭제</button>
-      </div>
+      <div class="pill warn">드래그</div>
     `;
 
     el.addEventListener("dragstart", (e)=>{
@@ -574,11 +554,6 @@ function renderBoardBoxes(){
     boxEl.style.setProperty("--x", `${b.x}px`);
     boxEl.style.setProperty("--y", `${b.y}px`);
 
-    // size
-    const dims = getBoxDims(b);
-    boxEl.style.setProperty("--w", `${dims.w}px`);
-    boxEl.style.setProperty("--h", `${dims.h}px`);
-
     const assignedHtml = b.assigned ? `
       <div class="slotName" data-name>${escapeHtml(b.assigned.name)}</div>
       <div class="slotTime">
@@ -591,17 +566,15 @@ function renderBoardBoxes(){
       : `<span class="pill good">DROP</span>`;
 
     boxEl.innerHTML = `
-      <div class="boxInner">
-        <div class="watermark">${escapeHtml(b.name)}</div>
+      <div class="boxInner boxInnerSplit">
+        <div class="boxLeft">
+          <div class="watermark">${escapeHtml(b.name)}</div>
+        </div>
 
-        <div class="boxPane">
-          <div class="boxTop rightOnly">
-            <div class="boxRight">
-              <button class="iconBtn" title="BOX 이름 수정" data-rename>✏️</button>
-              <button class="iconBtn" title="박스 크기 (S/M/L)" data-size>▢</button>
-              <button class="iconBtn" title="메뉴" data-menu>⋯</button>
-              <button class="iconBtn" title="삭제" data-delete>🗑</button>
-            </div>
+        <div class="boxBody">
+          <div class="boxActions">
+            <button class="iconBtn" title="수정" data-edit>✎</button>
+            <button class="iconBtn" title="삭제" data-delete>×</button>
           </div>
 
           <div class="slot" data-dropzone>
@@ -610,32 +583,9 @@ function renderBoardBoxes(){
           </div>
         </div>
       </div>
-    `;
-
+`;
     boxEls.set(b.id, boxEl);
     boxEl.classList.toggle("selected", ui.selected.has(b.id));
-
-    // rename
-    boxEl.querySelector("[data-rename]").addEventListener("click", (e)=>{
-      e.stopPropagation();
-      const next = prompt("BOX 이름 변경", b.name || "");
-      if(next == null) return;
-      const v = (next || "").trim();
-      if(!v) return;
-      b.name = v;
-      render();
-      saveState();
-    });
-
-    // size cycle
-    boxEl.querySelector("[data-size]").addEventListener("click", (e)=>{
-      e.stopPropagation();
-      b.size = nextBoxSizeKey(getBoxSizeKey(b));
-      const d = getBoxDims(b);
-      boxEl.style.setProperty("--w", `${d.w}px`);
-      boxEl.style.setProperty("--h", `${d.h}px`);
-      saveState();
-    });
 
     // delete
     boxEl.querySelector("[data-delete]").addEventListener("click", (e)=>{
@@ -643,11 +593,19 @@ function renderBoardBoxes(){
       deleteBox(b.id);
     });
 
-    // menu
-    boxEl.querySelector("[data-menu]").addEventListener("click", (e)=>{
-      e.stopPropagation();
-      showCtx(e.clientX, e.clientY, b.id);
-    });
+    // edit (rename)
+    const editBtn = boxEl.querySelector("[data-edit]");
+    if(editBtn){
+      editBtn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const name = prompt("BOX 이름 변경", b.name);
+        if(name && name.trim()){
+          b.name = name.trim();
+          render();
+          saveState();
+        }
+      });
+    }
 
     // unassign
     const unBtn = boxEl.querySelector("[data-unassign]");
@@ -765,7 +723,7 @@ function focusBox(boxId){
   selectOnly(boxId);
 
   const z = state.zoom || 1;
-  const { w: boxW, h: boxH } = getBoxDims(b);
+  const boxW = 360, boxH = 220;
   const targetX = (b.x + boxW/2) * z;
   const targetY = (b.y + boxH/2) * z;
 
@@ -801,8 +759,8 @@ function tickTimers(){
     if(!wid) return;
     const w = state.waiters.find(ww=>ww.id===wid);
     if(!w) return;
-    const t = item.querySelector("[data-wtime]");
-    if(t) t.textContent = `대기 ${fmtTime(now() - (w.createdAt||now()))}`;
+    const meta = item.querySelector(".meta");
+    if(meta) meta.textContent = `대기 ${fmtTime(now() - (w.createdAt||now()))}`;
   });
 
   // assigned list timers
@@ -823,12 +781,6 @@ function migrate(){
   state.showGrid ??= true;
   state.waiters ??= [];
   state.boxes ??= [];
-
-  // backfill
-  for(const b of state.boxes){
-    b.color ??= "green";
-    b.size ??= "m";
-  }
 }
 migrate();
 setTab("wait");

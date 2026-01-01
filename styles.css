@@ -364,38 +364,15 @@ body{
 
 .boxInner{ position:relative; height:100%; padding:14px; }
 
-/* Right-side content area inside BOX (like split layout) */
-.boxPane{
-  position:absolute;
-  top:14px;
-  right:14px;
-  bottom:14px;
-  left: 42%;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.boxTop.rightOnly{
-  justify-content:flex-end;
-}
-.boxTop.rightOnly .boxRight{ margin-left:auto; }
-.boxPane .slot{
-  margin-top:0;
-  flex: 1;
-}
-
 .watermark{
   position:absolute;
-  left: 22px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 120px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: rgba(233,236,255,.16);
+  inset:auto 14px 18px 14px;
+  font-size:72px;
+  font-weight:900;
+  letter-spacing:1px;
+  color: rgba(233,236,255,.18);
   pointer-events:none;
   white-space:nowrap;
-  line-height:1;
 }
 
 .boxTop{
@@ -605,3 +582,40 @@ body{
 
 /* Hide old "드래그" pill in wait list if it exists anywhere */
 .item .pill.warn{ display:none !important; }
+
+
+/* === Split Box Layout (left big watermark / right content) === */
+.boxInnerSplit{
+  display:flex;
+  gap:14px;
+  height:100%;
+}
+.boxLeft{
+  flex:0 0 38%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+.boxLeft .watermark{
+  position:static;
+  inset:auto;
+  font-size:120px;
+  font-weight:900;
+  letter-spacing:1px;
+  color: rgba(233,236,255,.16);
+  pointer-events:none;
+  line-height:1;
+}
+.boxBody{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding-top:2px;
+}
+.boxActions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
