@@ -1,5 +1,5 @@
 
-/* Box Board - stable build (split box layout) v20260102-11 */
+/* Box Board - stable build (split box layout) v20260102-12 */
 (() => {
   const $ = (sel, el=document) => el.querySelector(sel);
   const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
@@ -425,6 +425,14 @@
         actions.appendChild(delBtn);
 
         item.appendChild(left);
+      const actions = document.createElement("div");
+      actions.className = "itemActions";
+      const toWaitBtn = document.createElement("button");
+      toWaitBtn.className = "itemBtn";
+      toWaitBtn.textContent = "대기";
+      toWaitBtn.addEventListener("click", (e)=>{ e.stopPropagation(); sendBoxToWait(r.boxId); });
+      actions.appendChild(toWaitBtn);
+      item.appendChild(actions);
         item.appendChild(actions);
 
         attachWaiterDrag(item, w.id);
@@ -640,7 +648,8 @@
 
     right.appendChild(actions);
     right.appendChild(slot);
-    right.appendChild(resizeBtn);
+        // place resize button at box corner (left-bottom)
+    inner.appendChild(resizeBtn);
 
     inner.appendChild(wm);
     inner.appendChild(right);

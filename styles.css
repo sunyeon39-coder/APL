@@ -1,4 +1,4 @@
-/* v20260102-11 */
+/* v20260102-12 */
 
 :root{
   --bg:#0f1220;
@@ -445,8 +445,9 @@ body{
 
 .resizeBtn{
   position:absolute;
-  right:18px;
+  left:18px;
   bottom:18px;
+  z-index:5;
   width:54px;
   height:54px;
   border-radius:18px;
