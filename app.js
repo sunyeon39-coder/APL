@@ -234,13 +234,17 @@ function assignWaiterToBox(waiterId, boxId){
   const b = getBoxById(boxId);
   if(!b) return;
 
-  // ✅ 중요: 기존 배치자를 대기로 unshift 하기 전에,
-  // 먼저 드래그한 대기자를 "id 기준"으로 찾아서 제거해야 인덱스 밀림이 안 생김.
-  const wIdx = state.waiters.findIndex(w => w.id === waiterId);
+  // ✅ 드래그 데이터가 (id)로 올 때도 있고, (이름)으로 올 때도 있어서 둘 다 대응
+  let wIdx = state.waiters.findIndex(w => w.id === waiterId);
+  if(wIdx < 0){
+    // fallback: 혹시 dataTransfer가 name만 담겨있는 구버전/브라우저 케이스
+    wIdx = state.waiters.findIndex(w => String(w.name) === String(waiterId));
+  }
   if(wIdx < 0) return;
+
   const w = state.waiters[wIdx];
 
-  // 1) 드래그한 사람을 대기에서 먼저 제거
+  // 1) 드래그한 사람을 대기에서 먼저 제거 (인덱스 밀림 방지)
   state.waiters.splice(wIdx, 1);
 
   // 2) 박스에 기존 배치자가 있으면 대기 맨 위로 복귀
@@ -248,7 +252,6 @@ function assignWaiterToBox(waiterId, boxId){
     state.waiters.unshift({
       id: uid("w"),
       name: b.assigned.name,
-      // 배치 시작 시각을 대기 시작으로 간주 (원하면 now()로 바꿔도 됨)
       createdAt: b.assigned.assignedAt ?? now()
     });
   }
@@ -685,8 +688,12 @@ function renderBoardBoxes(){
       e.preventDefault();
       boxEl.classList.remove("dropOver");
       const idFromDT = (()=>{ try{return e.dataTransfer.getData("text/plain");}catch{return "";} })();
-      const wid = ui.dragWaiterId || idFromDT;
-      if(wid) assignWaiterToBox(wid, b.id);
+      const widRaw = (ui.dragWaiterId || idFromDT || "").trim();
+      ui.dragWaiterId = null;
+
+      // 유효성: 대기 목록에 존재하는 id/이름만 허용
+      const exists = state.waiters.some(w => w.id === widRaw) || state.waiters.some(w => String(w.name) === String(widRaw));
+      if(exists) assignWaiterToBox(widRaw, b.id);
     });
 
     // click selection (ignore buttons)
