@@ -1,4 +1,3 @@
-// box-board build v20260102-17
 /* Box Board (Full)
    - 위치 밀림 방지: BOX는 transform translate3d만 사용 (left/top 금지)
    - 줌(scale) 상태에서 포인터 좌표 보정: (client - rect) / zoom
@@ -59,6 +58,12 @@ let state = loadState() ?? {
   boxes: [],   // {id,name,x,y,color, assigned: {id,name,assignedAt}|null}
 };
 
+
+// --- migrate / defaults (added v20260102-18) ---
+state.boxes.forEach(b=>{
+  if(b.w == null) b.w = 360;
+  if(b.h == null) b.h = 220;
+});
 let ui = {
   activeTab: "wait",
   waitFilter: "",
@@ -69,6 +74,7 @@ let ui = {
   drag: null,
   dragWaiterId: null,
   ctxTargetBoxId: null,
+  resize: null,
 };
 
 const boxEls = new Map(); // boxId -> element (for fast updates)
@@ -197,7 +203,7 @@ addBoxBtn.addEventListener("click", ()=>{
   const color = colors[state.boxes.length % colors.length];
   const baseX = 120 + (state.boxes.length % 4) * 410;
   const baseY = 120 + Math.floor(state.boxes.length / 4) * 260;
-  state.boxes.push({ id: uid("b"), name, x: baseX, y: baseY, w: 360, h: 220, color, assigned: null });
+  state.boxes.push({ id: uid("b"), name, x: baseX, y: baseY, color, assigned: null });
   boxNameInput.value = "";
   render();
   saveState();
@@ -550,16 +556,12 @@ function renderBoardBoxes(){
   for(const b of state.boxes){
     const boxEl = document.createElement("div");
     boxEl.className = "box";
-    // compact layout when box is small to prevent clipping
-    boxEl.classList.toggle("compact", (b.w||0) < 290 || (b.h||0) < 180);
     boxEl.dataset.boxId = b.id;
     boxEl.dataset.color = b.color || "green";
     boxEl.style.setProperty("--x", `${b.x}px`);
     boxEl.style.setProperty("--y", `${b.y}px`);
-    const bw = (typeof b.w === "number") ? b.w : 360;
-    const bh = (typeof b.h === "number") ? b.h : 220;
-    boxEl.style.setProperty("--w", `${bw}px`);
-    boxEl.style.setProperty("--h", `${bh}px`);
+    boxEl.style.setProperty("--w", `${b.w ?? 360}px`);
+    boxEl.style.setProperty("--h", `${b.h ?? 220}px`);
 
     const assignedHtml = b.assigned ? `
       <div class="slotName" data-name>${escapeHtml(b.assigned.name)}</div>
@@ -584,12 +586,11 @@ function renderBoardBoxes(){
           </div>
         </div>
 
-
-        <div class="boxResizer" data-resize title="크기 조절"></div>
         <div class="slot" data-dropzone>
           <div class="slotLeft">${assignedHtml}</div>
           <div class="slotActions">${actionHtml}</div>
-        </div>
+        
+        <div class="resizeHandle" title="크기 조절" data-resize></div>
       </div>
     `;
 
@@ -616,58 +617,6 @@ function renderBoardBoxes(){
         unassignBoxToWaiting(b.id);
       });
     }
-
-
-    // resize (corner) - adjust width & height together
-    const resizeEl = boxEl.querySelector("[data-resize]");
-    if(resizeEl){
-      resizeEl.addEventListener("pointerdown", (e)=>{
-        e.stopPropagation();
-        e.preventDefault();
-        resizeEl.setPointerCapture(e.pointerId);
-
-        const start = getBoardPointFromClient(e.clientX, e.clientY);
-        const box0 = state.boxes.find(x=>x.id===boxId);
-        const startW = (box0 && typeof box0.w==="number") ? box0.w : 360;
-        const startH = (box0 && typeof box0.h==="number") ? box0.h : 220;
-
-        ui.resize = { pointerId: e.pointerId, boxId, start, startW, startH };
-      });
-
-      resizeEl.addEventListener("pointermove", (e)=>{
-        if(!ui.resize || ui.resize.pointerId !== e.pointerId) return;
-        const p = getBoardPointFromClient(e.clientX, e.clientY);
-        const dx = p.x - ui.resize.start.x;
-        const dy = p.y - ui.resize.start.y;
-
-        const b2 = state.boxes.find(x=>x.id===ui.resize.boxId);
-        if(!b2) return;
-
-        const minW = 240, minH = 160;
-        const maxW = 1200, maxH = 900;
-
-        b2.w = clamp(ui.resize.startW + dx, minW, maxW);
-        b2.h = clamp(ui.resize.startH + dy, minH, maxH);
-
-        updateBoxPosition(b2); // updates vars
-        // also update size vars immediately
-        const el = boxEls.get(b2.id);
-        if(el){
-          el.style.setProperty("--w", `${b2.w}px`);
-          el.style.setProperty("--h", `${b2.h}px`);
-        }
-        saveStateDebounced();
-      });
-
-      resizeEl.addEventListener("pointerup", (e)=>{
-        if(ui.resize && ui.resize.pointerId === e.pointerId){
-          ui.resize = null;
-          saveState();
-        }
-      });
-      resizeEl.addEventListener("pointercancel", ()=>{ ui.resize = null; });
-    }
-
 
     // dblclick name -> unassign
     const nameEl = boxEl.querySelector("[data-name]");
@@ -707,7 +656,8 @@ function renderBoardBoxes(){
     });
 
     // move (multi)
-    attachMove(boxEl, b.id);
+
+    attachResize(boxEl, b.id);
 
     board.appendChild(boxEl);
   }
@@ -718,7 +668,7 @@ function renderBoardBoxes(){
 /* ---------- Move (multi) ---------- */
 function attachMove(boxEl, boxId){
   boxEl.addEventListener("pointerdown", (e)=>{
-    if(e.target.closest("button") || e.target.closest("[data-resize]")) return;
+    if(e.target.closest("button")) return;
 
     // selection behavior
     if(!e.shiftKey){
@@ -768,6 +718,88 @@ function attachMove(boxEl, boxId){
   boxEl.addEventListener("pointercancel", end);
 }
 
+
+/* ---------- Resize (corner, X/Y) ---------- */
+let _resizeBound = false;
+
+function attachResize(boxEl, boxId){
+  const handle = boxEl.querySelector("[data-resize]");
+  if(!handle) return;
+
+  // ensure handle never triggers move
+  handle.addEventListener("pointerdown", (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+
+    const b = state.boxes.find(x=>x.id===boxId);
+    if(!b) return;
+
+    const z = state.zoom || 1;
+    ui.resize = {
+      boxId,
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startW: b.w ?? 360,
+      startH: b.h ?? 220,
+      zoom: z,
+    };
+
+    boxEl.classList.add("resizing");
+    handle.setPointerCapture(e.pointerId);
+    if(!_resizeBound){
+      _resizeBound = true;
+      window.addEventListener("pointermove", onResizeMove, {passive:false});
+      window.addEventListener("pointerup", onResizeUp, {passive:false});
+      window.addEventListener("pointercancel", onResizeUp, {passive:false});
+    }
+  });
+}
+
+let _resizeRAF = 0;
+function onResizeMove(e){
+  if(!ui.resize) return;
+  if(e.pointerId !== ui.resize.pointerId) return;
+  e.preventDefault();
+
+  // Convert client delta to board delta (undo zoom)
+  const z = ui.resize.zoom || (state.zoom||1);
+  const dx = (e.clientX - ui.resize.startClientX) / z;
+  const dy = (e.clientY - ui.resize.startClientY) / z;
+
+  const b = state.boxes.find(x=>x.id===ui.resize.boxId);
+  if(!b) return;
+
+  const minW = 220, minH = 140;
+  const maxW = 1200, maxH = 900;
+
+  b.w = clamp(ui.resize.startW + dx, minW, maxW);
+  b.h = clamp(ui.resize.startH + dy, minH, maxH);
+
+  if(!_resizeRAF){
+    _resizeRAF = requestAnimationFrame(()=>{
+      _resizeRAF = 0;
+      const el = boxEls.get(b.id);
+      if(el){
+        el.style.setProperty("--w", `${b.w}px`);
+        el.style.setProperty("--h", `${b.h}px`);
+      }
+    });
+  }
+}
+
+function onResizeUp(e){
+  if(!ui.resize) return;
+  if(e.pointerId !== ui.resize.pointerId) return;
+  e.preventDefault();
+
+  const b = state.boxes.find(x=>x.id===ui.resize.boxId);
+  const el = boxEls.get(ui.resize.boxId);
+  if(el) el.classList.remove("resizing");
+
+  ui.resize = null;
+  saveState(state);
+}
 /* ---------- Focus box ---------- */
 function focusBox(boxId){
   const b = getBoxById(boxId);
@@ -776,8 +808,7 @@ function focusBox(boxId){
   selectOnly(boxId);
 
   const z = state.zoom || 1;
-  const boxW = (typeof b.w==="number") ? b.w : 360;
-  const boxH = (typeof b.h==="number") ? b.h : 220;
+  const boxW = 360, boxH = 220;
   const targetX = (b.x + boxW/2) * z;
   const targetY = (b.y + boxH/2) * z;
 

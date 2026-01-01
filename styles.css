@@ -1,4 +1,3 @@
-/* box-board styles v20260102-17 */
 :root{
   --bg:#0f1220;
   --panel:#171a2b;
@@ -585,55 +584,41 @@ body{
 .item .pill.warn{ display:none !important; }
 
 
-.boxResizer{
+/* --- v20260102-18 Resize handle (corner X/Y) --- */
+.box{ touch-action: none; } /* keep pointer events predictable inside scaled board */
+.resizeHandle{
   position:absolute;
-  right:12px;
-  bottom:12px;
-  width:28px;
-  height:28px;
-  border-radius:10px;
+  right: 12px;
+  bottom: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
   border:1px solid rgba(255,255,255,.18);
   background: rgba(0,0,0,.18);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
   cursor: nwse-resize;
-  z-index: 9;
-  pointer-events: auto;
+  z-index: 6;
 }
-.boxResizer:before{
+.resizeHandle::before{
   content:"";
   position:absolute;
-  right:8px; bottom:8px;
-  width:10px; height:10px;
-  border-right:2px solid rgba(255,255,255,.55);
-  border-bottom:2px solid rgba(255,255,255,.55);
+  right: 10px;
+  bottom: 10px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid rgba(233,236,255,.65);
+  border-bottom: 2px solid rgba(233,236,255,.65);
   transform: rotate(0deg);
-  opacity:.9;
+}
+.box.resizing .resizeHandle{
+  border-color: rgba(74,163,255,.7);
 }
 
-
-/* prevent assigned panel clipping when box is resized small */
-.slot{ max-width:100%; box-sizing:border-box; }
-.slotLeft{ flex:1; min-width:0; }
-.slotActions{ flex:0 0 auto; }
-
-/* compact mode for small boxes */
-.box.compact .slot{
-  padding:10px;
-  min-height: 0;
-  flex-direction:column;
-  align-items:stretch;
-}
-.box.compact .slotActions{
-  justify-content:flex-end;
-  align-self:flex-end;
-}
-.box.compact .slotName{
-  font-size:16px;
-}
-.box.compact .slotTime{
-  font-size:12px;
-  flex-wrap:wrap;
-}
-.box.compact .badgeTime{
-  padding:3px 8px;
+/* slot should adapt when box gets small */
+.slot{ flex-wrap: wrap; align-items: center; }
+.slotLeft{ min-width: 0; }
+.slotName{ max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slotActions{ margin-left: auto; }
+@media (max-width: 480px){
+  .slot{ gap: 10px; }
 }
