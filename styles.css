@@ -433,7 +433,7 @@ body{
 .slotLeft{ display:flex; flex-direction:column; gap:6px; min-width:0; }
 .slotName{
   font-weight:900;
-  font-size:18px;
+  font-size: var(--fs, 18px);
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -635,4 +635,100 @@ body{
 .iconBtn[data-edit]{
   position: relative;
   z-index: 80;
+}
+
+
+/* Modal (name edit + font size) */
+.modal{
+  position:fixed;
+  inset:0;
+  z-index:500;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.modal.hidden{ display:none; }
+.modalBackdrop{
+  position:absolute;
+  inset:0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+.modalCard{
+  position:relative;
+  width: min(640px, calc(100vw - 28px));
+  border-radius: 20px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(23,26,43,.92);
+  box-shadow: var(--shadow);
+  padding:16px;
+}
+.modalTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:12px;
+}
+.modalTitle{
+  font-weight:900;
+  font-size:18px;
+}
+.modalTools{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.miniBtn{
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(233,236,255,.95);
+  cursor:pointer;
+  font-weight:900;
+}
+.miniBtn:hover{ background: rgba(255,255,255,.10); }
+.miniBtn:active{ transform: translateY(1px); }
+.fsValue{
+  min-width:38px;
+  text-align:center;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(10,12,24,.35);
+  font-weight:900;
+}
+.modalInput{
+  width:100%;
+  padding:12px 12px;
+  border-radius: 14px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(10,12,24,.55);
+  color:var(--text);
+  outline:none;
+  font-size:16px;
+}
+.modalPreview{
+  margin-top:12px;
+  border-radius: 16px;
+  border:1px solid rgba(255,255,255,.08);
+  background: rgba(10,12,24,.28);
+  padding:12px;
+}
+.previewLabel{
+  font-size:12px;
+  color: rgba(169,176,214,.9);
+  margin-bottom:8px;
+}
+.previewBox{
+  border-radius: 14px;
+  border:1px dashed rgba(255,255,255,.18);
+  padding:12px;
+}
+.modalActions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:14px;
 }

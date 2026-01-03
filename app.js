@@ -48,6 +48,19 @@ const deleteSelectedBtn = $("#deleteSelected");
 const ctxMenu = $("#ctxMenu");
 const colorPop = $("#colorPop");
 
+// name edit modal
+const nameModal = $("#nameModal");
+const nameModalTitle = $("#nameModalTitle");
+const nameModalInput = $("#nameModalInput");
+const nameModalOk = $("#nameModalOk");
+const nameModalCancel = $("#nameModalCancel");
+const fontTools = $("#fontTools");
+const fsDown = $("#fsDown");
+const fsUp = $("#fsUp");
+const fsValue = $("#fsValue");
+const namePreview = $("#namePreview");
+const namePreviewWrap = $("#namePreviewWrap");
+
 const STORAGE_KEY = "box_board_full_v2";
 
 let state = loadState() ?? {
@@ -94,6 +107,100 @@ function escapeHtml(str){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
+
+
+/* ---------- Name Edit Modal ---------- */
+let modalState = { open:false, resolve:null, fontSize:18 };
+
+function openNameModal({ title, value, fontSize=18, showFontSize=true }){
+  if(!nameModal) return Promise.resolve(null);
+
+  nameModalTitle.textContent = title || "수정";
+  nameModalInput.value = value ?? "";
+  nameModalInput.select();
+
+  // font size
+  modalState.fontSize = clamp(fontSize, 12, 34);
+  if(showFontSize){
+    fontTools.style.display = "flex";
+    namePreviewWrap.style.display = "block";
+  }else{
+    fontTools.style.display = "none";
+    namePreviewWrap.style.display = "none";
+  }
+  updateModalFontUI();
+
+  nameModal.classList.remove("hidden");
+  modalState.open = true;
+
+  // focus next tick
+  setTimeout(()=> nameModalInput.focus(), 0);
+
+  return new Promise((resolve)=>{
+    modalState.resolve = resolve;
+  });
+}
+
+function closeNameModal(result){
+  if(!nameModal || !modalState.open) return;
+  nameModal.classList.add("hidden");
+  modalState.open = false;
+  const r = modalState.resolve;
+  modalState.resolve = null;
+  if(r) r(result);
+}
+
+function updateModalFontUI(){
+  if(!fsValue) return;
+  fsValue.textContent = String(modalState.fontSize);
+  if(namePreview){
+    namePreview.style.setProperty("--fs", `${modalState.fontSize}px`);
+    namePreview.textContent = nameModalInput.value || "홍길동";
+  }
+}
+
+
+
+if(nameModal){
+  // click backdrop to close
+  nameModal.addEventListener("click", (e)=>{
+    if(e.target?.dataset?.close !== undefined) closeNameModal(null);
+  });
+  nameModalCancel?.addEventListener("click", ()=> closeNameModal(null));
+  nameModalOk?.addEventListener("click", ()=>{
+    const v = (nameModalInput.value || "").trim();
+    if(!v) return; // keep open
+    closeNameModal({ value: v, fontSize: modalState.fontSize });
+  });
+
+  fsDown?.addEventListener("click", ()=>{
+    modalState.fontSize = clamp(modalState.fontSize - 1, 12, 34);
+    updateModalFontUI();
+  });
+  fsUp?.addEventListener("click", ()=>{
+    modalState.fontSize = clamp(modalState.fontSize + 1, 12, 34);
+    updateModalFontUI();
+  });
+
+  nameModalInput?.addEventListener("input", updateModalFontUI);
+
+  // Enter to confirm, Esc to cancel
+  window.addEventListener("keydown", (e)=>{
+    if(!modalState.open) return;
+    if(e.key === "Escape"){
+      e.preventDefault();
+      closeNameModal(null);
+    }
+    if(e.key === "Enter"){
+      const tag = (document.activeElement?.tagName || "").toLowerCase();
+      if(tag === "input"){
+        e.preventDefault();
+        nameModalOk?.click();
+      }
+    }
+  }, true);
+}
+
 function setSaveHint(text="저장됨"){
   if(!saveHintEl) return;
   saveHintEl.textContent = text;
@@ -120,7 +227,15 @@ function handleEditBox(boxId){
   const b = getBoxById(boxId);
   if(!b) return;
   if(b.assigned){
-    const nn = prompt("이름 수정", b.assigned.name || "");
+    openNameModal({ title: "이름 수정", value: b.assigned.name || "", fontSize: b.assigned.fontSize || 18, showFontSize: true }).then((res)=>{
+    if(res && res.value){
+      b.assigned.name = res.value;
+      b.assigned.fontSize = res.fontSize || b.assigned.fontSize || 18;
+      render();
+      saveState();
+    }
+  });
+  return;
     if(nn && nn.trim()){
       b.assigned.name = nn.trim();
       render();
@@ -588,7 +703,7 @@ function renderBoardBoxes(){
     boxEl.style.setProperty("--h", `${bh}px`);
 
     const assignedHtml = b.assigned ? `
-      <div class="slotName" data-name>${escapeHtml(b.assigned.name)}</div>
+      <div class="slotName" data-name style="--fs:${(b.assigned.fontSize||18)}px">${escapeHtml(b.assigned.name)}</div>
       <div class="slotTime">
         <span class="badgeTime" data-timer>${fmtTime(now() - b.assigned.assignedAt)}</span>
         <span style="color:rgba(169,176,214,.9)">배치 시간</span>
@@ -635,19 +750,22 @@ function renderBoardBoxes(){
       const bb = getBoxById(b.id);
       if(!bb) return;
       if(bb.assigned){
-        const nn = prompt("이름 수정", bb.assigned.name);
-        if(nn && nn.trim()){
-          bb.assigned.name = nn.trim();
-          render();
-          saveState();
-        }
+        openNameModal({ title: "이름 수정", value: bb.assigned.name, fontSize: bb.assigned.fontSize || 18, showFontSize: true }).then((res)=>{
+          if(res && res.value){
+            bb.assigned.name = res.value;
+            bb.assigned.fontSize = res.fontSize || bb.assigned.fontSize || 18;
+            render();
+            saveState();
+          }
+        });
       }else{
-        const bn = prompt("BOX 이름 변경", bb.name);
-        if(bn && bn.trim()){
-          bb.name = bn.trim();
-          render();
-          saveState();
-        }
+        openNameModal({ title: "BOX 이름 변경", value: bb.name, showFontSize: false }).then((res)=>{
+          if(res && res.value){
+            bb.name = res.value;
+            render();
+            saveState();
+          }
+        });
       }
     });
 
