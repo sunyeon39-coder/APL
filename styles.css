@@ -470,3 +470,6 @@ button,input{font:inherit}
 .actionBtn.icon{
   font-weight:900;
 }
+
+/* === Remove duplicate slot action buttons (keep only boxActions) === */
+.slotActions{ display:none !important; }

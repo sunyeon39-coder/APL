@@ -468,54 +468,7 @@
       slotLeft.appendChild(slotName);
       slotLeft.appendChild(hint);
 
-      const slotActions = document.createElement("div");
-      slotActions.className = "slotActions";
-
-      if (b.person) {
-        const editBtn = document.createElement("button");
-        editBtn.className = "actionBtn icon";
-        editBtn.textContent = "○";
-        editBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const next = prompt("이름 수정", b.person.name || "");
-          if (next === null) return;
-          const v = String(next).trim();
-          if (!v) return;
-          b.person.name = v;
-          saveState();
-          renderAll();
-        });
-
-        const delBtn = document.createElement("button");
-        delBtn.className = "actionBtn icon danger";
-        delBtn.textContent = "✕";
-        delBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          // remove person from this box only (not send to wait)
-          b.person = null;
-          saveState();
-          renderAll();
-        });
-
-        const un = document.createElement("button");
-        un.className = "actionBtn icon";
-        un.textContent = "↩";
-        un.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const p = b.person;
-          b.person = null;
-          addToWait({ id: p.id, name: p.name, createdAt: now() });
-          saveState();
-          renderAll();
-        });
-
-        slotActions.appendChild(editBtn);
-        slotActions.appendChild(delBtn);
-        slotActions.appendChild(un);
-      }
-
-      slot.appendChild(slotLeft);
-      slot.appendChild(slotActions);
+      /* slotActions removed to avoid duplicate controls */
 
       // Drag/drop assign from wait
       slot.addEventListener("dragover", (e) => {
