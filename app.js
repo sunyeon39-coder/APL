@@ -592,14 +592,22 @@
       };
       fitSlot();
 
+      const setBoxGlow = (on) => {
+        if (on) el.classList.add("dropGlow");
+        else el.classList.remove("dropGlow");
+      };
+
       // Drag/drop assign from wait
       slot.addEventListener("dragenter", (e) => {
         e.preventDefault();
         slot.classList.add("dropping");
+        try { setBoxGlow(true); } catch {}
       });
       slot.addEventListener("dragleave", (e) => {
         // leaving the slot
         slot.classList.remove("dropping");
+        try { setBoxGlow(false); } catch {}
+        try { setBoxGlow(false); } catch {}
       });
       slot.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -608,6 +616,7 @@
       slot.addEventListener("drop", (e) => {
         e.preventDefault();
         slot.classList.remove("dropping");
+        try { setBoxGlow(false); } catch {}
         const personId = e.dataTransfer.getData("text/plain");
         const p = state.wait.find((x) => x.id === personId);
         if (!p) return;
@@ -697,6 +706,12 @@
     renderBoxesList();
     renderBoard();
   }
+
+  // Clear glow when drag ends anywhere
+  window.addEventListener("dragend", () => {
+    document.querySelectorAll(".box.dropGlow").forEach((x) => x.classList.remove("dropGlow"));
+    document.querySelectorAll(".slot.dropping").forEach((x) => x.classList.remove("dropping"));
+  });
 
   // Search rerender
   waitSearch?.addEventListener("input", renderAll);
