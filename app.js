@@ -72,39 +72,11 @@ let ui = {
 
 const boxEls = new Map(); // boxId -> element (for fast updates)
 
-// build tag (캐시 확인용)
-console.log('[BoxBoard] build "20260103-2900"');
-
 /* ---------- Utils ---------- */
 function uid(prefix="id"){
   return prefix + "_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
-
-// 박스 내부 "배치 카드"(slot)가 워터마크에 겹치지 않게 배치하기 위한 계산
-// - 박스가 작아져도 워터마크 영역을 어느 정도 남기고
-// - 오른쪽 카드가 잘리지 않게 최소 폭을 보장
-function computeSlotLayout(boxW){
-  const pad = 14;          // 박스 안쪽 여백
-  const minSlotW = 170;    // slot 최소 폭
-  const maxSlotW = 420;    // slot 최대 폭(너무 커지지 않게)
-  const minLeft = 150;     // 워터마크를 위한 최소 왼쪽 공간
-
-  const usable = Math.max(0, boxW - pad*2);
-
-  // 기본은 박스 폭의 48% 지점부터 slot 시작
-  let left = Math.round(usable * 0.48) + pad;
-  left = clamp(left, minLeft, boxW - pad - minSlotW);
-
-  let slotW = boxW - left - pad;
-  slotW = clamp(slotW, minSlotW, maxSlotW);
-
-  // 만약 slotW를 max로 줄이면서 오른쪽이 남으면, 왼쪽을 조금 더 오른쪽으로 당김
-  left = boxW - pad - slotW;
-  left = clamp(left, minLeft, boxW - pad - minSlotW);
-
-  return { left, width: slotW };
-}
 function now(){ return Date.now(); }
 function snapVal(n, step){ return Math.round(n/step)*step; }
 function fmtTime(ms){
@@ -270,20 +242,10 @@ function assignWaiterToBox(waiterId, boxId){
 
   // 기존 배치자 있으면 대기로 복귀
   if(b.assigned){
-    state.waiters.unshift({
-      id: uid("w"),
-      name: b.assigned.name,
-      fontSize: b.assigned.fontSize || 18,
-      createdAt: b.assigned.assignedAt ?? now()
-    });
+    state.waiters.unshift({ id: uid("w"), name: b.assigned.name, createdAt: b.assigned.assignedAt ?? now() });
   }
 
-  b.assigned = {
-    id: uid("a"),
-    name: w.name,
-    fontSize: w.fontSize || 18,
-    assignedAt: now()
-  };
+  b.assigned = { id: uid("a"), name: w.name, assignedAt: now() };
   state.waiters.splice(wIdx, 1);
 
   render();
@@ -293,12 +255,7 @@ function assignWaiterToBox(waiterId, boxId){
 function unassignBoxToWaiting(boxId){
   const b = getBoxById(boxId);
   if(!b || !b.assigned) return;
-  state.waiters.unshift({
-    id: uid("w"),
-    name: b.assigned.name,
-    fontSize: b.assigned.fontSize || 18,
-    createdAt: now()
-  });
+  state.waiters.unshift({ id: uid("w"), name: b.assigned.name, createdAt: now() });
   b.assigned = null;
   render();
   saveState();
@@ -502,27 +459,18 @@ function renderWaiters(){
     return;
   }
 
-  // Stable index based on original order (matches the old layout feel)
-  const indexMap = new Map();
-  state.waiters.forEach((w, i)=> indexMap.set(w.id, i + 1));
-
   for(const w of items){
     const el = document.createElement("div");
-    el.className = "item waitRow";
+    el.className = "item";
     el.draggable = true;
     el.dataset.waiterId = w.id;
 
-    const idx = indexMap.get(w.id) || "";
-    const t = fmtTime(now() - (w.createdAt || now()));
-
-    // old-favorite layout: name + countdown pill + edit button (no big icons)
     el.innerHTML = `
-      <div class="waitIdx">${idx}</div>
-      <div class="waitMain">
-        <div class="waitName">${escapeHtml(w.name)}</div>
-        <div class="waitPill">대기 ${t}</div>
+      <div class="left">
+        <div class="name">${escapeHtml(w.name)}</div>
+        <div class="meta">대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
       </div>
-      <button class="waitEdit" type="button" data-wedit title="이름 수정">✎</button>
+      <div class="pill warn">드래그</div>
     `;
 
     el.addEventListener("dragstart", (e)=>{
@@ -530,28 +478,6 @@ function renderWaiters(){
       try{ e.dataTransfer.setData("text/plain", w.id); }catch{}
     });
     el.addEventListener("dragend", ()=>{ ui.dragWaiterId = null; });
-
-    // edit waiter name
-    el.querySelector("[data-wedit]").addEventListener("click", (e)=>{
-      e.stopPropagation();
-      const next = prompt("이름 수정", w.name || "");
-      if(next === null) return;
-      const trimmed = (next || "").trim();
-
-      // If cleared, treat as delete (with confirm) to avoid extra UI buttons
-      if(trimmed === ""){
-        const ok = confirm("이 항목을 삭제할까요?");
-        if(!ok) return;
-        state.waiters = state.waiters.filter(x=>x.id!==w.id);
-        render();
-        saveState();
-        return;
-      }
-
-      w.name = trimmed;
-      render();
-      saveState();
-    });
 
     waitListEl.appendChild(el);
   }
@@ -656,37 +582,32 @@ function renderBoardBoxes(){
     boxEl.dataset.color = b.color || "green";
     boxEl.style.setProperty("--x", `${b.x}px`);
     boxEl.style.setProperty("--y", `${b.y}px`);
-    // 기본 박스 크기(사용자가 원했던 썸네일 느낌의 컴팩트 카드)
-    const bw = (typeof b.w === "number") ? b.w : 280;
-    const bh = (typeof b.h === "number") ? b.h : 170;
+    const bw = (typeof b.w === "number") ? b.w : 360;
+    const bh = (typeof b.h === "number") ? b.h : 220;
     boxEl.style.setProperty("--w", `${bw}px`);
     boxEl.style.setProperty("--h", `${bh}px`);
 
-    // slot(배치 카드) 위치/폭을 박스 크기에 맞춰 계산 (워터마크와 겹치지 않게)
-    const slotLayout = computeSlotLayout(bw);
-    boxEl.style.setProperty("--slotLeft", `${slotLayout.left}px`);
-    boxEl.style.setProperty("--slotW", `${slotLayout.width}px`);
-
     const assignedHtml = b.assigned ? `
-      <div class="slotName" data-name style="--fs:${(b.assigned.fontSize||18)}px">${escapeHtml(b.assigned.name)}</div>
+      <div class="slotName" data-name>${escapeHtml(b.assigned.name)}</div>
       <div class="slotTime">
         <span class="badgeTime" data-timer>${fmtTime(now() - b.assigned.assignedAt)}</span>
         <span style="color:rgba(169,176,214,.9)">배치 시간</span>
       </div>` : `<div class="dropHint">여기에 대기자를 드롭</div>`;
 
+    const topUnassignHtml = b.assigned
+      ? `<button class="smallBtn" data-unassign title="대기로">대기로</button>`
+      : ``;
+
     boxEl.innerHTML = `
       <div class="boxInner">
-        <div class="cornerLabel">${escapeHtml(b.name)}</div>
         <div class="watermark">${escapeHtml(b.name)}</div>
 
         <div class="boxTop">
           <div class="boxTitle"></div>
-          <div class="boxControls">
-            <button class="miniBtn" data-edit title="수정">수정</button>
-            <button class="miniBtn" data-font title="글자 크기">o</button>
-            <button class="miniBtn danger" data-clear title="배치 삭제">x</button>
-            ${b.assigned ? `<button class="miniBtn" data-unassign title="대기로">↩</button>` : ``}
-            <button class="miniBtn danger" data-delete title="박스 삭제">x</button>
+          <div class="boxRight">
+            ${topUnassignHtml}
+            <button class="iconBtn" title="수정" data-edit>✎</button>
+            <button class="iconBtn" title="삭제" data-delete>🗑</button>
           </div>
         </div>
 
@@ -730,43 +651,7 @@ function renderBoardBoxes(){
       }
     });
 
-    
-
-    // font size (assigned only)
-    const fontBtn = boxEl.querySelector("[data-font]");
-    if(fontBtn){
-      fontBtn.disabled = !b.assigned;
-      fontBtn.classList.toggle("disabled", !b.assigned);
-      fontBtn.addEventListener("click", (e)=>{
-        e.stopPropagation();
-        const bb = getBoxById(b.id);
-        if(!bb || !bb.assigned) return;
-        const cur = bb.assigned.fontSize || 18;
-        const v = prompt("글자 크기 (12~36)", String(cur));
-        if(v === null) return;
-        const n = Math.max(12, Math.min(36, parseInt(v, 10) || cur));
-        bb.assigned.fontSize = n;
-        render();
-        saveState();
-      });
-    }
-
-    // clear assigned (remove without returning to waiting)
-    const clearBtn = boxEl.querySelector("[data-clear]");
-    if(clearBtn){
-      clearBtn.disabled = !b.assigned;
-      clearBtn.classList.toggle("disabled", !b.assigned);
-      clearBtn.addEventListener("click", (e)=>{
-        e.stopPropagation();
-        const bb = getBoxById(b.id);
-        if(!bb || !bb.assigned) return;
-        if(!confirm("현재 배치자를 삭제할까요? (대기로 돌아가지 않음)")) return;
-        bb.assigned = null;
-        render();
-        saveState();
-      });
-    }
-// top unassign
+    // top unassign
     const unBtn = boxEl.querySelector("[data-unassign]");
     if(unBtn){
       unBtn.addEventListener("click", (e)=>{
@@ -813,9 +698,6 @@ function renderBoardBoxes(){
         if(el){
           el.style.setProperty("--w", `${b2.w}px`);
           el.style.setProperty("--h", `${b2.h}px`);
-          const slotLayout2 = computeSlotLayout(b2.w);
-          el.style.setProperty("--slotLeft", `${slotLayout2.left}px`);
-          el.style.setProperty("--slotW", `${slotLayout2.width}px`);
         }
         saveStateDebounced();
       });
