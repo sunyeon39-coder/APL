@@ -5,10 +5,6 @@
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-const BUILD = "20260103-2300";
-try{ const el=document.getElementById("buildVer"); if(el) el.textContent = BUILD; }catch(e){}
-console.log(`[BoxBoard] build ${BUILD}`);
-
 
 const layout = $("#layout");
 const boardOuter = $("#boardOuter");
@@ -52,19 +48,6 @@ const deleteSelectedBtn = $("#deleteSelected");
 const ctxMenu = $("#ctxMenu");
 const colorPop = $("#colorPop");
 
-// name edit modal
-const nameModal = $("#nameModal");
-const nameModalTitle = $("#nameModalTitle");
-const nameModalInput = $("#nameModalInput");
-const nameModalOk = $("#nameModalOk");
-const nameModalCancel = $("#nameModalCancel");
-const fontTools = $("#fontTools");
-const fsDown = $("#fsDown");
-const fsUp = $("#fsUp");
-const fsValue = $("#fsValue");
-const namePreview = $("#namePreview");
-const namePreviewWrap = $("#namePreviewWrap");
-
 const STORAGE_KEY = "box_board_full_v2";
 
 let state = loadState() ?? {
@@ -89,11 +72,39 @@ let ui = {
 
 const boxEls = new Map(); // boxId -> element (for fast updates)
 
+// build tag (캐시 확인용)
+console.log('[BoxBoard] build "20260103-2400"');
+
 /* ---------- Utils ---------- */
 function uid(prefix="id"){
   return prefix + "_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+// 박스 내부 "배치 카드"(slot)가 워터마크에 겹치지 않게 배치하기 위한 계산
+// - 박스가 작아져도 워터마크 영역을 어느 정도 남기고
+// - 오른쪽 카드가 잘리지 않게 최소 폭을 보장
+function computeSlotLayout(boxW){
+  const pad = 14;          // 박스 안쪽 여백
+  const minSlotW = 170;    // slot 최소 폭
+  const maxSlotW = 420;    // slot 최대 폭(너무 커지지 않게)
+  const minLeft = 150;     // 워터마크를 위한 최소 왼쪽 공간
+
+  const usable = Math.max(0, boxW - pad*2);
+
+  // 기본은 박스 폭의 48% 지점부터 slot 시작
+  let left = Math.round(usable * 0.48) + pad;
+  left = clamp(left, minLeft, boxW - pad - minSlotW);
+
+  let slotW = boxW - left - pad;
+  slotW = clamp(slotW, minSlotW, maxSlotW);
+
+  // 만약 slotW를 max로 줄이면서 오른쪽이 남으면, 왼쪽을 조금 더 오른쪽으로 당김
+  left = boxW - pad - slotW;
+  left = clamp(left, minLeft, boxW - pad - minSlotW);
+
+  return { left, width: slotW };
+}
 function now(){ return Date.now(); }
 function snapVal(n, step){ return Math.round(n/step)*step; }
 function fmtTime(ms){
@@ -111,100 +122,6 @@ function escapeHtml(str){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
-
-
-/* ---------- Name Edit Modal ---------- */
-let modalState = { open:false, resolve:null, fontSize:18 };
-
-function openNameModal({ title, value, fontSize=18, showFontSize=true }){
-  if(!nameModal) return Promise.resolve(null);
-
-  nameModalTitle.textContent = title || "수정";
-  nameModalInput.value = value ?? "";
-  nameModalInput.select();
-
-  // font size
-  modalState.fontSize = clamp(fontSize, 12, 34);
-  if(showFontSize){
-    fontTools.style.display = "flex";
-    namePreviewWrap.style.display = "block";
-  }else{
-    fontTools.style.display = "none";
-    namePreviewWrap.style.display = "none";
-  }
-  updateModalFontUI();
-
-  nameModal.classList.remove("hidden");
-  modalState.open = true;
-
-  // focus next tick
-  setTimeout(()=> nameModalInput.focus(), 0);
-
-  return new Promise((resolve)=>{
-    modalState.resolve = resolve;
-  });
-}
-
-function closeNameModal(result){
-  if(!nameModal || !modalState.open) return;
-  nameModal.classList.add("hidden");
-  modalState.open = false;
-  const r = modalState.resolve;
-  modalState.resolve = null;
-  if(r) r(result);
-}
-
-function updateModalFontUI(){
-  if(!fsValue) return;
-  fsValue.textContent = String(modalState.fontSize);
-  if(namePreview){
-    namePreview.style.setProperty("--fs", `${modalState.fontSize}px`);
-    namePreview.textContent = nameModalInput.value || "홍길동";
-  }
-}
-
-
-
-if(nameModal){
-  // click backdrop to close
-  nameModal.addEventListener("click", (e)=>{
-    if(e.target?.dataset?.close !== undefined) closeNameModal(null);
-  });
-  nameModalCancel?.addEventListener("click", ()=> closeNameModal(null));
-  nameModalOk?.addEventListener("click", ()=>{
-    const v = (nameModalInput.value || "").trim();
-    if(!v) return; // keep open
-    closeNameModal({ value: v, fontSize: modalState.fontSize });
-  });
-
-  fsDown?.addEventListener("click", ()=>{
-    modalState.fontSize = clamp(modalState.fontSize - 1, 12, 34);
-    updateModalFontUI();
-  });
-  fsUp?.addEventListener("click", ()=>{
-    modalState.fontSize = clamp(modalState.fontSize + 1, 12, 34);
-    updateModalFontUI();
-  });
-
-  nameModalInput?.addEventListener("input", updateModalFontUI);
-
-  // Enter to confirm, Esc to cancel
-  window.addEventListener("keydown", (e)=>{
-    if(!modalState.open) return;
-    if(e.key === "Escape"){
-      e.preventDefault();
-      closeNameModal(null);
-    }
-    if(e.key === "Enter"){
-      const tag = (document.activeElement?.tagName || "").toLowerCase();
-      if(tag === "input"){
-        e.preventDefault();
-        nameModalOk?.click();
-      }
-    }
-  }, true);
-}
-
 function setSaveHint(text="저장됨"){
   if(!saveHintEl) return;
   saveHintEl.textContent = text;
@@ -230,41 +147,22 @@ function getBoxById(id){ return state.boxes.find(b=>b.id===id); }
 function handleEditBox(boxId){
   const b = getBoxById(boxId);
   if(!b) return;
-
-  // If a person is assigned, edit person name + font size
   if(b.assigned){
-    openNameModal({
-      title: "이름 수정",
-      value: b.assigned.name || "",
-      fontSize: b.assigned.fontSize || 18,
-      showFontSize: true
-    }).then((res)=>{
-      if(!res) return;
-      const v = (res.value || "").trim();
-      if(!v) return;
-      b.assigned.name = v;
-      b.assigned.fontSize = res.fontSize || b.assigned.fontSize || 18;
+    const nn = prompt("이름 수정", b.assigned.name || "");
+    if(nn && nn.trim()){
+      b.assigned.name = nn.trim();
       render();
       saveState();
-    });
-    return;
+    }
+  }else{
+    const bn = prompt("BOX 이름 변경", b.name || "");
+    if(bn && bn.trim()){
+      b.name = bn.trim();
+      render();
+      saveState();
+    }
   }
-
-  // Otherwise edit BOX name only
-  openNameModal({
-    title: "BOX 이름 변경",
-    value: b.name || "",
-    showFontSize: false
-  }).then((res)=>{
-    if(!res) return;
-    const v = (res.value || "").trim();
-    if(!v) return;
-    b.name = v;
-    render();
-    saveState();
-  });
 }
-
 
 /* client -> board local (zoom corrected) */
 function getBoardPointFromClient(clientX, clientY){
@@ -372,10 +270,20 @@ function assignWaiterToBox(waiterId, boxId){
 
   // 기존 배치자 있으면 대기로 복귀
   if(b.assigned){
-    state.waiters.unshift({ id: uid("w"), name: b.assigned.name, createdAt: b.assigned.assignedAt ?? now() });
+    state.waiters.unshift({
+      id: uid("w"),
+      name: b.assigned.name,
+      fontSize: b.assigned.fontSize || 18,
+      createdAt: b.assigned.assignedAt ?? now()
+    });
   }
 
-  b.assigned = { id: uid("a"), name: w.name, fontSize: w.fontSize || 18, assignedAt: now() };
+  b.assigned = {
+    id: uid("a"),
+    name: w.name,
+    fontSize: w.fontSize || 18,
+    assignedAt: now()
+  };
   state.waiters.splice(wIdx, 1);
 
   render();
@@ -385,7 +293,12 @@ function assignWaiterToBox(waiterId, boxId){
 function unassignBoxToWaiting(boxId){
   const b = getBoxById(boxId);
   if(!b || !b.assigned) return;
-  state.waiters.unshift({ id: uid("w"), name: b.assigned.name, fontSize: b.assigned.fontSize || 18, createdAt: now() });
+  state.waiters.unshift({
+    id: uid("w"),
+    name: b.assigned.name,
+    fontSize: b.assigned.fontSize || 18,
+    createdAt: now()
+  });
   b.assigned = null;
   render();
   saveState();
@@ -523,14 +436,12 @@ ctxMenu.addEventListener("click", (e)=>{
   if(!b) return;
 
   if(action === "rename"){
-    openNameModal({ title: "BOX 이름 변경", value: b.name || "", showFontSize: false }).then((res)=>{
-      if(!res) return;
-      const v = (res.value || "").trim();
-      if(!v) return;
-      b.name = v;
+    const name = prompt("BOX 이름 변경", b.name);
+    if(name && name.trim()){
+      b.name = name.trim();
       render();
       saveState();
-    });
+    }
   }else if(action === "color"){
     const rect = ctxMenu.getBoundingClientRect();
     showColorPop(rect.right + 8, rect.top, boxId);
@@ -602,7 +513,11 @@ function renderWaiters(){
         <div class="name">${escapeHtml(w.name)}</div>
         <div class="meta">대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
       </div>
-      <div class="pill warn">드래그</div>
+      <div class="actions">
+        <span class="pill warn" title="BOX로 드래그">드래그</span>
+        <button class="miniIcon" title="수정" data-wedit>✎</button>
+        <button class="miniIcon danger" title="삭제" data-wdel>🗑</button>
+      </div>
     `;
 
     el.addEventListener("dragstart", (e)=>{
@@ -610,6 +525,25 @@ function renderWaiters(){
       try{ e.dataTransfer.setData("text/plain", w.id); }catch{}
     });
     el.addEventListener("dragend", ()=>{ ui.dragWaiterId = null; });
+
+    // edit waiter (name + font size)
+    el.querySelector("[data-wedit]").addEventListener("click", (e)=>{
+      e.stopPropagation();
+      openNameModal({ title: "이름 수정", value: w.name, fontSize: w.fontSize || 18, showFontSize: true }).then((res)=>{
+        if(!res || !res.value) return;
+        w.name = res.value;
+        w.fontSize = res.fontSize || w.fontSize || 18;
+        render();
+        saveState();
+      });
+    });
+    // delete waiter
+    el.querySelector("[data-wdel]").addEventListener("click", (e)=>{
+      e.stopPropagation();
+      state.waiters = state.waiters.filter(x=>x.id!==w.id);
+      render();
+      saveState();
+    });
 
     waitListEl.appendChild(el);
   }
@@ -719,6 +653,11 @@ function renderBoardBoxes(){
     boxEl.style.setProperty("--w", `${bw}px`);
     boxEl.style.setProperty("--h", `${bh}px`);
 
+    // slot(배치 카드) 위치/폭을 박스 크기에 맞춰 계산 (워터마크와 겹치지 않게)
+    const slotLayout = computeSlotLayout(bw);
+    boxEl.style.setProperty("--slotLeft", `${slotLayout.left}px`);
+    boxEl.style.setProperty("--slotW", `${slotLayout.width}px`);
+
     const assignedHtml = b.assigned ? `
       <div class="slotName" data-name style="--fs:${(b.assigned.fontSize||18)}px">${escapeHtml(b.assigned.name)}</div>
       <div class="slotTime">
@@ -767,22 +706,19 @@ function renderBoardBoxes(){
       const bb = getBoxById(b.id);
       if(!bb) return;
       if(bb.assigned){
-        openNameModal({ title: "이름 수정", value: bb.assigned.name, fontSize: bb.assigned.fontSize || 18, showFontSize: true }).then((res)=>{
-          if(res && res.value){
-            bb.assigned.name = res.value;
-            bb.assigned.fontSize = res.fontSize || bb.assigned.fontSize || 18;
-            render();
-            saveState();
-          }
-        });
+        const nn = prompt("이름 수정", bb.assigned.name);
+        if(nn && nn.trim()){
+          bb.assigned.name = nn.trim();
+          render();
+          saveState();
+        }
       }else{
-        openNameModal({ title: "BOX 이름 변경", value: bb.name, showFontSize: false }).then((res)=>{
-          if(res && res.value){
-            bb.name = res.value;
-            render();
-            saveState();
-          }
-        });
+        const bn = prompt("BOX 이름 변경", bb.name);
+        if(bn && bn.trim()){
+          bb.name = bn.trim();
+          render();
+          saveState();
+        }
       }
     });
 
@@ -833,6 +769,9 @@ function renderBoardBoxes(){
         if(el){
           el.style.setProperty("--w", `${b2.w}px`);
           el.style.setProperty("--h", `${b2.h}px`);
+          const slotLayout2 = computeSlotLayout(b2.w);
+          el.style.setProperty("--slotLeft", `${slotLayout2.left}px`);
+          el.style.setProperty("--slotW", `${slotLayout2.width}px`);
         }
         saveStateDebounced();
       });
@@ -1050,14 +989,12 @@ document.addEventListener("click", (e)=>{
   if(widEdit){
     const w = state.waiters.find(w => w.id === wid);
     if(!w) return;
-
-    openNameModal({ title: "이름 수정", value: w.name || "", fontSize: w.fontSize || 18, showFontSize: true }).then((res)=>{
-      if(!res) return;
-      const v = (res.value || "").trim();
-      if(!v) return;
-      w.name = v;
-      saveState();
-      renderWaiters();
-    });
+    const next = prompt("이름 수정", w.name || "");
+    if(next == null) return;
+    const v = (next || "").trim();
+    if(!v) return;
+    w.name = v;
+    saveState();
+    renderWaiters();
   }
 });
