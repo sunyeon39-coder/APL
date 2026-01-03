@@ -455,13 +455,13 @@
         personEditBtn.title = "사람 이름 수정";
         personEditBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const next = prompt("이름 수정", b.person.name || "");
-          if (next === null) return;
-          const v = String(next).trim();
-          if (!v) return;
-          b.person.name = v;
+          openNameModal({ title: "이름 수정", name: b.person.name || "", fontScale: b.person.fontScale || 1.0 }).then((res)=>{
+          if (!res) return;
+          b.person.name = res.name;
+          b.person.fontScale = res.fontScale || 1.0;
           saveState();
           renderAll();
+        });
         });
 
         const personDelBtn = document.createElement("button");
@@ -526,13 +526,13 @@
         editBtn.textContent = "○";
         editBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const next = prompt("이름 수정", b.person.name || "");
-          if (next === null) return;
-          const v = String(next).trim();
-          if (!v) return;
-          b.person.name = v;
+          openNameModal({ title: "이름 수정", name: b.person.name || "", fontScale: b.person.fontScale || 1.0 }).then((res)=>{
+          if (!res) return;
+          b.person.name = res.name;
+          b.person.fontScale = res.fontScale || 1.0;
           saveState();
           renderAll();
+        });
         });
 
         const delBtn = document.createElement("button");
@@ -591,7 +591,8 @@
         // adjust name font size for readability
         const baseName = 20; // px
         const nameSize = Math.max(14, Math.round(baseName * Math.min(1, scale + 0.45)));
-        slot.style.setProperty("--nameSize", nameSize + "px");
+        const userScale = (b.person && b.person.fontScale) ? b.person.fontScale : 1.0;
+        slot.style.setProperty("--nameSize", Math.round(nameSize * userScale) + "px");
         slot.style.transformOrigin = "top right";
       };
       fitSlot();
@@ -744,3 +745,78 @@
   // Initial render
   renderAll();
 })();
+
+
+// ===== Name Modal (with font size) =====
+const nameModal = document.getElementById("nameModal");
+const modalNameInput = document.getElementById("modalNameInput");
+const modalClose = document.getElementById("modalClose");
+const modalCancel = document.getElementById("modalCancel");
+const modalOk = document.getElementById("modalOk");
+const fontMinus = document.getElementById("fontMinus");
+const fontPlus = document.getElementById("fontPlus");
+const fontReset = document.getElementById("fontReset");
+const fontValue = document.getElementById("fontValue");
+const fontPreview = document.getElementById("fontPreview");
+
+let _modalResolve = null;
+let _fontScale = 1.0;
+
+function setFontScale(v){
+  _fontScale = Math.max(0.8, Math.min(1.8, Math.round(v*10)/10));
+  fontValue.textContent = Math.round(_fontScale*100) + "%";
+  fontPreview.style.fontSize = (18 * _fontScale) + "px";
+  fontPreview.textContent = modalNameInput.value || "미리보기";
+}
+
+function openNameModal({title="이름 수정", name="", fontScale=1.0}){
+  if (!nameModal) return Promise.resolve(null);
+  document.getElementById("modalTitle").textContent = title;
+
+  modalNameInput.value = name || "";
+  modalNameInput.focus();
+  modalNameInput.select();
+
+  setFontScale(fontScale || 1.0);
+
+  nameModal.classList.remove("hidden");
+  nameModal.setAttribute("aria-hidden","false");
+
+  return new Promise((resolve)=>{
+    _modalResolve = resolve;
+  });
+}
+
+function closeNameModal(result){
+  if (!nameModal) return;
+  nameModal.classList.add("hidden");
+  nameModal.setAttribute("aria-hidden","true");
+  const r = _modalResolve;
+  _modalResolve = null;
+  if (r) r(result);
+}
+
+if (nameModal){
+  nameModal.addEventListener("click", (e)=>{
+    const t = e.target;
+    if (t && t.dataset && t.dataset.close) closeNameModal(null);
+  });
+  modalClose?.addEventListener("click", ()=>closeNameModal(null));
+  modalCancel?.addEventListener("click", ()=>closeNameModal(null));
+  modalOk?.addEventListener("click", ()=>{
+    const v = String(modalNameInput.value || "").trim();
+    if (!v) return; // empty = ignore
+    closeNameModal({ name: v, fontScale: _fontScale });
+  });
+  modalNameInput?.addEventListener("input", ()=>setFontScale(_fontScale));
+  modalNameInput?.addEventListener("keydown", (e)=>{
+    if (e.key === "Escape") closeNameModal(null);
+    if (e.key === "Enter") {
+      e.preventDefault();
+      modalOk.click();
+    }
+  });
+  fontMinus?.addEventListener("click", ()=>setFontScale(_fontScale - 0.1));
+  fontPlus?.addEventListener("click", ()=>setFontScale(_fontScale + 0.1));
+  fontReset?.addEventListener("click", ()=>setFontScale(1.0));
+}

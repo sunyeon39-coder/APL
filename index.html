@@ -13,7 +13,7 @@
   </style>
 
   <!-- cache-bust -->
-  <link rel="stylesheet" href="./styles.css?v=20260103-1940" />
+  <link rel="stylesheet" href="./styles.css?v=20260103-1950" />
 </head>
 <body>
   <header class="topbar">
@@ -119,6 +119,39 @@
     </section>
   </main>
 
-  <script src="./app.js?v=20260103-1940"></script>
+  <script src="./app.js?v=20260103-1950"></script>
+
+  <!-- Name edit modal -->
+  <div class="modal hidden" id="nameModal" aria-hidden="true">
+    <div class="modalBackdrop" data-close="1"></div>
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modalHeader">
+        <div class="modalTitle" id="modalTitle">이름 수정</div>
+        <button class="modalClose" id="modalClose" title="닫기">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <label class="modalLabel" for="modalNameInput">이름</label>
+        <input class="modalInput" id="modalNameInput" placeholder="이름 입력" />
+
+        <div class="fontRow">
+          <div class="fontLabel">글자 크기</div>
+          <div class="fontControls">
+            <button class="fontBtn" id="fontMinus" title="작게">A-</button>
+            <div class="fontValue" id="fontValue">100%</div>
+            <button class="fontBtn" id="fontPlus" title="크게">A+</button>
+            <button class="fontBtn ghost" id="fontReset" title="기본">Reset</button>
+          </div>
+          <div class="fontPreview" id="fontPreview">미리보기</div>
+        </div>
+      </div>
+
+      <div class="modalFooter">
+        <button class="btn" id="modalCancel">취소</button>
+        <button class="btn primary" id="modalOk">확인</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
