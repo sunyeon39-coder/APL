@@ -445,6 +445,54 @@
       });
 
       boxActions.appendChild(renameBoxBtn);
+
+      // Person actions (only when occupied): edit / delete / to-wait
+      if (b.person) {
+        const personEditBtn = document.createElement("button");
+        personEditBtn.className = "actionBtn icon";
+        personEditBtn.textContent = "○";
+        personEditBtn.title = "사람 이름 수정";
+        personEditBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const next = prompt("이름 수정", b.person.name || "");
+          if (next === null) return;
+          const v = String(next).trim();
+          if (!v) return;
+          b.person.name = v;
+          saveState();
+          renderAll();
+        });
+
+        const personDelBtn = document.createElement("button");
+        personDelBtn.className = "actionBtn icon danger";
+        personDelBtn.textContent = "✕";
+        personDelBtn.title = "사람 삭제";
+        personDelBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          // remove only from this box
+          b.person = null;
+          saveState();
+          renderAll();
+        });
+
+        const toWaitBtn = document.createElement("button");
+        toWaitBtn.className = "actionBtn icon";
+        toWaitBtn.textContent = "↩";
+        toWaitBtn.title = "대기로 이동";
+        toWaitBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const p = b.person;
+          b.person = null;
+          addToWait({ id: p.id, name: p.name, createdAt: now() });
+          saveState();
+          renderAll();
+        });
+
+        boxActions.appendChild(personEditBtn);
+        boxActions.appendChild(personDelBtn);
+        boxActions.appendChild(toWaitBtn);
+      }
+
       boxActions.appendChild(delBoxBtn);
       inner.appendChild(boxActions);
 
@@ -468,7 +516,54 @@
       slotLeft.appendChild(slotName);
       slotLeft.appendChild(hint);
 
-      /* slotActions removed to avoid duplicate controls */
+      const slotActions = document.createElement("div");
+      slotActions.className = "slotActions";
+
+      if (b.person) {
+        const editBtn = document.createElement("button");
+        editBtn.className = "actionBtn icon";
+        editBtn.textContent = "○";
+        editBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const next = prompt("이름 수정", b.person.name || "");
+          if (next === null) return;
+          const v = String(next).trim();
+          if (!v) return;
+          b.person.name = v;
+          saveState();
+          renderAll();
+        });
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "actionBtn icon danger";
+        delBtn.textContent = "✕";
+        delBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          // remove person from this box only (not send to wait)
+          b.person = null;
+          saveState();
+          renderAll();
+        });
+
+        const un = document.createElement("button");
+        un.className = "actionBtn icon";
+        un.textContent = "↩";
+        un.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const p = b.person;
+          b.person = null;
+          addToWait({ id: p.id, name: p.name, createdAt: now() });
+          saveState();
+          renderAll();
+        });
+
+        slotActions.appendChild(editBtn);
+        slotActions.appendChild(delBtn);
+        slotActions.appendChild(un);
+      }
+
+      slot.appendChild(slotLeft);
+      slot.appendChild(slotActions);
 
       // Drag/drop assign from wait
       slot.addEventListener("dragover", (e) => {

@@ -471,5 +471,28 @@ button,input{font:inherit}
   font-weight:900;
 }
 
-/* === Remove duplicate slot action buttons (keep only boxActions) === */
+/* === Hide only the duplicate buttons inside the slot (keep slot content + drop/assign working) === */
 .slotActions{ display:none !important; }
+
+
+/* === Show box action buttons only on hover (mouse) === */
+.boxActions{
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity .12s ease, transform .12s ease;
+}
+.box:hover .boxActions{
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Touch devices: keep buttons visible (no hover) */
+@media (hover: none){
+  .boxActions{
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
