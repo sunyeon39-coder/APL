@@ -1,3 +1,6 @@
+const BUILD_ID = '20260103-1745';
+console.log('Box Board build', BUILD_ID);
+
 /* Box Board (Full)
    - 위치 밀림 방지: BOX는 transform translate3d만 사용 (left/top 금지)
    - 줌(scale) 상태에서 포인터 좌표 보정: (client - rect) / zoom
