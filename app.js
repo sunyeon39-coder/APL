@@ -566,6 +566,29 @@
       slot.appendChild(slotLeft);
       slot.appendChild(slotActions);
 
+
+      // Fit slot to current box size (prevents clipping on small boxes)
+      const fitSlot = () => {
+        // available space inside box
+        const availW = Math.max(160, b.w - 120);
+        const availH = Math.max(90, b.h - 90);
+
+        // base slot size we designed for
+        const baseW = 320;
+        const baseH = 110;
+
+        // width clamp
+        const targetW = Math.max(160, Math.min(390, availW));
+        slot.style.width = targetW + "px";
+
+        // scale down if box is too small
+        let scale = Math.min(1, availW / baseW, availH / baseH);
+        scale = Math.max(0.72, scale); // don't get too tiny
+        slot.style.transform = `scale(${scale})`;
+        slot.style.transformOrigin = "top right";
+      };
+      fitSlot();
+
       // Drag/drop assign from wait
       slot.addEventListener("dragenter", (e) => {
         e.preventDefault();
@@ -627,6 +650,7 @@
         b.h = Math.max(minH, Math.round(resizing.h + dy));
         el.style.setProperty("--w", `${b.w}px`);
         el.style.setProperty("--h", `${b.h}px`);
+        try { fitSlot(); } catch {}
       });
 
       window.addEventListener("mouseup", () => {

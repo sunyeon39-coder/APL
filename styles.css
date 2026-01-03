@@ -512,3 +512,15 @@ button,input{font:inherit}
 .item[draggable="true"]:active{
   cursor: grabbing;
 }
+
+
+/* === Slot responsive fit (prevent clipping when box is small) === */
+.slot{
+  right: 12px !important;
+  top: 56px !important;
+  max-width: calc(100% - 24px) !important;
+  min-width: 160px;
+  transform-origin: top right;
+}
+.slotName{ font-size: clamp(14px, 2.2vw, 18px); }
+.dropHint{ font-size: clamp(11px, 1.8vw, 13px); }
