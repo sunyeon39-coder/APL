@@ -116,6 +116,26 @@ function loadState(){
 }
 function getBoxById(id){ return state.boxes.find(b=>b.id===id); }
 
+function handleEditBox(boxId){
+  const b = getBoxById(boxId);
+  if(!b) return;
+  if(b.assigned){
+    const nn = prompt("이름 수정", b.assigned.name || "");
+    if(nn && nn.trim()){
+      b.assigned.name = nn.trim();
+      render();
+      saveState();
+    }
+  }else{
+    const bn = prompt("BOX 이름 변경", b.name || "");
+    if(bn && bn.trim()){
+      b.name = bn.trim();
+      render();
+      saveState();
+    }
+  }
+}
+
 /* client -> board local (zoom corrected) */
 function getBoardPointFromClient(clientX, clientY){
   const rect = board.getBoundingClientRect();
@@ -290,34 +310,6 @@ function clearSelection(){
 
 /* click empty space */
 
-/* Delegated edit click fallback (fix: only edit button not clickable) */
-board.addEventListener("click", (e)=>{
-  const btn = e.target.closest("[data-edit]");
-  if(!btn) return;
-  e.stopPropagation();
-  const boxEl = btn.closest(".box");
-  if(!boxEl) return;
-  const boxId = boxEl.dataset.id;
-  const b = getBoxById(boxId);
-  if(!b) return;
-
-  // If assigned: edit person name, else edit box name
-  if(b.assigned){
-    const nn = prompt("이름 수정", b.assigned.name || "");
-    if(nn && nn.trim()){
-      b.assigned.name = nn.trim();
-      render();
-      saveState();
-    }
-  }else{
-    const bn = prompt("BOX 이름 변경", b.name || "");
-    if(bn && bn.trim()){
-      b.name = bn.trim();
-      render();
-      saveState();
-    }
-  }
-});
 
 board.addEventListener("pointerdown", (e)=>{
   if(e.target === board || e.target === gridEl){
@@ -769,8 +761,7 @@ function renderBoardBoxes(){
 /* ---------- Move (multi) ---------- */
 function attachMove(boxEl, boxId){
   boxEl.addEventListener("pointerdown", (e)=>{
-    if(e.target.closest("[data-edit]")) { e.stopPropagation(); return; }
-    if(e.target.closest("button") || e.target.closest("[data-resize]")) return;
+        if(e.target.closest("button") || e.target.closest("[data-resize]")) return;
 
     // selection behavior
     if(!e.shiftKey){

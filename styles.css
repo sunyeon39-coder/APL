@@ -628,3 +628,11 @@ body{
 .boxTop{ z-index: 20; }
 .boxRight{ position: relative; z-index: 25; pointer-events: auto; }
 .iconBtn, .smallBtn{ pointer-events: auto; }
+
+
+/* === Force edit button clickable on all layers === */
+.boxRight{ position: relative; z-index: 60; }
+.iconBtn[data-edit]{
+  position: relative;
+  z-index: 80;
+}
