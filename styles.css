@@ -702,3 +702,9 @@ button,input{font:inherit}
   padding:14px 18px;
   border-top:1px solid rgba(255,255,255,.08);
 }
+
+
+/* === Ensure action buttons are truly clickable === */
+.boxActions{ z-index: 50 !important; }
+.box:hover .boxActions{ pointer-events: auto !important; }
+.boxActions .actionBtn{ pointer-events: auto !important; }

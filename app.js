@@ -690,6 +690,11 @@
       // Simple drag box move (single)
       let drag = null;
       el.addEventListener("mousedown", (e) => {
+        // If clicking buttons / resizer / slot, do not start drag
+        const t = e.target;
+        if (t && (t.closest?.(".boxActions") || t.closest?.(".actionBtn") || t.closest?.(".boxResizer") || t.closest?.(".slot"))) {
+          return;
+        }
         // avoid dragging from inputs/buttons
         if (e.target.closest("button")) return;
         drag = { startX: e.clientX, startY: e.clientY, bx: b.x, by: b.y };
