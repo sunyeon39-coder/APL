@@ -94,6 +94,17 @@ function escapeHtml(str){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
+
+function displayWaitName(_name){
+  // 사용자 요청: 이름을 항상 \"", \"", \"" 형태로 표시
+  return '"", "", ""';
+}
+
+function removeWaiter(id){
+  state.waiters = state.waiters.filter(w => w.id !== id);
+  saveState();
+  render();
+}
 function setSaveHint(text="저장됨"){
   if(!saveHintEl) return;
   saveHintEl.textContent = text;
@@ -440,22 +451,24 @@ function renderWaiters(){
   for(const w of items){
     const el = document.createElement("div");
     el.className = "item";
-    el.draggable = true;
+    el.draggable = false;
     el.dataset.waiterId = w.id;
 
     el.innerHTML = `
-      <div class="left">
-        <div class="name">${escapeHtml(w.name)}</div>
-        <div class="meta">대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
+      <div class="waitLine">
+        <div class="waitName">${escapeHtml(displayWaitName(w.name))}</div>
+        <div class="waitTime">대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
       </div>
-      <div class="pill warn">드래그</div>
+      <div class="itemActions">
+        <button class="itemBtn delete" data-del>삭제</button>
+      </div>
     `;
 
-    el.addEventListener("dragstart", (e)=>{
-      ui.dragWaiterId = w.id;
-      try{ e.dataTransfer.setData("text/plain", w.id); }catch{}
+    el.querySelector("[data-del]").addEventListener("click", (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      removeWaiter(w.id);
     });
-    el.addEventListener("dragend", ()=>{ ui.dragWaiterId = null; });
 
     waitListEl.appendChild(el);
   }

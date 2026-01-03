@@ -622,3 +622,11 @@ body{
   transform: rotate(0deg);
   opacity:.9;
 }
+
+
+/* wait / assigned item delete button */
+.itemBtn.delete{
+  border-color: rgba(255,92,124,.35);
+  background: rgba(255,92,124,.12);
+  color: #ffd6de;
+}
