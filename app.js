@@ -73,7 +73,7 @@ let ui = {
 const boxEls = new Map(); // boxId -> element (for fast updates)
 
 // build tag (캐시 확인용)
-console.log('[BoxBoard] build "20260103-2400"');
+console.log('[BoxBoard] build "20260103-2600"');
 
 /* ---------- Utils ---------- */
 function uid(prefix="id"){
@@ -502,22 +502,26 @@ function renderWaiters(){
     return;
   }
 
+  // Stable index based on original order (matches the old layout feel)
+  const indexMap = new Map();
+  state.waiters.forEach((w, i)=> indexMap.set(w.id, i + 1));
+
   for(const w of items){
     const el = document.createElement("div");
-    el.className = "item";
+    el.className = "item waitRow";
     el.draggable = true;
     el.dataset.waiterId = w.id;
 
+    const idx = indexMap.get(w.id) || "";
+    const t = fmtTime(now() - (w.createdAt || now()));
+
     el.innerHTML = `
-      <div class="left">
-        <div class="name">${escapeHtml(w.name)}</div>
-        <div class="meta">대기 ${fmtTime(now() - (w.createdAt || now()))}</div>
+      <div class="waitIdx">${idx}</div>
+      <div class="waitMain">
+        <div class="waitName">${escapeHtml(w.name)}</div>
+        <div class="waitPill">대기 ${t}</div>
       </div>
-      <div class="actions">
-        <span class="pill warn" title="BOX로 드래그">드래그</span>
-        <button class="miniIcon" title="수정" data-wedit>✎</button>
-        <button class="miniIcon danger" title="삭제" data-wdel>🗑</button>
-      </div>
+      <button class="waitDel" type="button" data-wdel>삭제</button>
     `;
 
     el.addEventListener("dragstart", (e)=>{
@@ -526,18 +530,7 @@ function renderWaiters(){
     });
     el.addEventListener("dragend", ()=>{ ui.dragWaiterId = null; });
 
-    // edit waiter (name + font size)
-    el.querySelector("[data-wedit]").addEventListener("click", (e)=>{
-      e.stopPropagation();
-      openNameModal({ title: "이름 수정", value: w.name, fontSize: w.fontSize || 18, showFontSize: true }).then((res)=>{
-        if(!res || !res.value) return;
-        w.name = res.value;
-        w.fontSize = res.fontSize || w.fontSize || 18;
-        render();
-        saveState();
-      });
-    });
-    // delete waiter
+    // delete waiter (old layout style)
     el.querySelector("[data-wdel]").addEventListener("click", (e)=>{
       e.stopPropagation();
       state.waiters = state.waiters.filter(x=>x.id!==w.id);

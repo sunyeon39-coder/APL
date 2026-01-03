@@ -401,24 +401,29 @@ body{
 }
 
 .iconBtn{
-  width:52px;
-  height:52px;
-  border-radius:18px;
+  /* old-look: smaller corner buttons (less intrusive) */
+  width:34px;
+  height:34px;
+  border-radius:12px;
   border:1px solid rgba(255,255,255,.12);
-  background: rgba(10,12,24,.25);
+  background: rgba(10,12,24,.16);
   color:var(--text);
   cursor:pointer;
-  font-size:18px;
+  font-size:16px;
+  position: relative;
+  display:grid;
+  place-items:center;
   touch-action: manipulation;
 }
 .iconBtn:hover{background: rgba(255,255,255,.08)}
 .iconBtn:active{transform: translateY(1px)}
 
 /* 좀 더 잘 눌리게: 아이콘 버튼 주변 클릭 여유 */
+/* keep it easy to click without making it visually huge */
 .iconBtn::before{
   content:"";
   position:absolute;
-  inset:-6px;
+  inset:-10px;
 }
 
 .slot{
@@ -448,6 +453,63 @@ body{
   gap:8px;
   align-items:center;
 }
+
+/* WAIT row (old layout) */
+.item.waitRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.waitIdx{
+  width:26px;
+  height:26px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  color: rgba(233,236,255,.95);
+  background: rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+  flex: 0 0 auto;
+}
+.waitMain{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.waitName{
+  font-weight:900;
+  font-size:16px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width: 40%;
+}
+.waitPill{
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(10,12,24,.22);
+  font-weight:900;
+  font-size:13px;
+  color: rgba(233,236,255,.9);
+  white-space:nowrap;
+}
+.waitDel{
+  padding:7px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,92,124,.35);
+  background: rgba(255,92,124,.10);
+  color: rgba(255,199,209,.95);
+  font-weight:900;
+  cursor:pointer;
+  flex: 0 0 auto;
+}
+.waitDel:hover{ background: rgba(255,92,124,.14); }
 .miniIcon{
   width:40px;
   height:40px;
