@@ -584,6 +584,9 @@
         // scale down if box is too small
         let scale = Math.min(1, availW / baseW, availH / baseH);
         scale = Math.max(0.72, scale); // don't get too tiny
+        const extraRight = Math.min(90, Math.round((1 - scale) * 110));
+        // push slot left (toward watermark) as box shrinks
+        slot.style.setProperty("right", (12 + extraRight) + "px", "important");
         slot.style.transform = `scale(${scale})`;
         slot.style.transformOrigin = "top right";
       };
