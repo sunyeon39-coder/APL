@@ -419,7 +419,16 @@
       const boxActions = document.createElement("div");
       boxActions.className = "boxActions";
 
+      // Prevent box drag when clicking action buttons
+      const blockDragOnButton = (btn) => {
+        const stop = (e) => { e.stopPropagation(); };
+        btn.addEventListener("mousedown", stop);
+        btn.addEventListener("pointerdown", stop);
+        btn.addEventListener("touchstart", stop, { passive: true });
+      };
+
       const renameBoxBtn = document.createElement("button");
+      blockDragOnButton(renameBoxBtn);
       renameBoxBtn.className = "actionBtn";
       renameBoxBtn.textContent = "수정";
       renameBoxBtn.title = "BOX 이름 수정";
@@ -435,6 +444,7 @@
       });
 
       const delBoxBtn = document.createElement("button");
+      blockDragOnButton(delBoxBtn);
       delBoxBtn.className = "actionBtn icon danger";
       delBoxBtn.textContent = "✕";
       delBoxBtn.title = "BOX 삭제 (✕)";
