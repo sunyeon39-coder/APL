@@ -161,7 +161,11 @@ function setTab(tab){
 
 /* ---------- Sidebar ---------- */
 function toggleSide(){ layout.classList.toggle("sideCollapsed"); }
-toggleSideBtn.addEventListener("click", toggleSide);
+if (toggleSideBtn) {
+  toggleSideBtn.addEventListener("click", toggleSide);
+} else {
+  console.warn("[BoxBoard] #toggleSide 버튼을 찾지 못했습니다. (toggleSideBtn=null)");
+}
 window.addEventListener("keydown", (e)=>{
   if(e.key === "Tab"){
     e.preventDefault();
