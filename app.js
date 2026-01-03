@@ -226,30 +226,41 @@ function getBoxById(id){ return state.boxes.find(b=>b.id===id); }
 function handleEditBox(boxId){
   const b = getBoxById(boxId);
   if(!b) return;
+
+  // If a person is assigned, edit person name + font size
   if(b.assigned){
-    openNameModal({ title: "이름 수정", value: b.assigned.name || "", fontSize: b.assigned.fontSize || 18, showFontSize: true }).then((res)=>{
-    if(res && res.value){
-      b.assigned.name = res.value;
+    openNameModal({
+      title: "이름 수정",
+      value: b.assigned.name || "",
+      fontSize: b.assigned.fontSize || 18,
+      showFontSize: true
+    }).then((res)=>{
+      if(!res) return;
+      const v = (res.value || "").trim();
+      if(!v) return;
+      b.assigned.name = v;
       b.assigned.fontSize = res.fontSize || b.assigned.fontSize || 18;
       render();
       saveState();
-    }
-  });
-  return;
-    if(nn && nn.trim()){
-      b.assigned.name = nn.trim();
-      render();
-      saveState();
-    }
-  }else{
-    const bn = prompt("BOX 이름 변경", b.name || "");
-    if(bn && bn.trim()){
-      b.name = bn.trim();
-      render();
-      saveState();
-    }
+    });
+    return;
   }
+
+  // Otherwise edit BOX name only
+  openNameModal({
+    title: "BOX 이름 변경",
+    value: b.name || "",
+    showFontSize: false
+  }).then((res)=>{
+    if(!res) return;
+    const v = (res.value || "").trim();
+    if(!v) return;
+    b.name = v;
+    render();
+    saveState();
+  });
 }
+
 
 /* client -> board local (zoom corrected) */
 function getBoardPointFromClient(clientX, clientY){
@@ -508,12 +519,14 @@ ctxMenu.addEventListener("click", (e)=>{
   if(!b) return;
 
   if(action === "rename"){
-    const name = prompt("BOX 이름 변경", b.name);
-    if(name && name.trim()){
-      b.name = name.trim();
+    openNameModal({ title: "BOX 이름 변경", value: b.name || "", showFontSize: false }).then((res)=>{
+      if(!res) return;
+      const v = (res.value || "").trim();
+      if(!v) return;
+      b.name = v;
       render();
       saveState();
-    }
+    });
   }else if(action === "color"){
     const rect = ctxMenu.getBoundingClientRect();
     showColorPop(rect.right + 8, rect.top, boxId);
@@ -1033,12 +1046,14 @@ document.addEventListener("click", (e)=>{
   if(widEdit){
     const w = state.waiters.find(w => w.id === wid);
     if(!w) return;
-    const next = prompt("이름 수정", w.name || "");
-    if(next == null) return;
-    const v = (next || "").trim();
-    if(!v) return;
-    w.name = v;
-    saveState();
-    renderWaiters();
+
+    openNameModal({ title: "이름 수정", value: w.name || "", showFontSize: false }).then((res)=>{
+      if(!res) return;
+      const v = (res.value || "").trim();
+      if(!v) return;
+      w.name = v;
+      saveState();
+      renderWaiters();
+    });
   }
 });
