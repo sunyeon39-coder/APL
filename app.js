@@ -1,4 +1,4 @@
-const BUILD_ID = '20260103-1745';
+const BUILD_ID = '20260103-1750';
 console.log('Box Board build', BUILD_ID);
 
 /* Box Board (Full)
@@ -98,9 +98,11 @@ function escapeHtml(str){
     .replaceAll("'","&#039;");
 }
 
-function displayWaitName(_name){
-  // 사용자 요청: 이름을 항상 \"", \"", \"" 형태로 표시
-  return '"", "", ""';
+function displayWaitName(name){
+  // 사용자 요청: 입력한 이름은 그대로 두고, 옆에 '"", "", ""'를 붙여서 표시
+  const suffix = '"", "", ""';
+  const base = (name || "").trim();
+  return base ? `${base} ${suffix}` : suffix;
 }
 
 function removeWaiter(id){
