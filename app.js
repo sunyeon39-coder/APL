@@ -73,7 +73,7 @@ let ui = {
 const boxEls = new Map(); // boxId -> element (for fast updates)
 
 // build tag (캐시 확인용)
-console.log('[BoxBoard] build "20260103-2800"');
+console.log('[BoxBoard] build "20260103-2900"');
 
 /* ---------- Utils ---------- */
 function uid(prefix="id"){
@@ -674,10 +674,6 @@ function renderBoardBoxes(){
         <span style="color:rgba(169,176,214,.9)">배치 시간</span>
       </div>` : `<div class="dropHint">여기에 대기자를 드롭</div>`;
 
-    const topUnassignHtml = b.assigned
-      ? `<button class="smallBtn topPill" data-unassign title="대기로">대기로</button>`
-      : ``;
-
     boxEl.innerHTML = `
       <div class="boxInner">
         <div class="cornerLabel">${escapeHtml(b.name)}</div>
@@ -685,10 +681,12 @@ function renderBoardBoxes(){
 
         <div class="boxTop">
           <div class="boxTitle"></div>
-          <div class="boxRight">
-            ${topUnassignHtml}
-            <button class="iconBtn" title="수정" data-edit>✎</button>
-            <button class="iconBtn" title="삭제" data-delete>🗑</button>
+          <div class="boxControls">
+            <button class="miniBtn" data-edit title="수정">수정</button>
+            <button class="miniBtn" data-font title="글자 크기">o</button>
+            <button class="miniBtn danger" data-clear title="배치 삭제">x</button>
+            ${b.assigned ? `<button class="miniBtn" data-unassign title="대기로">↩</button>` : ``}
+            <button class="miniBtn danger" data-delete title="박스 삭제">x</button>
           </div>
         </div>
 
@@ -732,7 +730,43 @@ function renderBoardBoxes(){
       }
     });
 
-    // top unassign
+    
+
+    // font size (assigned only)
+    const fontBtn = boxEl.querySelector("[data-font]");
+    if(fontBtn){
+      fontBtn.disabled = !b.assigned;
+      fontBtn.classList.toggle("disabled", !b.assigned);
+      fontBtn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const bb = getBoxById(b.id);
+        if(!bb || !bb.assigned) return;
+        const cur = bb.assigned.fontSize || 18;
+        const v = prompt("글자 크기 (12~36)", String(cur));
+        if(v === null) return;
+        const n = Math.max(12, Math.min(36, parseInt(v, 10) || cur));
+        bb.assigned.fontSize = n;
+        render();
+        saveState();
+      });
+    }
+
+    // clear assigned (remove without returning to waiting)
+    const clearBtn = boxEl.querySelector("[data-clear]");
+    if(clearBtn){
+      clearBtn.disabled = !b.assigned;
+      clearBtn.classList.toggle("disabled", !b.assigned);
+      clearBtn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const bb = getBoxById(b.id);
+        if(!bb || !bb.assigned) return;
+        if(!confirm("현재 배치자를 삭제할까요? (대기로 돌아가지 않음)")) return;
+        bb.assigned = null;
+        render();
+        saveState();
+      });
+    }
+// top unassign
     const unBtn = boxEl.querySelector("[data-unassign]");
     if(unBtn){
       unBtn.addEventListener("click", (e)=>{
