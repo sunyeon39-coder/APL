@@ -278,7 +278,8 @@
       item.appendChild(actions);
 
       item.addEventListener("dragstart", (e) => {
-        e.dataTransfer.setData("text/plain", p.id);
+        e.dataTransfer.setData("text/plain", String(p.id));
+        e.dataTransfer.effectAllowed = "move";
       });
 
       waitList.appendChild(item);
@@ -566,11 +567,21 @@
       slot.appendChild(slotActions);
 
       // Drag/drop assign from wait
+      slot.addEventListener("dragenter", (e) => {
+        e.preventDefault();
+        slot.classList.add("dropping");
+      });
+      slot.addEventListener("dragleave", (e) => {
+        // leaving the slot
+        slot.classList.remove("dropping");
+      });
       slot.addEventListener("dragover", (e) => {
         e.preventDefault();
+        try { e.dataTransfer.dropEffect = "move"; } catch {}
       });
       slot.addEventListener("drop", (e) => {
         e.preventDefault();
+        slot.classList.remove("dropping");
         const personId = e.dataTransfer.getData("text/plain");
         const p = state.wait.find((x) => x.id === personId);
         if (!p) return;
