@@ -8,6 +8,15 @@
   const $ = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function calcAutoScale(box){
+    const baseW = 220, baseH = 120;
+    const w = Math.max(120, box.w || baseW);
+    const h = Math.max(70,  box.h || baseH);
+    const ratio = Math.min(w / baseW, h / baseH);
+    // keep readable, but shrink when very small
+    return Math.max(0.60, Math.min(1.15, ratio));
+  }
+
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(2, 6);
   const now = () => Date.now();
   const fmtMS = (ms) => {
@@ -64,7 +73,6 @@
 
   const nameInput = $('#nameInput');
   const addWaitBtn = $('#addWait');
-  if(!addWaitBtn){ console.error('[BoxBoard] #addWait not found'); }
   const searchInput = $('#searchInput');
   const waitList = $('#waitList');
 
@@ -302,7 +310,9 @@
       boxEl.style.top = b.y + 'px';
       boxEl.style.width = b.w + 'px';
       boxEl.style.height = b.h + 'px';
-      boxEl.style.setProperty('--seatScale', String(b.fontScale || 1));
+            const autoScale = calcAutoScale(b);
+      boxEl.style.setProperty('--boxScale', String(autoScale));
+      boxEl.style.setProperty('--seatScale', String((b.fontScale || 1) * autoScale));
 
       const numEl = document.createElement('div');
       numEl.className = 'boxNumber';
@@ -647,13 +657,7 @@
     }
   });
 
-  if(addWaitBtn){
-  const onAddWait = ()=> addWaiting(nameInput.value);
-  addWaitBtn.addEventListener('click', onAddWait);
-  // Mobile Safari sometimes misses click when focus/scroll changes; pointerup is more reliable
-  addWaitBtn.addEventListener('pointerup', (e)=>{ e.preventDefault(); onAddWait(); });
-  addWaitBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); onAddWait(); }, {passive:false});
-  }
+  addWaitBtn.addEventListener('click', ()=> addWaiting(nameInput.value));
   nameInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') addWaiting(nameInput.value); });
 
   searchInput.addEventListener('input', ()=> renderWait());
@@ -740,3 +744,5 @@
 
   renderAll();
 })();
+
+
