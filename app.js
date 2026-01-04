@@ -249,13 +249,14 @@
       chk.title = '체크(기능 확장용)';
       chk.addEventListener('click', (e)=> e.stopPropagation());
 
-      const nameBadge = document.createElement('div');
-      nameBadge.className = 'nameBadge';
-      nameBadge.textContent = p.name.slice(0,1);
+      const nameText = document.createElement('div');
+      nameText.className = 'nameText';
+      nameText.textContent = p.name;
+      nameText.title = p.name;
 
       const pill = document.createElement('div');
       pill.className = 'pill';
-      pill.innerHTML = `<span class="label">${escapeHTML(p.name)}</span><span class="time">${fmtMS(now()-p.createdAt)}</span>`;
+      pill.innerHTML = `<span class="label">대기</span><span class="time">${fmtMS(now()-p.createdAt)}</span>`;
 
       const del = document.createElement('button');
       del.className = 'itemBtn';
@@ -269,7 +270,7 @@
       });
       el.addEventListener('dragend', () => el.classList.remove('dragging'));
 
-      el.append(chk, nameBadge, pill, del);
+      el.append(chk, nameText, pill, del);
       waitList.appendChild(el);
     });
   };
@@ -282,9 +283,9 @@
       const el = document.createElement('div');
       el.className = 'item';
       el.innerHTML = `
-        <div class="nameBadge">${escapeHTML(p.name.slice(0,1))}</div>
+        <div class="nameText" title="${escapeHTML(p.name)}">${escapeHTML(p.name)}</div>
         <div class="pill" style="border-color: rgba(255,209,102,.35); background: rgba(255,209,102,.10)">
-          <span class="label">${escapeHTML(p.name)} · BOX ${box ? box.num : '-'}</span>
+          <span class="label">배치 · BOX ${box ? box.num : '-'}</span>
           <span class="time">${fmtMS(now()-p.createdAt)}</span>
         </div>
         <button class="itemBtn">대기</button>

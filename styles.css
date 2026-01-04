@@ -175,6 +175,15 @@ body{
   text-align:left;
   color: rgba(233,236,255,.92);
 }
+.nameText{
+  font-weight:900;
+  font-size:18px;
+  max-width: 140px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color: rgba(233,236,255,.92);
+}
 .pill{
   flex:1;
   display:flex;
