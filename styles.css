@@ -97,8 +97,7 @@ body{
   gap:10px;
   padding-left:10px;
 }
-.hint{color:var(--muted); font-size:13px;
-  font-weight:800; white-space:nowrap}
+.hint{color:var(--muted); font-size:12px; white-space:nowrap}
 .saved{
   color: rgba(233,236,255,.92);
   font-size:12px;
@@ -284,7 +283,7 @@ body{
   display:flex; gap:6px;
 }
 .toolDot{
-  width:20px; height:20px;
+  width:18px; height:18px;
   border-radius: 8px;
   border:1px solid rgba(255,255,255,.14);
   background: rgba(0,0,0,.14);
@@ -293,13 +292,6 @@ body{
   font-size:12px; cursor:pointer;
 }
 .toolDot:hover{background: rgba(0,0,0,.22)}
-.toolDot.toolO{
-  background: rgba(74,163,255,.18);
-  border-color: rgba(74,163,255,.45);
-  color: rgba(233,236,255,.92);
-}
-.toolDot.toolO:hover{background: rgba(74,163,255,.26);}
-
 .resizeHandle{
   position:absolute;
   right:4px; bottom:4px;

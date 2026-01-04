@@ -334,7 +334,6 @@
 
       // o button (settings)
       const oBtn = makeToolDot('o', '글자 크기');
-      oBtn.classList.add('toolO');
       oBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleBoxPopover(boxEl, b.id);
@@ -368,6 +367,10 @@
 
       boxEl.append(numEl, inner, tools, handle);
       boxesLayer.appendChild(boxEl);
+
+      // If a popover was open, it would disappear on the 1s re-render.
+      // Re-create it so it stays open.
+      ensureBoxPopover(boxEl, b.id);
 
       // drag/drop from wait list
       boxEl.addEventListener('dragover', (e)=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; });
@@ -411,18 +414,10 @@
     openPopoverBoxId = null;
   };
 
-  const toggleBoxPopover = (boxEl, boxId) => {
-    if(openPopoverBoxId && openPopoverBoxId !== boxId) closePopover();
-
-    const existing = boxEl.querySelector('.boxPopover');
-    if(existing){
-      existing.remove();
-      openPopoverBoxId = null;
-      return;
-    }
-
+  // build popover (shared by click + rerender)
+  const buildBoxPopover = (boxEl, boxId) => {
     const b = getBoxById(boxId);
-    if(!b) return;
+    if(!b) return null;
 
     const pop = document.createElement('div');
     pop.className = 'boxPopover';
@@ -457,8 +452,32 @@
     // prevent moving while using popover
     pop.addEventListener('mousedown', (e)=> e.stopPropagation());
 
-    boxEl.appendChild(pop);
+    // keep value synced if needed
+    pop._updateVal = updateVal;
+    return pop;
+  };
+
+  const ensureBoxPopover = (boxEl, boxId) => {
+    if(openPopoverBoxId !== boxId) return;
+    if(boxEl.querySelector('.boxPopover')) return;
+    const pop = buildBoxPopover(boxEl, boxId);
+    if(pop) boxEl.appendChild(pop);
+  };
+
+  const toggleBoxPopover = (boxEl, boxId) => {
+    // close another box's popover
+    if(openPopoverBoxId && openPopoverBoxId !== boxId) closePopover();
+
+    const existing = boxEl.querySelector('.boxPopover');
+    if(existing){
+      existing.remove();
+      openPopoverBoxId = null;
+      return;
+    }
+
     openPopoverBoxId = boxId;
+    const pop = buildBoxPopover(boxEl, boxId);
+    if(pop) boxEl.appendChild(pop);
   };
 
   // close popover on outside click
