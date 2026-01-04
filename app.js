@@ -243,9 +243,10 @@
       el.draggable = true;
       el.dataset.pid = p.id;
 
-      const nameBadge = document.createElement('div');
-      nameBadge.className = 'nameBadge';
-      nameBadge.textContent = p.name.slice(0,1);
+      // 이름(중복 표시 방지): 왼쪽은 이름만, 오른쪽 pill은 시간만
+      const nameEl = document.createElement('div');
+      nameEl.className = 'personName';
+      nameEl.textContent = p.name;
 
       const pill = document.createElement('div');
       pill.className = 'pill';
@@ -263,11 +264,10 @@
       });
       el.addEventListener('dragend', () => el.classList.remove('dragging'));
 
-      el.append(chk, nameBadge, pill, del);
+      el.append(nameEl, pill, del);
       waitList.appendChild(el);
     });
   };
-
   const renderAssigned = () => {
     const assigned = state.people.filter(p => !!p.assignedBoxId);
     assignedList.innerHTML = '';

@@ -167,6 +167,16 @@ body{
   background: rgba(0,0,0,.18);
 }
 .item.dragging{opacity:.6}
+.personName{
+  font-weight:900;
+  font-size:20px;
+  max-width: 140px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color: rgba(233,236,255,.92);
+}
+
 .nameBadge{
   font-weight:900;
   font-size:20px;
