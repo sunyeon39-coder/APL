@@ -240,7 +240,6 @@ body{
 .boxesLayer{position:absolute; inset:0}
 
 .box{
-  --boxScale: 1;
   --seatScale: 1;
   position:absolute;
   width: 220px;
@@ -260,7 +259,7 @@ body{
 .boxNumber{
   position:absolute;
   left:10px; top:6px;
-  font-size: calc(76px * var(--boxScale));
+  font-size:76px;
   font-weight:900;
   color: rgba(233,236,255,.14);
   line-height:1;
@@ -268,43 +267,43 @@ body{
 }
 .boxInner{
   position:absolute;
-  right: calc(10px * var(--boxScale));
-  left: calc(64px * var(--boxScale));
-  top: calc(30px * var(--boxScale));
-  bottom: calc(12px * var(--boxScale));
+  right:10px; left:64px; top:30px; bottom:12px;
   display:flex;
   flex-direction:column;
   justify-content:center;
-  gap: calc(6px * var(--seatScale));
-  min-width: 0;
+  gap:6px;
 }
 .seatPill{
   display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: calc(10px * var(--seatScale));
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:4px;
   width:100%;
-  padding: calc(10px * var(--seatScale)) calc(12px * var(--seatScale));
-  border-radius: calc(14px * var(--seatScale));
+  padding:8px 10px;
+  border-radius: 14px;
   border:1px solid rgba(255,255,255,.16);
   background: rgba(0,0,0,.16);
-  min-width:0;
+  overflow:hidden;
 }
 .seatName{
   font-weight:900;
   font-size: calc(22px * var(--seatScale));
-  flex:1;
-  min-width:0;
+  width:100%;
+  white-space:nowrap;
   overflow:hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow:ellipsis;
 }
 .seatTime{
   color: rgba(233,236,255,.88);
   font-variant-numeric: tabular-nums;
   font-weight:800;
   font-size: calc(18px * var(--seatScale));
-  flex-shrink:0;
+  width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  text-align:right;
 }
 .boxTools{
   position:absolute;
@@ -409,3 +408,6 @@ body{
   cursor:pointer;
 }
 .boxPopover .popLink:hover{background: rgba(255,255,255,.08)}
+
+/* safety: hide legacy checkboxes */
+.item input[type="checkbox"], .chk{display:none !important;}
