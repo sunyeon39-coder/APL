@@ -1,778 +1,437 @@
-/* Box Board - app.js (no build, single file)
-   v2026-01-05: add "o" tool button for per-box text size control
+/* Box Board v2
+   - Desktop(Admin): draggable boxes on a grid board
+   - Mobile(Worker): event tabs + simple table view
+   State is stored in localStorage.
 */
+
 (() => {
-  'use strict';
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  // ---------- utils ----------
-  const $ = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(2, 6);
-  const now = () => Date.now();
-  const fmtMS = (ms) => {
-    ms = Math.max(0, ms|0);
-    const s = Math.floor(ms/1000);
-    const hh = Math.floor(s/3600);
-    const mm = Math.floor((s%3600)/60);
-    const ss = s%60;
-    return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
-  };
+  // ----- device class -----
+  const isMobile = matchMedia('(max-width: 768px)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  document.documentElement.classList.toggle('device-mobile', isMobile);
+  document.documentElement.classList.toggle('device-desktop', !isMobile);
 
-  // time thresholds for list emphasis
-  const pillTimeClass = (elapsedMs) => {
-    const m = elapsedMs / 60000;
-    if(m >= 15) return 'tBad';
-    if(m >= 5) return 'tWarn';
-    return 'tGood';
-  };
+  // ----- state -----
+  const STORAGE_KEY = 'boxboard.v2.state';
+  const TITLE_KEY = 'boxboard.v2.title';
 
-  // ---------- persistence ----------
-  const LS_KEY = 'boxBoard_state_v2026_01_05';
-  const loadState = () => {
-    try{
-      const raw = localStorage.getItem(LS_KEY);
-      if(!raw) return null;
-      const s = JSON.parse(raw);
-      return s && typeof s === 'object' ? s : null;
-    }catch(_){ return null; }
-  };
-  const saveState = (s) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(s));
-  };
+  /** @type {{id:string,x:number,y:number,w:number,h:number,name:string,seat:string,event:'A'|'B'|'C',status?:string}[]} */
+  let boxes = [];
 
-  // ---------- state ----------
-  const state = {
-    ui: {
-      tab: 'wait',
-      sidebarCollapsed: false,
-      zoom: 1,
-      selectMode: false,
-      waitDensity: 1, // fixed (density controls removed)
-    },
-    people: [], // {id,name,createdAt,assignedBoxId:null|boxId}
-    boxes: [],  // {id,num,x,y,w,h,seatPersonId:null|personId,fontScale:1}
-    selectedBoxIds: [],
-  };
-
-  const loaded = loadState();
-  if(loaded){
-    // soft-merge for forward compatibility
-    if(loaded.ui) Object.assign(state.ui, loaded.ui);
-    if(Array.isArray(loaded.people)) state.people = loaded.people;
-    if(Array.isArray(loaded.boxes)) state.boxes = loaded.boxes;
-    if(Array.isArray(loaded.selectedBoxIds)) state.selectedBoxIds = loaded.selectedBoxIds;
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      boxes = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(boxes)) boxes = [];
+    } catch {
+      boxes = [];
+    }
   }
 
-  // ---------- dom refs ----------
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(boxes));
+  }
+
+  function getTitle() {
+    return localStorage.getItem(TITLE_KEY) || '대회사 이름(수정가능)';
+  }
+
+  function setTitle(v) {
+    localStorage.setItem(TITLE_KEY, v);
+  }
+
+  // ----- Admin UI (desktop) -----
+  const adminApp = $('#adminApp');
+  const board = $('#board');
   const sidePanel = $('#sidePanel');
   const toggleSide = $('#toggleSide');
+  const addBoxBtn = $('#addBoxBtn');
+  const resetBtn = $('#resetBtn');
 
-  const tabBtns = $$('.tab');
-  const panels = $$('.panel');
+  function uid() {
+    return Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+  }
 
-  const nameInput = $('#nameInput');
-  const addWaitBtn = $('#addWait');
-  const searchInput = $('#searchInput');
-  const waitList = $('#waitList');
-  // density controls removed
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
 
-  const assignedList = $('#assignedList');
+  function renderAdmin() {
+    if (!board) return;
+    board.innerHTML = '';
+    boxes.forEach(b => board.appendChild(renderBox(b)));
+  }
 
-  const addBoxBtn = $('#addBox');
-  const deleteSelectedBtn = $('#deleteSelected');
+  function renderBox(b) {
+    const el = document.createElement('div');
+    el.className = 'box';
+    el.dataset.id = b.id;
+    el.style.left = b.x + 'px';
+    el.style.top = b.y + 'px';
+    el.style.width = b.w + 'px';
+    el.style.height = b.h + 'px';
 
-  const boxesLayer = $('#boxesLayer');
-  const canvas = $('#canvas');
-  const zoomPct = $('#zoomPct');
-  const zoomIn = $('#zoomIn');
-  const zoomOut = $('#zoomOut');
-  const zoomReset = $('#zoomReset');
+    const seatBadge = document.createElement('div');
+    seatBadge.className = 'seatBadge';
+    seatBadge.textContent = b.seat ? String(b.seat) : '';
 
-  const selectModeBtn = $('#selectMode');
+    const title = document.createElement('div');
+    title.className = 'boxTitle';
+    title.textContent = b.name || '비어있음';
 
-  const alignHBtn = $('#alignH');
-  const alignVBtn = $('#alignV');
-  const spaceHBtn = $('#spaceH');
-  const spaceVBtn = $('#spaceV');
+    const timer = document.createElement('div');
+    timer.className = 'boxSub';
+    timer.textContent = b.status || '';
 
-  const saveStatus = $('#saveStatus');
-
-  // waiting time thresholds (ms)
-  const WAIT_WARN_MS = 5 * 60 * 1000;   // 5m
-  const WAIT_BAD_MS  = 15 * 60 * 1000;  // 15m
-  const timeClass = (elapsedMs) => {
-    if(elapsedMs >= WAIT_BAD_MS) return 'tBad';
-    if(elapsedMs >= WAIT_WARN_MS) return 'tWarn';
-    return 'tGood';
-  };
-
-  // ---------- save status debounce ----------
-  let saveTimer = null;
-  const markDirty = () => {
-    saveStatus.textContent = '저장 중...';
-    saveStatus.style.opacity = '1';
-    if(saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      saveState(state);
-      saveStatus.textContent = '저장됨';
-    }, 260);
-  };
-
-  // ---------- ui helpers ----------
-  const setTab = (tab) => {
-    state.ui.tab = tab;
-    tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    panels.forEach(p => p.classList.toggle('hidden', p.dataset.panel !== tab));
-    markDirty();
-  };
-
-  const applySidebar = () => {
-    sidePanel.classList.toggle('collapsed', !!state.ui.sidebarCollapsed);
-  };
-
-  const applyZoom = () => {
-    const z = clamp(state.ui.zoom, 0.3, 2.5);
-    state.ui.zoom = z;
-    canvas.style.transform = `scale(${z})`;
-    zoomPct.textContent = `${Math.round(z*100)}%`;
-  };
-
-  const isSelectToggle = (ev) => state.ui.selectMode || ev.shiftKey;
-
-  const getBoxById = (id) => state.boxes.find(b => b.id === id) || null;
-  const getPersonById = (id) => state.people.find(p => p.id === id) || null;
-
-  const selectedSet = () => new Set(state.selectedBoxIds);
-  const setSelected = (arr) => { state.selectedBoxIds = Array.from(new Set(arr)); markDirty(); renderBoxes(); };
-
-  const toggleSelectBox = (boxId) => {
-    const s = selectedSet();
-    if(s.has(boxId)) s.delete(boxId); else s.add(boxId);
-    state.selectedBoxIds = Array.from(s);
-    markDirty();
-    renderBoxes();
-  };
-
-  const clearSelection = () => {
-    if(state.selectedBoxIds.length){
-      state.selectedBoxIds = [];
-      markDirty();
-      renderBoxes();
-    }
-  };
-
-  // ---------- people actions ----------
-  const addWaiting = (name) => {
-    name = (name || '').trim();
-    if(!name) return;
-    state.people.unshift({ id: uid(), name, createdAt: now(), assignedBoxId: null });
-    nameInput.value = '';
-    markDirty();
-    renderAll();
-  };
-
-  const deletePerson = (personId) => {
-    // unseat if seated
-    state.boxes.forEach(b => { if(b.seatPersonId === personId) b.seatPersonId = null; });
-    state.people = state.people.filter(p => p.id !== personId);
-    markDirty();
-    renderAll();
-  };
-
-  const unassignPerson = (personId) => {
-    const p = getPersonById(personId);
-    if(!p) return;
-    p.assignedBoxId = null;
-    // also clear seat links in boxes (if any)
-    state.boxes.forEach(b => { if(b.seatPersonId === personId) b.seatPersonId = null; });
-    markDirty();
-    renderAll();
-  };
-
-  const assignPersonToBox = (personId, boxId) => {
-    const p = getPersonById(personId);
-    const b = getBoxById(boxId);
-    if(!p || !b) return;
-
-    // if box had someone, push them back to wait
-    if(b.seatPersonId){
-      const prev = getPersonById(b.seatPersonId);
-      if(prev) prev.assignedBoxId = null;
-    }
-
-    // if this person was in another box, clear that seat
-    state.boxes.forEach(x => { if(x.seatPersonId === personId) x.seatPersonId = null; });
-
-    b.seatPersonId = personId;
-    p.assignedBoxId = boxId;
-
-    markDirty();
-    renderAll();
-  };
-
-  // ---------- box actions ----------
-  const nextBoxNum = () => {
-    const m = state.boxes.reduce((acc,b)=>Math.max(acc, b.num||0), 0);
-    return m + 1;
-  };
-
-  const addBox = () => {
-    const num = nextBoxNum();
-    const b = {
-      id: uid(),
-      num,
-      x: 120 + (num-1)*30,
-      y: 80 + (num-1)*20,
-      w: 220,
-      h: 120,
-      seatPersonId: null,
-      fontScale: 1,
-    };
-    state.boxes.push(b);
-    markDirty();
-    renderBoxes();
-  };
-
-  const deleteSelectedBoxes = () => {
-    const s = selectedSet();
-    if(!s.size) return;
-    // unassign people seated in deleted boxes
-    state.boxes.forEach(b => {
-      if(s.has(b.id) && b.seatPersonId){
-        const p = getPersonById(b.seatPersonId);
-        if(p) p.assignedBoxId = null;
-      }
-    });
-    state.boxes = state.boxes.filter(b => !s.has(b.id));
-    state.selectedBoxIds = [];
-    markDirty();
-    renderAll();
-  };
-
-  // ---------- render lists ----------
-  const renderWait = () => {
-    const q = (searchInput.value || '').trim().toLowerCase();
-    const waiting = state.people.filter(p => !p.assignedBoxId && (!q || p.name.toLowerCase().includes(q)));
-    // waiting list layout (density controls removed)
-    waitList.classList.remove('density2','density3');
-    waitList.classList.toggle('compact', true);
-
-    waitList.innerHTML = '';
-    waiting.forEach(p => {
-      const el = document.createElement('div');
-      el.className = 'item';
-      el.draggable = true;
-      el.dataset.pid = p.id;
-
-      // 이름(중복 표시 방지): 왼쪽은 이름만, 오른쪽 pill은 시간만
-      const nameEl = document.createElement('div');
-      nameEl.className = 'personName';
-      nameEl.textContent = p.name;
-
-      const pill = document.createElement('div');
-      const elapsed = now() - p.createdAt;
-      pill.className = `pill ${pillTimeClass(elapsed)}`;
-      // right side: TIME ONLY
-      pill.innerHTML = `<span class="time">${fmtMS(elapsed)}</span>`;
-
-      const del = document.createElement('button');
-      del.className = 'itemBtn';
-      del.textContent = '삭제';
-      del.addEventListener('click', (e)=>{ e.stopPropagation(); deletePerson(p.id); });
-
-      el.addEventListener('dragstart', (e) => {
-        el.classList.add('dragging');
-        e.dataTransfer.setData('text/plain', p.id);
-        e.dataTransfer.effectAllowed = 'move';
-      });
-      el.addEventListener('dragend', () => el.classList.remove('dragging'));
-
-      el.append(nameEl, pill, del);
-      waitList.appendChild(el);
-    });
-  };
-  const renderAssigned = () => {
-    const assigned = state.people.filter(p => !!p.assignedBoxId);
-    assignedList.innerHTML = '';
-    assigned.forEach(p => {
-      const el = document.createElement('div');
-      el.className = 'item';
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'personName';
-      nameEl.textContent = p.name;
-
-      const pill = document.createElement('div');
-      const elapsed = now() - p.createdAt;
-      pill.className = `pill ${pillTimeClass(elapsed)}`;
-      pill.innerHTML = `<span class="time">${fmtMS(elapsed)}</span>`;
-
-      const backBtn = document.createElement('button');
-      backBtn.className = 'itemBtn';
-      backBtn.textContent = '대기';
-
-      pill.addEventListener('dblclick', () => unassignPerson(p.id));
-      backBtn.addEventListener('click', (e)=>{ e.stopPropagation(); unassignPerson(p.id); });
-
-      el.append(nameEl, pill, backBtn);
-      assignedList.appendChild(el);
-    });
-  };
-
-  // ---------- render boxes ----------
-  const renderBoxes = () => {
-    const s = selectedSet();
-    boxesLayer.innerHTML = '';
-    state.boxes.forEach(b => {
-      const boxEl = document.createElement('div');
-      boxEl.className = 'box' + (s.has(b.id) ? ' selected' : '');
-      boxEl.dataset.boxid = b.id;
-      boxEl.style.left = b.x + 'px';
-      boxEl.style.top = b.y + 'px';
-      boxEl.style.width = b.w + 'px';
-      boxEl.style.height = b.h + 'px';
-      boxEl.style.setProperty('--seatScale', String(b.fontScale || 1));
-
-      const numEl = document.createElement('div');
-      numEl.className = 'boxNumber';
-      numEl.textContent = String(b.num);
-
-      const inner = document.createElement('div');
-      inner.className = 'boxInner';
-
-      const seat = document.createElement('div');
-      seat.className = 'seatPill';
-      const seated = b.seatPersonId ? getPersonById(b.seatPersonId) : null;
-      if(seated){
-        // Name stays in the pill (watermark right side). Timer is anchored to bottom.
-        seat.innerHTML = `<span class="seatName">${escapeHTML(seated.name)}</span>`;
-        seat.title = '더블클릭: 대기로';
-        seat.addEventListener('dblclick', (e)=>{ e.stopPropagation(); unassignPerson(seated.id); });
-      }else{
-        seat.innerHTML = `<span class="seatName" style="opacity:.85">비어있음</span>`;
-      }
-      inner.appendChild(seat);
-
-      // Bottom anchored timer (requested: attach to box bottom)
-      const bottomTime = document.createElement('div');
-      bottomTime.className = 'boxTimeBottom';
-      bottomTime.textContent = seated ? fmtMS(now() - seated.createdAt) : '';
-
-      // tools
-      const tools = document.createElement('div');
-      tools.className = 'boxTools';
-
-      // o button (settings)
-      const oBtn = makeToolDot('o', '글자 크기');
-      oBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleBoxPopover(boxEl, b.id);
-      });
-
-      // return button (↩) = send seated to wait
-      const retBtn = makeToolDot('↩', '대기로');
-      retBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(b.seatPersonId) unassignPerson(b.seatPersonId);
-      });
-
-      // x button = clear seat
-      const xBtn = makeToolDot('×', '비우기');
-      xBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(b.seatPersonId){
-          const p = getPersonById(b.seatPersonId);
-          if(p) p.assignedBoxId = null;
-          b.seatPersonId = null;
-          markDirty();
-          renderAll();
-        }
-      });
-
-      tools.append(oBtn, retBtn, xBtn);
-
-      const handle = document.createElement('div');
-      handle.className = 'resizeHandle';
-      handle.title = '크기 조절';
-
-      boxEl.append(numEl, inner, bottomTime, tools, handle);
-      boxesLayer.appendChild(boxEl);
-
-      // If a popover was open, it would disappear on the 1s re-render.
-      // Re-create it so it stays open.
-      ensureBoxPopover(boxEl, b.id);
-
-      // drag/drop from wait list
-      boxEl.addEventListener('dragover', (e)=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; });
-      boxEl.addEventListener('drop', (e)=>{
-        e.preventDefault();
-        const pid = e.dataTransfer.getData('text/plain');
-        if(pid) assignPersonToBox(pid, b.id);
-      });
-
-      // selection + move
-      boxEl.addEventListener('mousedown', (e) => onBoxMouseDown(e, b.id));
-      handle.addEventListener('mousedown', (e) => onResizeMouseDown(e, b.id));
-      // prevent drag when clicking tools
-      tools.addEventListener('mousedown', (e)=> e.stopPropagation());
-    });
-  };
-
-  const escapeHTML = (s) => String(s)
-    .replaceAll('&','&amp;').replaceAll('<','&lt;')
-    .replaceAll('>','&gt;').replaceAll('"','&quot;')
-    .replaceAll("'","&#039;");
-
-  const makeToolDot = (txt, title) => {
-    const d = document.createElement('div');
-    d.className = 'toolDot';
-    d.textContent = txt;
-    d.title = title;
-    return d;
-  };
-
-  // ---------- popover (o button) ----------
-  let openPopoverBoxId = null;
-
-  const closePopover = () => {
-    if(!openPopoverBoxId) return;
-    const boxEl = boxesLayer.querySelector(`.box[data-boxid="${openPopoverBoxId}"]`);
-    if(boxEl){
-      const pop = boxEl.querySelector('.boxPopover');
-      if(pop) pop.remove();
-    }
-    openPopoverBoxId = null;
-  };
-
-  // build popover (shared by click + rerender)
-  const buildBoxPopover = (boxEl, boxId) => {
-    const b = getBoxById(boxId);
-    if(!b) return null;
+    const infoBtn = document.createElement('button');
+    infoBtn.className = 'miniIcon';
+    infoBtn.type = 'button';
+    infoBtn.textContent = 'ⓘ';
+    infoBtn.title = '설정';
 
     const pop = document.createElement('div');
     pop.className = 'boxPopover';
+    pop.hidden = true;
+
     pop.innerHTML = `
-      <div class="popTitle">글자 크기</div>
       <div class="popRow">
-        <button class="popBtn" data-act="minus">−</button>
-        <div class="popVal" id="popVal">x${(b.fontScale||1).toFixed(1)}</div>
-        <button class="popBtn" data-act="plus">＋</button>
+        <div class="popLabel">이벤트</div>
+        <div class="popCtl">
+          <select class="popSelect" data-k="event">
+            <option value="A">A이벤트</option>
+            <option value="B">B이벤트</option>
+            <option value="C">C이벤트</option>
+          </select>
+        </div>
       </div>
-      <button class="popLink" data-act="reset">기본으로</button>
+      <div class="popRow">
+        <div class="popLabel">좌석번호</div>
+        <div class="popCtl">
+          <input class="popInput" data-k="seat" inputmode="numeric" placeholder="예: 1" />
+        </div>
+      </div>
+      <div class="popRow">
+        <div class="popLabel">이름</div>
+        <div class="popCtl">
+          <input class="popInput" data-k="name" placeholder="예: 지환" />
+        </div>
+      </div>
+      <div class="popRow">
+        <div class="popLabel">상태</div>
+        <div class="popCtl">
+          <input class="popInput" data-k="status" placeholder="예: 189:47:12" />
+        </div>
+      </div>
+      <div class="popActions">
+        <button class="btnSmall" data-act="close" type="button">닫기</button>
+        <button class="btnSmall btnDanger" data-act="delete" type="button">삭제</button>
+      </div>
     `;
 
-    const updateVal = () => {
-      const val = pop.querySelector('#popVal');
-      if(val) val.textContent = `x${(b.fontScale||1).toFixed(1)}`;
-      boxEl.style.setProperty('--seatScale', String(b.fontScale||1));
-    };
-
-    pop.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const act = e.target && e.target.dataset ? e.target.dataset.act : null;
-      if(!act) return;
-      const step = 0.1;
-      if(act === 'minus') b.fontScale = clamp((b.fontScale||1) - step, 0.7, 1.6);
-      if(act === 'plus')  b.fontScale = clamp((b.fontScale||1) + step, 0.7, 1.6);
-      if(act === 'reset') b.fontScale = 1;
-      updateVal();
-      markDirty();
+    const sel = $('.popSelect', pop);
+    sel.value = b.event || 'A';
+    $$('.popInput', pop).forEach(inp => {
+      const k = inp.dataset.k;
+      inp.value = (b[k] ?? '') + '';
     });
 
-    // prevent moving while using popover
-    pop.addEventListener('mousedown', (e)=> e.stopPropagation());
+    infoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pop.hidden = !pop.hidden;
+    });
 
-    // keep value synced if needed
-    pop._updateVal = updateVal;
-    return pop;
-  };
+    pop.addEventListener('click', (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      const act = t.getAttribute('data-act');
+      if (act === 'close') {
+        pop.hidden = true;
+        return;
+      }
+      if (act === 'delete') {
+        boxes = boxes.filter(x => x.id !== b.id);
+        saveState();
+        renderAdmin();
+        renderWorker();
+      }
+    });
 
-  const ensureBoxPopover = (boxEl, boxId) => {
-    if(openPopoverBoxId !== boxId) return;
-    if(boxEl.querySelector('.boxPopover')) return;
-    const pop = buildBoxPopover(boxEl, boxId);
-    if(pop) boxEl.appendChild(pop);
-  };
+    pop.addEventListener('input', (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      const k = t.getAttribute('data-k');
+      if (!k) return;
+      const box = boxes.find(x => x.id === b.id);
+      if (!box) return;
+      // @ts-ignore
+      box[k] = t.value;
+      saveState();
+      // live update visuals
+      seatBadge.textContent = box.seat ? String(box.seat) : '';
+      title.textContent = box.name || '비어있음';
+      timer.textContent = box.status || '';
+      renderWorker();
+    });
 
-  const toggleBoxPopover = (boxEl, boxId) => {
-    // close another box's popover
-    if(openPopoverBoxId && openPopoverBoxId !== boxId) closePopover();
+    sel.addEventListener('change', () => {
+      const box = boxes.find(x => x.id === b.id);
+      if (!box) return;
+      box.event = sel.value;
+      saveState();
+      renderWorker();
+    });
 
-    const existing = boxEl.querySelector('.boxPopover');
-    if(existing){
-      existing.remove();
-      openPopoverBoxId = null;
-      return;
+    // Double click title edit
+    el.addEventListener('dblclick', () => {
+      const box = boxes.find(x => x.id === b.id);
+      if (!box) return;
+      const v = prompt('이름을 입력하세요', box.name || '');
+      if (v === null) return;
+      box.name = v.trim();
+      saveState();
+      title.textContent = box.name || '비어있음';
+      renderWorker();
+    });
+
+    // Drag
+    let dragging = false;
+    let startX = 0, startY = 0, origX = 0, origY = 0;
+
+    function onDown(ev) {
+      // don't start drag from inside popover
+      if (ev.target === infoBtn || (ev.target instanceof HTMLElement && ev.target.closest('.boxPopover'))) return;
+      dragging = true;
+      const p = getPoint(ev);
+      startX = p.x; startY = p.y;
+      origX = b.x; origY = b.y;
+      el.classList.add('dragging');
+      pop.hidden = true;
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onUp);
     }
 
-    openPopoverBoxId = boxId;
-    const pop = buildBoxPopover(boxEl, boxId);
-    if(pop) boxEl.appendChild(pop);
-  };
-
-  // close popover on outside click
-  document.addEventListener('mousedown', (e) => {
-    if(!openPopoverBoxId) return;
-    const boxEl = boxesLayer.querySelector(`.box[data-boxid="${openPopoverBoxId}"]`);
-    if(!boxEl) { openPopoverBoxId = null; return; }
-    if(boxEl.contains(e.target)) return; // inside
-    closePopover();
-  });
-
-  // ---------- box move / resize ----------
-  let drag = null;
-
-  const onBoxMouseDown = (e, boxId) => {
-    // left button only
-    if(e.button !== 0) return;
-
-    const boxEl = e.currentTarget;
-    const isTool = e.target.closest('.boxTools') || e.target.classList.contains('resizeHandle');
-    if(isTool) return;
-
-    const toggle = isSelectToggle(e);
-    if(toggle){
-      toggleSelectBox(boxId);
-      return;
+    function onMove(ev) {
+      if (!dragging) return;
+      if (ev.cancelable) ev.preventDefault();
+      const p = getPoint(ev);
+      const dx = p.x - startX;
+      const dy = p.y - startY;
+      const rect = board.getBoundingClientRect();
+      const nx = clamp(origX + dx, 0, rect.width - b.w);
+      const ny = clamp(origY + dy, 0, rect.height - b.h);
+      b.x = Math.round(nx);
+      b.y = Math.round(ny);
+      el.style.left = b.x + 'px';
+      el.style.top = b.y + 'px';
     }
 
-    // if not selected, select single
-    if(!selectedSet().has(boxId)){
-      setSelected([boxId]);
+    function onUp() {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove('dragging');
+      saveState();
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+      renderWorker();
     }
 
-    closePopover();
+    function getPoint(ev) {
+      if (ev.touches && ev.touches[0]) {
+        return { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+      }
+      return { x: ev.clientX, y: ev.clientY };
+    }
 
-    const z = state.ui.zoom || 1;
-    const startX = e.clientX;
-    const startY = e.clientY;
+    el.addEventListener('mousedown', onDown);
+    el.addEventListener('touchstart', onDown, { passive: true });
 
-    const selIds = state.selectedBoxIds.length ? state.selectedBoxIds : [boxId];
-    const starts = selIds.map(id => {
-      const b = getBoxById(id);
-      return b ? {id, x:b.x, y:b.y} : null;
-    }).filter(Boolean);
+    el.appendChild(seatBadge);
+    el.appendChild(infoBtn);
+    el.appendChild(title);
+    el.appendChild(timer);
+    el.appendChild(pop);
+    return el;
+  }
 
-    drag = { type:'move', startX, startY, starts, zoom:z };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
-
-  const onResizeMouseDown = (e, boxId) => {
-    if(e.button !== 0) return;
-    e.stopPropagation();
-    closePopover();
-
-    if(!selectedSet().has(boxId)) setSelected([boxId]);
-
-    const b = getBoxById(boxId);
-    if(!b) return;
-    const z = state.ui.zoom || 1;
-    drag = {
-      type:'resize',
-      boxId,
-      startX: e.clientX,
-      startY: e.clientY,
-      startW: b.w,
-      startH: b.h,
-      zoom: z,
+  function addBox() {
+    const rect = board.getBoundingClientRect();
+    const b = {
+      id: uid(),
+      x: Math.round(rect.width * 0.1),
+      y: Math.round(rect.height * 0.1),
+      w: 180,
+      h: 100,
+      name: '비어있음',
+      seat: '',
+      event: 'A',
+      status: ''
     };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
+    boxes.push(b);
+    saveState();
+    renderAdmin();
+    renderWorker();
+  }
 
-  const onMouseMove = (e) => {
-    if(!drag) return;
-    const dx = (e.clientX - drag.startX) / drag.zoom;
-    const dy = (e.clientY - drag.startY) / drag.zoom;
+  function resetAll() {
+    if (!confirm('모든 박스를 초기화할까요?')) return;
+    boxes = [];
+    saveState();
+    renderAdmin();
+    renderWorker();
+  }
 
-    if(drag.type === 'move'){
-      drag.starts.forEach(s => {
-        const b = getBoxById(s.id);
-        if(!b) return;
-        b.x = Math.round(s.x + dx);
-        b.y = Math.round(s.y + dy);
+  // Sidebar toggle: IMPORTANT null-guard
+  if (toggleSide && sidePanel) {
+    toggleSide.addEventListener('click', () => {
+      sidePanel.classList.toggle('open');
+    });
+  }
+
+  if (addBoxBtn) addBoxBtn.addEventListener('click', addBox);
+  if (resetBtn) resetBtn.addEventListener('click', resetAll);
+
+  // ----- Worker UI (mobile) -----
+  const workerRoot = $('#workerApp');
+  let activeEvent = 'A';
+
+  function renderWorker() {
+    if (!workerRoot) return;
+
+    // Only show worker UI on mobile
+    workerRoot.hidden = !isMobile;
+    if (!isMobile) return;
+
+    const title = getTitle();
+
+    // build
+    workerRoot.innerHTML = `
+      <div class="workerHeader">
+        <div class="workerTitle" id="workerTitle" role="button" tabindex="0">${escapeHtml(title)}</div>
+        <div class="eventTabs" role="tablist" aria-label="이벤트 선택">
+          ${['A','B','C'].map(k => `
+            <button class="eventTab" role="tab" data-ev="${k}" aria-selected="${k===activeEvent}">
+              ${k}이벤트${k==='A' ? ' (ex:Main Event)' : ''}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="workerTableWrap">
+        <table class="workerTable" aria-label="좌석 목록">
+          <thead>
+            <tr><th class="colSeat">번호</th><th class="colName">이름</th></tr>
+          </thead>
+          <tbody id="workerTbody"></tbody>
+        </table>
+        <div id="workerEmpty" class="workerEmpty" hidden>표시할 데이터가 없어요.</div>
+      </div>
+    `;
+
+    // bind title edit
+    const titleEl = $('#workerTitle', workerRoot);
+    const editTitle = () => {
+      const v = prompt('대회사 이름을 입력하세요', getTitle());
+      if (v === null) return;
+      setTitle(v.trim() || '대회사 이름(수정가능)');
+      renderWorker();
+    };
+    titleEl?.addEventListener('click', editTitle);
+    titleEl?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editTitle(); }
+    });
+
+    // tabs
+    $$('.eventTab', workerRoot).forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeEvent = btn.dataset.ev || 'A';
+        renderWorker();
       });
-      renderBoxes();
-      markDirty();
+    });
+
+    // fill table
+    const tbody = $('#workerTbody', workerRoot);
+    const empty = $('#workerEmpty', workerRoot);
+
+    const rows = boxes
+      .filter(b => (b.event || 'A') === activeEvent)
+      .map(b => ({
+        seat: (b.seat || '').trim(),
+        name: (b.name || '비어있음').trim()
+      }))
+      .filter(r => r.seat || r.name)
+      .sort((a,b) => {
+        const ai = parseInt(a.seat,10);
+        const bi = parseInt(b.seat,10);
+        const aNum = Number.isFinite(ai) ? ai : 1e9;
+        const bNum = Number.isFinite(bi) ? bi : 1e9;
+        return aNum - bNum;
+      });
+
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (rows.length === 0) {
+      empty.hidden = false;
       return;
     }
+    empty.hidden = true;
 
-    if(drag.type === 'resize'){
-      const b = getBoxById(drag.boxId);
-      if(!b) return;
-      b.w = Math.round(clamp(drag.startW + dx, 160, 640));
-      b.h = Math.round(clamp(drag.startH + dy, 90, 420));
-      renderBoxes();
-      markDirty();
-    }
-  };
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="colSeat">${escapeHtml(r.seat || '-')}</td><td class="colName">${escapeHtml(r.name || '')}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
 
-  const onMouseUp = () => {
-    drag = null;
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-  };
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#39;');
+  }
 
-  // ---------- align / distribute ----------
-  const getSelectedBoxes = () => {
-    const s = selectedSet();
-    return state.boxes.filter(b => s.has(b.id));
-  };
+  // ----- boot -----
+  function boot() {
+    loadState();
 
-  const alignH = () => {
-    const sel = getSelectedBoxes();
-    if(sel.length < 2) return;
-    const y = Math.round(sel.reduce((acc,b)=>acc+b.y,0)/sel.length);
-    sel.forEach(b => b.y = y);
-    markDirty(); renderBoxes();
-  };
-  const alignV = () => {
-    const sel = getSelectedBoxes();
-    if(sel.length < 2) return;
-    const x = Math.round(sel.reduce((acc,b)=>acc+b.x,0)/sel.length);
-    sel.forEach(b => b.x = x);
-    markDirty(); renderBoxes();
-  };
-  const spaceH = () => {
-    const sel = getSelectedBoxes().sort((a,b)=>a.x-b.x);
-    if(sel.length < 3) return;
-    const left = sel[0].x;
-    const right = sel[sel.length-1].x;
-    const gap = (right - left) / (sel.length-1);
-    sel.forEach((b,i)=> b.x = Math.round(left + gap*i));
-    markDirty(); renderBoxes();
-  };
-  const spaceV = () => {
-    const sel = getSelectedBoxes().sort((a,b)=>a.y-b.y);
-    if(sel.length < 3) return;
-    const top = sel[0].y;
-    const bottom = sel[sel.length-1].y;
-    const gap = (bottom - top) / (sel.length-1);
-    sel.forEach((b,i)=> b.y = Math.round(top + gap*i));
-    markDirty(); renderBoxes();
-  };
-
-  // ---------- events ----------
-  tabBtns.forEach(btn => btn.addEventListener('click', ()=> setTab(btn.dataset.tab)));
-
-  toggleSide.addEventListener('click', () => {
-    state.ui.sidebarCollapsed = !state.ui.sidebarCollapsed;
-    applySidebar();
-    markDirty();
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'Tab'){
-      e.preventDefault();
-      state.ui.sidebarCollapsed = !state.ui.sidebarCollapsed;
-      applySidebar();
-      markDirty();
-    }
-    if(e.key === 'Delete' || e.key === 'Backspace'){
-      // don't hijack when typing
-      const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
-      if(tag === 'input' || tag === 'textarea') return;
-      deleteSelectedBoxes();
-    }
-    if(e.key === 'Escape'){
-      closePopover();
-      clearSelection();
-    }
-  });
-
-  addWaitBtn.addEventListener('click', ()=> addWaiting(nameInput.value));
-  nameInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') addWaiting(nameInput.value); });
-
-  searchInput.addEventListener('input', ()=> renderWait());
-  // density controls removed
-
-  addBoxBtn.addEventListener('click', addBox);
-  deleteSelectedBtn.addEventListener('click', deleteSelectedBoxes);
-
-  selectModeBtn.addEventListener('click', () => {
-    state.ui.selectMode = !state.ui.selectMode;
-    selectModeBtn.classList.toggle('active', state.ui.selectMode);
-    markDirty();
-  });
-
-  alignHBtn.addEventListener('click', alignH);
-  alignVBtn.addEventListener('click', alignV);
-  spaceHBtn.addEventListener('click', spaceH);
-  spaceVBtn.addEventListener('click', spaceV);
-
-  zoomIn.addEventListener('click', ()=> { state.ui.zoom = clamp(state.ui.zoom + 0.1, 0.3, 2.5); applyZoom(); markDirty(); });
-  zoomOut.addEventListener('click', ()=> { state.ui.zoom = clamp(state.ui.zoom - 0.1, 0.3, 2.5); applyZoom(); markDirty(); });
-  zoomReset.addEventListener('click', ()=> { state.ui.zoom = 1; applyZoom(); markDirty(); });
-
-  // ctrl/meta + wheel zoom
-  const canvasWrap = document.querySelector('.canvasWrap');
-  canvasWrap.addEventListener('wheel', (e) => {
-    if(!(e.ctrlKey || e.metaKey)) return;
-    e.preventDefault();
-    const delta = Math.sign(e.deltaY);
-    state.ui.zoom = clamp(state.ui.zoom + (delta>0 ? -0.06 : 0.06), 0.3, 2.5);
-    applyZoom();
-    markDirty();
-  }, { passive:false });
-
-  // click empty canvas clears selection / popover
-  canvasWrap.addEventListener('mousedown', (e) => {
-    const hitBox = e.target.closest('.box');
-    if(!hitBox){
-      closePopover();
-      if(!isSelectToggle(e)) clearSelection();
-    }
-  });
-
-  // ---------- ticker (update timers) ----------
-  const updateSeatTimers = () => {
-    // Update only the time text inside existing box DOM (NO full re-render).
-    // This keeps the o-button popover from disappearing/flickering.
-    for(const b of state.boxes){
-      const boxEl = boxesLayer.querySelector(`.box[data-boxid="${b.id}"]`);
-      if(!boxEl) continue;
-      if(b.seatPersonId){
-        const p = getPersonById(b.seatPersonId);
-        if(!p) continue;
-        const nameEl = boxEl.querySelector(".seatName");
-        const timeEl = boxEl.querySelector(".boxTimeBottom");
-        if(nameEl && nameEl.textContent !== p.name) nameEl.textContent = p.name;
-        if(timeEl) timeEl.textContent = fmtMS(now() - p.createdAt);
-      } else {
-        const timeEl = boxEl.querySelector(".boxTimeBottom");
-        if(timeEl) timeEl.textContent = '';
+    // desktop only: make sure board has a size
+    if (board) {
+      // initial demo if empty
+      if (boxes.length === 0) {
+        boxes = [
+          { id: uid(), x: 60, y: 40, w: 220, h: 110, name: 'ddd', seat: '1', event: 'A', status: '189:47:12' },
+          { id: uid(), x: 320, y: 40, w: 220, h: 110, name: '지환', seat: '2', event: 'A', status: '189:46:25' },
+          { id: uid(), x: 60, y: 170, w: 220, h: 110, name: '비어있음', seat: '3', event: 'A', status: '' },
+          { id: uid(), x: 60, y: 300, w: 220, h: 110, name: '비어있음', seat: '4', event: 'A', status: '' },
+          { id: uid(), x: 320, y: 200, w: 320, h: 120, name: '비어있음', seat: '5', event: 'A', status: '' },
+        ];
+        saveState();
       }
 
-      if(openPopoverBoxId === b.id){
-        const pop = boxEl.querySelector(".boxPopover");
-        if(pop && typeof pop._updateVal === "function") pop._updateVal();
-      }
+      renderAdmin();
     }
-  };
 
-  setInterval(() => {
-    // list timers
-    renderWait();
-    renderAssigned();
-    // box timers (no DOM rebuild)
-    updateSeatTimers();
-  }, 1000);
+    renderWorker();
 
-  // ---------- initial render ----------
-  const renderAll = () => {
-    applySidebar();
-    applyZoom();
-    selectModeBtn.classList.toggle('active', state.ui.selectMode);
-    // waiting list density buttons
-    try{ applyDensityUI(); }catch(_){/* ignore */}
-    setTab(state.ui.tab);
-    renderWait();
-    renderAssigned();
-    renderBoxes();
-  };
+    // rerender on resize (switching between mobile/desktop)
+    window.addEventListener('resize', () => {
+      const nowMobile = matchMedia('(max-width: 768px)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      if (nowMobile !== isMobile) {
+        location.reload();
+      }
+    });
+  }
 
-  renderAll();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
 })();
