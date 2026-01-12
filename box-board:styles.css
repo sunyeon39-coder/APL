@@ -72,7 +72,7 @@ body{
 .body{flex:1; display:flex; min-height:0}
 
 .sidebar{
-  width: 410px;
+  width: 460px;
   padding: 14px;
   border-right:1px solid var(--stroke);
   background: rgba(255,255,255,0.02);
@@ -217,7 +217,7 @@ body{
 /* Board */
 .boardWrap{flex:1; min-width:0; position:relative; padding:14px;}
 .boardOuter{
-  height: calc(100% - 72px);
+  height: calc(100% - 56px);
   border-radius: 24px;
   border:1px solid rgba(255,255,255,0.10);
   background: rgba(255,255,255,0.03);
@@ -240,16 +240,16 @@ body{
   background-image:
     linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
-  background-size: 64px 64px;
-  opacity: .18;
+  background-size: 56px 56px;
+  opacity: .22;
   pointer-events:none;
 }
 
 /* Boxes */
 .box{
   position:absolute;
-  width: 240px;
-  height: 92px;
+  width: 220px;
+  height: 86px;
   border-radius: 22px;
   border:1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.06);
@@ -266,7 +266,7 @@ body{
 .box .seat{
   position:absolute;
   left:14px; top:10px;
-  font-size: 64px;
+  font-size: 58px;
   font-weight: 950;
   color: rgba(255,255,255,0.14);
   line-height:1;

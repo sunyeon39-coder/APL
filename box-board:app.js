@@ -7,9 +7,9 @@
   const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
 
   const state = {
-    zoom: 0.45,
-    gapX: 240,
-    gapY: 140,
+    zoom: 0.70,
+    gapX: 280,
+    gapY: 170,
     boxScale: 1.0,
     boxes: [],
     waiting: [],
@@ -155,7 +155,7 @@
       seat,
       name: "",
       startMs: 0,
-      x: 520 + (state.boxes.length%6) * state.gapX,
+      x: 40 + (state.boxes.length%6) * state.gapX,
       y: 40 + Math.floor(state.boxes.length/6) * state.gapY
     });
     save(); renderBoxes();
@@ -345,7 +345,7 @@
   function autoGridLayout(){
     if(!state.boxes.length) return;
     const cols = 6;
-    const startX = 520;
+    const startX = 40;
     const startY = 40;
     state.boxes.forEach((b, i) => {
       const c = i % cols;
@@ -417,7 +417,7 @@
     zoomOut.addEventListener("click", () => setZoom(state.zoom - 0.05));
     resetUi.addEventListener("click", () => {
       if(!confirm("UI 설정(줌/간격/크기)을 초기화할까요?")) return;
-      state.zoom = 0.45; state.gapX = 240; state.gapY = 140; state.boxScale = 1.0;
+      state.zoom = 0.70; state.gapX = 280; state.gapY = 170; state.boxScale = 1.0;
       save(); renderAll();
     });
 
@@ -501,7 +501,7 @@
   renderAll();
 
   if(state.boxes.length === 0){
-    for(let i=0;i<3;i++) addBox();
+    for(let i=0;i<6;i++) addBox();
     save();
     renderBoxes();
   }
