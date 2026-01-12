@@ -1,10 +1,10 @@
-
-/* === o-button popover responsive === */
+/* === base (desktop-first) === */
 .box{
   position:absolute;
   overflow:hidden;
 }
 
+/* Popover: desktop default */
 .boxPopover{
   position:absolute;
   right:8px;
@@ -20,10 +20,165 @@
   z-index:10;
 }
 
-.box.small .boxPopover{
-  transform:translateY(-50%) scale(0.85);
+.box.small .boxPopover{ transform:translateY(-50%) scale(0.85); }
+.box.tiny  .boxPopover{ transform:translateY(-50%) scale(0.75); }
+
+/* === Mobile: show a different design ===
+   Two triggers are supported:
+   1) JS adds .device-mobile to <html>
+   2) Pure CSS fallback with a media query
+*/
+
+/* Trigger 1: JS class */
+html.device-mobile .boxPopover{
+  /* "mini bottom-sheet" style inside each box */
+  left:8px;
+  right:8px;
+  top:auto;
+  bottom:8px;
+  width:auto;
+  max-width:none;
+  transform:none;
+  padding:12px;
+  border-radius:18px;
+  background:rgba(10,12,18,.96);
+  box-shadow:0 14px 40px rgba(0,0,0,.55);
 }
 
-.box.tiny .boxPopover{
-  transform:translateY(-50%) scale(0.75);
+html.device-mobile .box.small .boxPopover,
+html.device-mobile .box.tiny  .boxPopover{
+  transform:none;
 }
+
+/* Trigger 2: media query fallback */
+@media (max-width: 768px){
+  .boxPopover{
+    left:8px;
+    right:8px;
+    top:auto;
+    bottom:8px;
+    width:auto;
+    max-width:none;
+    transform:none;
+    padding:12px;
+    border-radius:18px;
+    background:rgba(10,12,18,.96);
+    box-shadow:0 14px 40px rgba(0,0,0,.55);
+  }
+
+  .box.small .boxPopover,
+  .box.tiny  .boxPopover{
+    transform:none;
+  }
+}
+
+/* Optional: if you want *totally different* typography/spacing on mobile */
+html.device-mobile{
+  -webkit-text-size-adjust: 100%;
+}
+
+/* =========================================================
+   Worker (mobile) view
+   - Desktop(Admin): shows the board as-is
+   - Mobile(Worker): shows a simple event selector + table
+   ========================================================= */
+
+/* Hide worker UI on desktop */
+html.device-desktop #workerApp{ display:none; }
+
+/* Mobile: make body a full-height canvas for the worker UI */
+html.device-mobile, html.device-mobile body{
+  height: 100%;
+  margin: 0;
+}
+
+/* If your admin board uses absolute-position boxes on <body>,
+   keep them mounted but visually hidden on mobile. */
+html.device-mobile body > .box,
+html.device-mobile body > canvas,
+html.device-mobile body > svg{
+  /* don't assume they exist; this is safe */
+}
+
+html.device-mobile #workerApp{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 10px;
+  padding: 14px;
+  background: #fff;
+  color: #111;
+  z-index: 9999;
+}
+
+.workerHeader{
+  display: grid;
+  gap: 8px;
+}
+
+.workerTitle{
+  border: 2px solid #111;
+  padding: 12px 12px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  border-radius: 10px;
+}
+
+.eventTabs{
+  display: grid;
+  gap: 8px;
+}
+
+.eventTab{
+  width: 100%;
+  border: 2px solid #111;
+  background: #fff;
+  padding: 12px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 10px;
+}
+
+.eventTab[aria-selected="true"]{
+  background: #111;
+  color: #fff;
+}
+
+.workerTableWrap{
+  border: 2px solid #111;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.workerTable{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.workerTable th,
+.workerTable td{
+  border-top: 1px solid #111;
+  padding: 12px 10px;
+  font-size: 16px;
+}
+
+.workerTable thead th{
+  border-top: 0;
+  font-size: 14px;
+  font-weight: 800;
+  background: #f6f6f6;
+}
+
+.workerTable .colSeat{ width: 70px; text-align: center; }
+.workerTable .colName{ width: auto; }
+
+.workerEmpty{
+  padding: 16px;
+  font-size: 14px;
+  color: #444;
+}
+
