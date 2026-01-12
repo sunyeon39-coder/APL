@@ -1,38 +1,112 @@
-<!DOCTYPE html>
-
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Box Board</title>
-<link href="./styles.css?v=20260113" rel="stylesheet"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Box Board</title>
+  <link rel="stylesheet" href="/box-board/styles.css?v=20260113-pc1" />
 </head>
-<body><div id="loading" style="position:fixed;left:12px;bottom:12px;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;z-index:9999;font:14px system-ui;">Loading… (만약 계속 흰 화면이면 캐시 문제일 수 있어요)</div><div hidden="" id="fatalError" style="position:fixed;left:12px;right:12px;top:12px;padding:10px 12px;border-radius:12px;background:#ffeded;color:#b00020;z-index:9999;font:14px system-ui;white-space:pre-wrap;"></div>
-<!-- Admin (desktop) UI root -->
-<div aria-label="관리자 화면" id="adminApp">
-<header class="topbar">
-<div class="topbarLeft">
-<button aria-label="사이드바 토글" class="iconBtn" id="toggleSide" type="button">Tab</button>
-<div class="brand">Box Board</div>
-</div>
-<div class="topbarRight">
-<button class="btn" id="addBoxBtn" type="button">+ 박스 추가</button>
-<button class="btn btnGhost" id="resetBtn" type="button">초기화</button>
-</div>
-</header>
-<aside aria-label="사이드바" class="sidePanel" id="sidePanel">
-<div class="sideTitle">도움말</div>
-<div class="sideHelp">
-<div>• 박스 드래그로 이동</div>
-<div>• 박스 더블클릭: 이름 수정</div>
-<div>• ⓘ 버튼: 이벤트/좌석 설정</div>
-</div>
-</aside>
-<main aria-label="배치도" class="board" id="board"></main>
-</div>
-<!-- Worker (mobile) UI root -->
-<div aria-label="근무자 화면" hidden="" id="workerApp"></div>
-<!-- New script name to avoid cached old app.js -->
-<script src="./app.v3.js?v=20260113-02"></script>
+<body>
+  <div class="app-shell">
+    <!-- Top toolbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand">Box Board</div>
+        <button class="icon-btn" id="toggleSide" title="사이드바">
+          <span class="icon">≡</span>
+        </button>
+        <div class="btn-group">
+          <button class="pill" id="alignH">가로정렬</button>
+          <button class="pill" id="alignV">세로정렬</button>
+          <button class="pill" id="gapXBtn">가로간격</button>
+          <button class="pill" id="gapYBtn">세로간격</button>
+          <button class="pill danger" id="selectMode">선택</button>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <button class="pill" id="zoomOut">-</button>
+        <div class="zoom-readout"><span id="zoomPct">100%</span></div>
+        <button class="pill" id="zoomIn">+</button>
+        <button class="pill" id="resetAll">Reset</button>
+        <div class="hint">Ctrl/⌘ + 휠 : 확대/축소</div>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="segmented">
+          <button class="seg active" data-tab="wait">대기</button>
+          <button class="seg" data-tab="layout">배치</button>
+          <button class="seg" data-tab="box">박스</button>
+        </div>
+
+        <!-- Wait tab -->
+        <section class="panel active" data-panel="wait">
+          <div class="panel-title">대기</div>
+          <div class="row">
+            <input id="waitName" class="input" placeholder="이름 입력" />
+            <button class="btn primary" id="addWait">추가</button>
+          </div>
+          <input id="waitSearch" class="input" placeholder="검색 (이름)" />
+          <div class="wait-list" id="waitList"></div>
+
+          <div class="panel-footnote">
+            ※ 대기 항목을 드래그해서 BOX에 드롭 (기존 배치자는 자동으로 대기로)
+          </div>
+        </section>
+
+        <!-- Layout tab -->
+        <section class="panel" data-panel="layout">
+          <div class="panel-title">배치</div>
+          <div class="row">
+            <button class="btn" id="autoGrid">그리드 자동 배치</button>
+            <button class="btn" id="clearSelection">선택 해제</button>
+          </div>
+          <div class="row">
+            <label class="label">가로 간격</label>
+            <input type="range" id="gapX" min="60" max="260" value="120" />
+          </div>
+          <div class="row">
+            <label class="label">세로 간격</label>
+            <input type="range" id="gapY" min="50" max="220" value="100" />
+          </div>
+          <div class="row">
+            <label class="label">박스 크기</label>
+            <input type="range" id="boxScale" min="80" max="160" value="110" />
+          </div>
+        </section>
+
+        <!-- Box tab -->
+        <section class="panel" data-panel="box">
+          <div class="panel-title">박스</div>
+          <div class="row">
+            <button class="btn primary" id="addBox">+ 박스 추가</button>
+            <button class="btn danger" id="resetBoxes">초기화</button>
+          </div>
+          <div class="row">
+            <button class="btn" id="exportJson">내보내기(JSON)</button>
+            <button class="btn" id="importJson">불러오기</button>
+          </div>
+          <textarea id="jsonArea" class="textarea" placeholder="내보낸 JSON을 여기에 붙여넣고 '불러오기' 누르세요"></textarea>
+        </section>
+      </aside>
+
+      <!-- Board -->
+      <main class="board-wrap">
+        <div class="board" id="board" tabindex="0" aria-label="board"></div>
+
+        <footer class="footer-hints">
+          <span class="kbd">Shift</span> + 클릭: 다중 선택 ·
+          <span class="kbd">Tab</span> : 사이드바 ·
+          <span class="kbd">Del</span> : 선택 삭제 ·
+          이름 더블클릭: 대기로
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <script src="/box-board/app.js?v=20260113-pc1"></script>
 </body>
 </html>
