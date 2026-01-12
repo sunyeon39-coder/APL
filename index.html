@@ -4,109 +4,102 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Box Board</title>
-  <link rel="stylesheet" href="/box-board/styles.css?v=20260113-pc1" />
+  <link rel="stylesheet" href="/box-board/styles.css?v=pc-v2-20260113" />
 </head>
 <body>
-  <div class="app-shell">
-    <!-- Top toolbar -->
+  <div class="app">
     <header class="topbar">
       <div class="topbar-left">
         <div class="brand">Box Board</div>
-        <button class="icon-btn" id="toggleSide" title="사이드바">
-          <span class="icon">≡</span>
-        </button>
-        <div class="btn-group">
-          <button class="pill" id="alignH">가로정렬</button>
-          <button class="pill" id="alignV">세로정렬</button>
-          <button class="pill" id="gapXBtn">가로간격</button>
-          <button class="pill" id="gapYBtn">세로간격</button>
-          <button class="pill danger" id="selectMode">선택</button>
-        </div>
+        <button class="pill icon" id="toggleSide" title="사이드바">≡</button>
+
+        <button class="pill" id="alignH">가로정렬</button>
+        <button class="pill" id="alignV">세로정렬</button>
+        <button class="pill" id="openGapX">가로간격</button>
+        <button class="pill" id="openGapY">세로간격</button>
+        <button class="pill danger" id="selectMode">선택</button>
       </div>
 
       <div class="topbar-right">
         <button class="pill" id="zoomOut">-</button>
-        <div class="zoom-readout"><span id="zoomPct">100%</span></div>
+        <div class="pill readout"><span id="zoomPct">45%</span></div>
         <button class="pill" id="zoomIn">+</button>
-        <button class="pill" id="resetAll">Reset</button>
+        <button class="pill" id="resetUi">Reset</button>
         <div class="hint">Ctrl/⌘ + 휠 : 확대/축소</div>
       </div>
     </header>
 
-    <div class="content">
-      <!-- Sidebar -->
+    <div class="body">
       <aside class="sidebar" id="sidebar">
-        <div class="segmented">
-          <button class="seg active" data-tab="wait">대기</button>
-          <button class="seg" data-tab="layout">배치</button>
-          <button class="seg" data-tab="box">박스</button>
+        <div class="tabs">
+          <button class="tab active" data-tab="wait">대기</button>
+          <button class="tab" data-tab="layout">배치</button>
+          <button class="tab" data-tab="box">박스</button>
         </div>
 
-        <!-- Wait tab -->
         <section class="panel active" data-panel="wait">
-          <div class="panel-title">대기</div>
+          <h3>대기</h3>
           <div class="row">
-            <input id="waitName" class="input" placeholder="이름 입력" />
+            <input class="input" id="waitName" placeholder="이름 입력" />
             <button class="btn primary" id="addWait">추가</button>
           </div>
-          <input id="waitSearch" class="input" placeholder="검색 (이름)" />
-          <div class="wait-list" id="waitList"></div>
+          <input class="input" id="waitSearch" placeholder="검색 (이름)" />
+          <div class="waitList" id="waitList"></div>
 
-          <div class="panel-footnote">
-            ※ 대기 항목을 드래그해서 BOX에 드롭 (기존 배치자는 자동으로 대기로)
-          </div>
+          <p class="footnote">※ 대기 항목을 드래그해서 BOX에 드롭 (기존 배치자는 자동으로 대기로)</p>
         </section>
 
-        <!-- Layout tab -->
         <section class="panel" data-panel="layout">
-          <div class="panel-title">배치</div>
+          <h3>배치</h3>
+
           <div class="row">
             <button class="btn" id="autoGrid">그리드 자동 배치</button>
-            <button class="btn" id="clearSelection">선택 해제</button>
+            <button class="btn" id="clearSel">선택 해제</button>
           </div>
-          <div class="row">
-            <label class="label">가로 간격</label>
-            <input type="range" id="gapX" min="60" max="260" value="120" />
+
+          <div class="row2">
+            <label>가로간격</label>
+            <input type="range" min="80" max="360" value="220" id="gapX" />
           </div>
-          <div class="row">
-            <label class="label">세로 간격</label>
-            <input type="range" id="gapY" min="50" max="220" value="100" />
+          <div class="row2">
+            <label>세로간격</label>
+            <input type="range" min="70" max="260" value="180" id="gapY" />
           </div>
-          <div class="row">
-            <label class="label">박스 크기</label>
-            <input type="range" id="boxScale" min="80" max="160" value="110" />
+          <div class="row2">
+            <label>박스 크기</label>
+            <input type="range" min="70" max="140" value="100" id="boxScale" />
           </div>
         </section>
 
-        <!-- Box tab -->
         <section class="panel" data-panel="box">
-          <div class="panel-title">박스</div>
+          <h3>박스</h3>
           <div class="row">
             <button class="btn primary" id="addBox">+ 박스 추가</button>
             <button class="btn danger" id="resetBoxes">초기화</button>
           </div>
           <div class="row">
-            <button class="btn" id="exportJson">내보내기(JSON)</button>
+            <button class="btn" id="exportJson">내보내기</button>
             <button class="btn" id="importJson">불러오기</button>
           </div>
-          <textarea id="jsonArea" class="textarea" placeholder="내보낸 JSON을 여기에 붙여넣고 '불러오기' 누르세요"></textarea>
+          <textarea class="textarea" id="jsonArea" placeholder="내보낸 JSON을 여기에 붙여넣고 '불러오기'를 누르세요"></textarea>
         </section>
       </aside>
 
-      <!-- Board -->
-      <main class="board-wrap">
-        <div class="board" id="board" tabindex="0" aria-label="board"></div>
+      <main class="boardWrap">
+        <div class="boardOuter">
+          <div class="board" id="board" tabindex="0"></div>
+        </div>
 
-        <footer class="footer-hints">
+        <div class="bottomHint">
           <span class="kbd">Shift</span> + 클릭: 다중 선택 ·
           <span class="kbd">Tab</span> : 사이드바 ·
           <span class="kbd">Del</span> : 선택 삭제 ·
           이름 더블클릭: 대기로
-        </footer>
+        </div>
       </main>
     </div>
   </div>
 
-  <script src="/box-board/app.js?v=pc-restore-1"></script>
+  <script src="/box-board/app.js?v=pc-v2-20260113"></script>
 </body>
 </html>
