@@ -1,105 +1,23 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>Box Board</title>
-  <link rel="stylesheet" href="/box-board/styles.css?v=pc-v2-1-20260113" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/box-board/styles.css?v=pc-like-20260113a">
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <div class="topbar-left">
-        <div class="brand">Box Board</div>
-        <button class="pill icon" id="toggleSide" title="사이드바">≡</button>
+  <header class="topbar">
+    <h1>Box Board</h1>
+  </header>
 
-        <button class="pill" id="alignH">가로정렬</button>
-        <button class="pill" id="alignV">세로정렬</button>
-        <button class="pill" id="openGapX">가로간격</button>
-        <button class="pill" id="openGapY">세로간격</button>
-        <button class="pill danger" id="selectMode">선택</button>
-      </div>
-
-      <div class="topbar-right">
-        <button class="pill" id="zoomOut">-</button>
-        <div class="pill readout"><span id="zoomPct">45%</span></div>
-        <button class="pill" id="zoomIn">+</button>
-        <button class="pill" id="resetUi">Reset</button>
-        <div class="hint">Ctrl/⌘ + 휠 : 확대/축소</div>
-      </div>
-    </header>
-
-    <div class="body">
-      <aside class="sidebar" id="sidebar">
-        <div class="tabs">
-          <button class="tab active" data-tab="wait">대기</button>
-          <button class="tab" data-tab="layout">배치</button>
-          <button class="tab" data-tab="box">박스</button>
-        </div>
-
-        <section class="panel active" data-panel="wait">
-          <h3>대기</h3>
-          <div class="row">
-            <input class="input" id="waitName" placeholder="이름 입력" />
-            <button class="btn primary" id="addWait">추가</button>
-          </div>
-          <input class="input" id="waitSearch" placeholder="검색 (이름)" />
-          <div class="waitList" id="waitList"></div>
-
-          <p class="footnote">※ 대기 항목을 드래그해서 BOX에 드롭 (기존 배치자는 자동으로 대기로)</p>
-        </section>
-
-        <section class="panel" data-panel="layout">
-          <h3>배치</h3>
-
-          <div class="row">
-            <button class="btn" id="autoGrid">그리드 자동 배치</button>
-            <button class="btn" id="clearSel">선택 해제</button>
-          </div>
-
-          <div class="row2">
-            <label>가로간격</label>
-            <input type="range" min="80" max="360" value="220" id="gapX" />
-          </div>
-          <div class="row2">
-            <label>세로간격</label>
-            <input type="range" min="70" max="260" value="180" id="gapY" />
-          </div>
-          <div class="row2">
-            <label>박스 크기</label>
-            <input type="range" min="70" max="140" value="100" id="boxScale" />
-          </div>
-        </section>
-
-        <section class="panel" data-panel="box">
-          <h3>박스</h3>
-          <div class="row">
-            <button class="btn primary" id="addBox">+ 박스 추가</button>
-            <button class="btn danger" id="resetBoxes">초기화</button>
-          </div>
-          <div class="row">
-            <button class="btn" id="exportJson">내보내기</button>
-            <button class="btn" id="importJson">불러오기</button>
-          </div>
-          <textarea class="textarea" id="jsonArea" placeholder="내보낸 JSON을 여기에 붙여넣고 '불러오기'를 누르세요"></textarea>
-        </section>
-      </aside>
-
-      <main class="boardWrap">
-        <div class="boardOuter">
-          <div class="board" id="board" tabindex="0"></div>
-        </div>
-
-        <div class="bottomHint">
-          <span class="kbd">Shift</span> + 클릭: 다중 선택 ·
-          <span class="kbd">Tab</span> : 사이드바 ·
-          <span class="kbd">Del</span> : 선택 삭제 ·
-          이름 더블클릭: 대기로
-        </div>
-      </main>
+  <main id="app">
+    <div class="placeholder">
+      정상 로딩되었습니다.<br/>
+      JS가 실행 중입니다.
     </div>
-  </div>
+  </main>
 
-  <script src="/box-board/app.js?v=pc-v2-1-20260113"></script>
+  <script src="/box-board/app.v3.js?v=20260113-02"></script>
 </body>
 </html>
