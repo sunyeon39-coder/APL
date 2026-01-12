@@ -1,4 +1,8 @@
-/* Box Board v2
+/* Box Board v3 (cache-bust + safe boot)
+   - Desktop(Admin): draggable boxes on a grid board
+   - Mobile(Worker): event tabs + table view
+   - Adds in-page error banner if JS fails
+*/
    - Desktop(Admin): draggable boxes on a grid board
    - Mobile(Worker): event tabs + simple table view
    State is stored in localStorage.
@@ -8,8 +12,22 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+  // show errors on screen (helps when page looks blank)
+  function showFatal(msg){
+    const el = document.getElementById('fatalError');
+    if (el) { el.textContent = msg; el.hidden = false; }
+  }
+  window.addEventListener('error', (e)=>{
+    showFatal('JS Error: ' + (e.message || e.error || 'unknown'));
+  });
+
+
   // ----- device class -----
-  const isMobile = matchMedia('(max-width: 768px)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const mq = window.matchMedia ? window.matchMedia('(max-width: 768px)') : null;
+  const byWidth = mq ? mq.matches : (window.innerWidth <= 768);
+  const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
+  const touch = ('ontouchstart' in window) || ((navigator.maxTouchPoints || 0) > 0);
+  const isMobile = byWidth || (coarse && touch);
   document.documentElement.classList.toggle('device-mobile', isMobile);
   document.documentElement.classList.toggle('device-desktop', !isMobile);
 
@@ -399,6 +417,9 @@
 
   // ----- boot -----
   function boot() {
+    const loading = document.getElementById('loading');
+    if (loading) loading.hidden = true;
+    console.log('Box Board v3 loaded');
     loadState();
 
     // desktop only: make sure board has a size
