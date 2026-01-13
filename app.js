@@ -329,7 +329,8 @@
       const pill = document.createElement('div');
       const elapsed = now() - p.createdAt;
       pill.className = `pill ${pillTimeClass(elapsed)}`;
-      pill.innerHTML = `<span class="label">배치</span><span class="time">${fmtMS(elapsed)}</span>`;
+      // show only time (no "배치" label)
+      pill.innerHTML = `<span class="time">${fmtMS(elapsed)}</span>`;
 
       const backBtn = document.createElement('button');
       backBtn.className = 'itemBtn';
@@ -373,12 +374,11 @@
       seat.className = 'seatPill';
       const seated = b.seatPersonId ? getPersonById(b.seatPersonId) : null;
       if(seated){
-        // Name + (label,time) inside pill (match screenshot)
+        // Name + (time) inside pill (no "배치" text)
         const elapsed = now() - seated.createdAt;
         seat.innerHTML = `
           <div class="seatName">${escapeHTML(seated.name)}</div>
           <div class="seatMeta">
-            <span class="seatLabel">배치</span>
             <span class="seatTime">${fmtMS(elapsed)}</span>
           </div>
         `;
@@ -388,7 +388,6 @@
         seat.innerHTML = `
           <div class="seatName" style="opacity:.85">비어있음</div>
           <div class="seatMeta" style="opacity:.65">
-            <span class="seatLabel">대기</span>
             <span class="seatTime">--:--:--</span>
           </div>
         `;
@@ -558,6 +557,13 @@
 
   // ---------- box move / resize ----------
   let drag = null;
+
+  const bumpBoxZ = (boxId) => {
+    const b = getBoxById(boxId);
+    if(!b) return;
+    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number' ? x.z : 0)), 0);
+    b.z = maxZ + 1;
+  };
 
   const onBoxMouseDown = (e, boxId) => {
     // left button only

@@ -325,8 +325,8 @@ body{
   width: 220px;
   height: 120px;
   border-radius: 16px;
-  /* More opaque so overlapped boxes don't visually "double" the toolbar */
-  background: rgba(32, 48, 92, .94);
+  /* Slightly lighter/cleaner like the reference */
+  background: rgba(32, 48, 92, .72);
   border:1px solid rgba(255,255,255,.12);
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
   /* Let popovers extend outside the box (fix clipping when pressing 'o') */
@@ -356,7 +356,8 @@ body{
 }
 .boxInner{
   position:absolute;
-  right:10px; left:64px; top:38px; bottom:16px;
+  /* keep content away from tool area (top/right) and resize handle (bottom/right) */
+  right:28px; left:64px; top:42px; bottom:28px;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -369,7 +370,8 @@ body{
   justify-content:center;
   gap:6px;
   width:100%;
-  padding:10px 12px;
+  padding:10px 14px;
+  padding-right:34px; /* keep clear of resize handle */
   border-radius: 14px;
   border:1px solid rgba(255,255,255,.16);
   background: rgba(0,0,0,.16);
@@ -377,7 +379,7 @@ body{
 .seatName{
   font-weight:900;
   /* Prevent the name from growing into the tool area */
-  font-size: clamp(14px, calc(22px * var(--seatScale)), 24px);
+  font-size: clamp(13px, calc(20px * var(--seatScale)), 22px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -400,19 +402,19 @@ body{
 
 .boxTools{
   position:absolute;
-  top:6px; right:6px;
-  display:flex; gap:6px;
-  padding:4px;
-  border-radius: 12px;
-  border:1px solid rgba(255,255,255,.12);
-  background: rgba(10,12,22,.70);
-  backdrop-filter: blur(10px);
+  top:8px; right:8px;
+  display:flex; gap:8px;
+  padding:6px 8px;
+  border-radius: 999px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(23,26,43,.62);
+  backdrop-filter: blur(8px);
 }
 .toolDot{
-  width:18px; height:18px;
-  border-radius: 8px;
+  width:22px; height:22px;
+  border-radius: 999px;
   border:1px solid rgba(255,255,255,.14);
-  background: rgba(10,12,22,.86);
+  background: rgba(0,0,0,.22);
   color: rgba(233,236,255,.75);
   display:flex; align-items:center; justify-content:center;
   font-size:12px; cursor:pointer;
