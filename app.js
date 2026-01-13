@@ -273,8 +273,8 @@
       const pill = document.createElement('div');
       const elapsed = now() - p.createdAt;
       pill.className = `pill ${pillTimeClass(elapsed)}`;
-      // right side: TIME ONLY
-      pill.innerHTML = `<span class="time">${fmtMS(elapsed)}</span>`;
+      // label + time (match UI in screenshot)
+      pill.innerHTML = `<span class="label">대기</span><span class="time">${fmtMS(elapsed)}</span>`;
 
       const del = document.createElement('button');
       del.className = 'itemBtn';
@@ -306,7 +306,7 @@
       const pill = document.createElement('div');
       const elapsed = now() - p.createdAt;
       pill.className = `pill ${pillTimeClass(elapsed)}`;
-      pill.innerHTML = `<span class="time">${fmtMS(elapsed)}</span>`;
+      pill.innerHTML = `<span class="label">배치</span><span class="time">${fmtMS(elapsed)}</span>`;
 
       const backBtn = document.createElement('button');
       backBtn.className = 'itemBtn';
@@ -345,19 +345,27 @@
       seat.className = 'seatPill';
       const seated = b.seatPersonId ? getPersonById(b.seatPersonId) : null;
       if(seated){
-        // Name stays in the pill (watermark right side). Timer is anchored to bottom.
-        seat.innerHTML = `<span class="seatName">${escapeHTML(seated.name)}</span>`;
+        // Name + (label,time) inside pill (match screenshot)
+        const elapsed = now() - seated.createdAt;
+        seat.innerHTML = `
+          <div class="seatName">${escapeHTML(seated.name)}</div>
+          <div class="seatMeta">
+            <span class="seatLabel">배치</span>
+            <span class="seatTime">${fmtMS(elapsed)}</span>
+          </div>
+        `;
         seat.title = '더블클릭: 대기로';
         seat.addEventListener('dblclick', (e)=>{ e.stopPropagation(); unassignPerson(seated.id); });
       }else{
-        seat.innerHTML = `<span class="seatName" style="opacity:.85">비어있음</span>`;
+        seat.innerHTML = `
+          <div class="seatName" style="opacity:.85">비어있음</div>
+          <div class="seatMeta" style="opacity:.65">
+            <span class="seatLabel">대기</span>
+            <span class="seatTime">--:--:--</span>
+          </div>
+        `;
       }
       inner.appendChild(seat);
-
-      // Bottom anchored timer (requested: attach to box bottom)
-      const bottomTime = document.createElement('div');
-      bottomTime.className = 'boxTimeBottom';
-      bottomTime.textContent = seated ? fmtMS(now() - seated.createdAt) : '';
 
       // tools
       const tools = document.createElement('div');
@@ -396,7 +404,7 @@
       handle.className = 'resizeHandle';
       handle.title = '크기 조절';
 
-      boxEl.append(numEl, inner, bottomTime, tools, handle);
+      boxEl.append(numEl, inner, tools, handle);
       boxesLayer.appendChild(boxEl);
 
       // If a popover was open, it would disappear on the 1s re-render.
@@ -738,12 +746,12 @@
         const p = getPersonById(b.seatPersonId);
         if(!p) continue;
         const nameEl = boxEl.querySelector(".seatName");
-        const timeEl = boxEl.querySelector(".boxTimeBottom");
+        const timeEl = boxEl.querySelector(".seatTime");
         if(nameEl && nameEl.textContent !== p.name) nameEl.textContent = p.name;
         if(timeEl) timeEl.textContent = fmtMS(now() - p.createdAt);
       } else {
-        const timeEl = boxEl.querySelector(".boxTimeBottom");
-        if(timeEl) timeEl.textContent = '';
+        const timeEl = boxEl.querySelector(".seatTime");
+        if(timeEl) timeEl.textContent = '--:--:--';
       }
 
       if(openPopoverBoxId === b.id){

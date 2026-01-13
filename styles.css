@@ -347,7 +347,7 @@ body{
 }
 .boxInner{
   position:absolute;
-  right:10px; left:64px; top:30px; bottom:40px;
+  right:10px; left:64px; top:30px; bottom:18px;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -355,9 +355,10 @@ body{
 }
 .seatPill{
   display:inline-flex;
-  align-items:center;
-  justify-content:flex-start;
-  gap:12px;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:6px;
   width:100%;
   padding:10px 12px;
   border-radius: 14px;
@@ -373,20 +374,24 @@ body{
   max-width: 100%;
 }
 
-/* Bottom anchored timer (so it never gets cut when box is small) */
-.boxTimeBottom{
-  position:absolute;
-  left:64px;
-  right:28px; /* leave space for resize handle */
-  bottom:10px;
-  text-align:right;
+.seatMeta{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:800;
+  color: rgba(233,236,255,.88);
+}
+.seatLabel{
+  opacity:.85;
+  font-size: calc(14px * var(--seatScale));
+}
+.seatTime{
   font-variant-numeric: tabular-nums;
   font-weight:900;
-  font-size: calc(18px * var(--seatScale));
-  color: rgba(233,236,255,.92);
-  pointer-events:none;
-  white-space: nowrap;
+  font-size: calc(14px * var(--seatScale));
 }
+
+
 .boxTools{
   position:absolute;
   top:6px; right:6px;
@@ -410,7 +415,14 @@ body{
   border:1px solid rgba(255,255,255,.14);
   background: rgba(0,0,0,.14);
   cursor: nwse-resize;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: rgba(233,236,255,.70);
+  font-weight:900;
+  font-size:12px;
 }
+.resizeHandle::before{content:"┘"; transform: translateY(-1px)}
 
 .footerHint{
   position:absolute;
