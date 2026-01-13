@@ -70,6 +70,10 @@
     let z = 1;
     state.boxes.forEach(b => {
       if(typeof b.z !== 'number') b.z = z++;
+      // keep legacy saves readable
+      if(typeof b.w === 'number') b.w = Math.max(200, b.w);
+      if(typeof b.h === 'number') b.h = Math.max(110, b.h);
+      if(typeof b.fontScale !== 'number') b.fontScale = 1;
     });
   })();
 
@@ -246,8 +250,8 @@
       num,
       x: 120 + (num-1)*30,
       y: 80 + (num-1)*20,
-      w: 220,
-      h: 120,
+      w: 240,
+      h: 130,
       seatPersonId: null,
       fontScale: 1,
       z: maxZ + 1,
@@ -642,8 +646,9 @@
     if(drag.type === 'resize'){
       const b = getBoxById(drag.boxId);
       if(!b) return;
-      b.w = Math.round(clamp(drag.startW + dx, 160, 640));
-      b.h = Math.round(clamp(drag.startH + dy, 90, 420));
+      // Prevent overly tiny boxes that make the UI look "squeezed" / text clipped
+      b.w = Math.round(clamp(drag.startW + dx, 200, 640));
+      b.h = Math.round(clamp(drag.startH + dy, 110, 420));
       renderBoxes();
       markDirty();
     }
