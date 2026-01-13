@@ -3,34 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <title>Box Board</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-<header class="toolbar">
-  <div class="logo">Box Board</div>
-  <div class="slots">
-    <button class="slot" data-slot="1">슬롯 1</button>
-    <button class="slot" data-slot="2">슬롯 2</button>
-    <button class="slot" data-slot="3">슬롯 3</button>
-  </div>
-  <div class="tools">
-    <button id="saveSlot">저장</button>
-    <button id="loadSlot">불러오기</button>
-  </div>
-</header>
-
-<div class="main">
-  <aside class="panel">
-    <h2>대기 추가</h2>
-    <div class="add">
-      <input id="waitInput" placeholder="이름 입력">
-      <button id="addWait">추가</button>
+  <header class="topbar">
+    <div class="left">
+      <div class="logo">Box Board</div>
+      <button class="icon-btn">≡</button>
+      <button class="tool-btn">가로정렬</button>
+      <button class="tool-btn">세로정렬</button>
+      <button class="tool-btn">가로간격</button>
+      <button class="tool-btn">세로간격</button>
+      <button class="tool-btn active">선택</button>
     </div>
-    <ul id="waitList"></ul>
-  </aside>
-  <section id="canvas"></section>
-</div>
+    <div class="right">
+      <button class="zoom-btn" id="zoomOut">-</button>
+      <span id="zoomLabel">100%</span>
+      <button class="zoom-btn" id="zoomIn">+</button>
+      <button class="tool-btn" id="resetZoom">Reset</button>
+    </div>
+  </header>
 
-<script src="app.js"></script>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="tabs">
+        <button class="tab active">대기</button>
+        <button class="tab">배치</button>
+        <button class="tab">박스</button>
+      </div>
+
+      <div class="panel">
+        <h2>대기</h2>
+        <div class="input-row">
+          <input id="waitInput" placeholder="이름 입력" />
+          <button id="addWait">추가</button>
+        </div>
+        <input class="search" placeholder="검색 (이름)" />
+        <div id="waitList" class="wait-list"></div>
+        <p class="hint">
+          * 대기 항목을 드래그해서 BOX에 드롭 (기존 배치자는 자동으로 대기로)
+        </p>
+      </div>
+    </aside>
+
+    <section class="board-wrapper">
+      <div id="board" class="board"></div>
+      <div class="footer-hint">
+        Shift + 클릭: 다중 선택 · Tab: 사이드바 · Del: 선택 삭제 · 이름 더블클릭: 대기로
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
 </body>
 </html>
