@@ -2,46 +2,36 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Box Board</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="logo">Box Board</div>
-    <div class="toolbar">
-      <button id="btn-select" class="active">선택</button>
-      <button id="btn-row">가로정렬</button>
-      <button id="btn-col">세로정렬</button>
-      <button id="btn-reset">Reset</button>
+<div id="pcApp">
+  <header class="toolbar">
+    <div class="logo">Box Board (관리자)</div>
+    <div class="tools">
+      <button id="saveSlot">저장</button>
     </div>
   </header>
-
-  <main class="layout">
+  <div class="main">
     <aside class="panel">
-      <div class="tabs">
-        <button class="tab active" data-tab="wait">대기</button>
-        <button class="tab" data-tab="place">배치</button>
-        <button class="tab" data-tab="box">박스</button>
+      <h2>대기 추가</h2>
+      <div class="add">
+        <input id="waitInput" placeholder="이름 입력">
+        <button id="addWait">추가</button>
       </div>
-
-      <div class="tab-content active" id="wait">
-        <input id="nameInput" placeholder="이름 입력" />
-        <button id="addBtn">추가</button>
-        <div id="waitList"></div>
-      </div>
-
-      <div class="tab-content" id="place">
-        <p class="hint">보드에 배치된 카드 보기</p>
-      </div>
-
-      <div class="tab-content" id="box">
-        <p class="hint">박스 기능 (다음 단계)</p>
-      </div>
+      <ul id="waitList"></ul>
     </aside>
+    <section id="canvas"></section>
+  </div>
+</div>
 
-    <section id="board" class="board"></section>
-  </main>
+<div id="mobileApp">
+  <header class="m-header">근무자 화면</header>
+  <div id="mobileList"></div>
+</div>
 
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
