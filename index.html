@@ -4,67 +4,68 @@
   <meta charset="UTF-8" />
   <title>Box Board</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <!-- TOP BAR -->
+  <!-- 상단 툴바 -->
   <header class="topbar">
-    <div class="logo">Box Board</div>
-
-    <div class="toolbar">
+    <div class="left">
+      <span class="title">Box Board</span>
+      <button class="ghost">☰</button>
       <button>가로정렬</button>
       <button>세로정렬</button>
       <button>가로간격</button>
       <button>세로간격</button>
       <button class="active">선택</button>
     </div>
-
-    <div class="zoom">
-      <button id="zoomOut">-</button>
-      <span id="zoomValue">100%</span>
-      <button id="zoomIn">+</button>
-      <button id="resetZoom">Reset</button>
+    <div class="right">
+      <button>-</button>
+      <span class="zoom">45%</span>
+      <button>+</button>
+      <button>Reset</button>
     </div>
   </header>
 
-  <!-- MAIN -->
+  <!-- 메인 -->
   <main class="main">
-    <!-- LEFT PANEL -->
+    <!-- 좌측 패널 -->
     <aside class="panel">
       <div class="tabs">
-        <button class="tab active">대기</button>
-        <button class="tab">배치</button>
-        <button class="tab">박스</button>
+        <button class="active">대기</button>
+        <button>배치</button>
+        <button>박스</button>
       </div>
 
-      <div class="panel-section">
-        <h3>대기</h3>
+      <div class="panel-box">
+        <h2>대기</h2>
+
         <div class="input-row">
           <input id="nameInput" placeholder="이름 입력" />
-          <button id="addBtn">추가</button>
+          <button id="addBtn" class="primary">추가</button>
         </div>
 
-        <div class="list" id="waitList"></div>
+        <input class="search" placeholder="검색 (이름)" />
+
+        <ul id="waitingList" class="waiting-list"></ul>
 
         <p class="hint">
-          ※ 대기 항목을 드래그해서 BOX에 드롭<br />
+          * 대기 항목을 드래그해서 BOX에 드롭<br/>
           (기존 배치자는 자동으로 대기로)
         </p>
       </div>
     </aside>
 
-    <!-- BOARD -->
-    <section class="board-wrapper">
-      <div class="board" id="board"></div>
-
-      <div class="footer-hint">
-        <span>Shift</span> + 클릭 : 다중 선택 ·
-        <span>Tab</span> : 사이드바 ·
-        <span>Del</span> : 선택 삭제
-      </div>
-    </section>
+    <!-- 보드 -->
+    <section id="board" class="board"></section>
   </main>
 
-  <script src="app.js"></script>
+  <footer class="footer">
+    <span>Shift + 클릭 : 다중 선택</span>
+    <span>Tab : 사이드바</span>
+    <span>Del : 선택 삭제</span>
+    <span>이름 더블클릭 : 대기로</span>
+  </footer>
+
+  <script src="./app.js"></script>
 </body>
 </html>
