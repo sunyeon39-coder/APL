@@ -326,7 +326,7 @@ body{
   height: 120px;
   border-radius: 16px;
   /* More opaque so overlapped boxes don't visually "double" the toolbar */
-  background: rgba(32, 48, 92, .82);
+  background: rgba(32, 48, 92, .94);
   border:1px solid rgba(255,255,255,.12);
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
   /* Let popovers extend outside the box (fix clipping when pressing 'o') */
@@ -356,7 +356,7 @@ body{
 }
 .boxInner{
   position:absolute;
-  right:10px; left:64px; top:30px; bottom:18px;
+  right:10px; left:64px; top:38px; bottom:16px;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -376,7 +376,8 @@ body{
 }
 .seatName{
   font-weight:900;
-  font-size: calc(22px * var(--seatScale));
+  /* Prevent the name from growing into the tool area */
+  font-size: clamp(14px, calc(22px * var(--seatScale)), 24px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -390,14 +391,10 @@ body{
   font-weight:800;
   color: rgba(233,236,255,.88);
 }
-.seatLabel{
-  opacity:.85;
-  font-size: calc(14px * var(--seatScale));
-}
 .seatTime{
   font-variant-numeric: tabular-nums;
   font-weight:900;
-  font-size: calc(14px * var(--seatScale));
+  font-size: clamp(11px, calc(14px * var(--seatScale)), 16px);
 }
 
 
@@ -405,12 +402,17 @@ body{
   position:absolute;
   top:6px; right:6px;
   display:flex; gap:6px;
+  padding:4px;
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(10,12,22,.70);
+  backdrop-filter: blur(10px);
 }
 .toolDot{
   width:18px; height:18px;
   border-radius: 8px;
   border:1px solid rgba(255,255,255,.14);
-  background: rgba(0,0,0,.14);
+  background: rgba(10,12,22,.86);
   color: rgba(233,236,255,.75);
   display:flex; align-items:center; justify-content:center;
   font-size:12px; cursor:pointer;

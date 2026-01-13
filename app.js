@@ -373,12 +373,11 @@
       seat.className = 'seatPill';
       const seated = b.seatPersonId ? getPersonById(b.seatPersonId) : null;
       if(seated){
-        // Name + (label,time) inside pill (match screenshot)
+        // Name + (time) inside pill (no "배치" text)
         const elapsed = now() - seated.createdAt;
         seat.innerHTML = `
           <div class="seatName">${escapeHTML(seated.name)}</div>
           <div class="seatMeta">
-            <span class="seatLabel">배치</span>
             <span class="seatTime">${fmtMS(elapsed)}</span>
           </div>
         `;
@@ -388,7 +387,6 @@
         seat.innerHTML = `
           <div class="seatName" style="opacity:.85">비어있음</div>
           <div class="seatMeta" style="opacity:.65">
-            <span class="seatLabel">대기</span>
             <span class="seatTime">--:--:--</span>
           </div>
         `;
