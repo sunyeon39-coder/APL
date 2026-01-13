@@ -1,102 +1,70 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>Box Board</title>
-  <link rel="stylesheet" href="./styles.css?v=pc-v2" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="loading" class="toast">Loading… (계속 이상하면 캐시 문제일 수 있어요)</div>
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="logo">Box Board</div>
 
-  <!-- Admin (desktop) UI -->
-  <div id="adminApp" class="appShell" aria-label="관리자 화면">
-    <header class="toolbar">
-      <div class="toolbarLeft">
-        <div class="brandPill">Box Board</div>
-        <button id="toggleSide" class="pill icon" type="button" aria-label="사이드바 토글">≡</button>
-        <button id="alignH" class="pill" type="button">가로정렬</button>
-        <button id="alignV" class="pill" type="button">세로정렬</button>
-
-        <button id="gapXBtn" class="pill" type="button">가로간격</button>
-        <input id="gapX" class="numInput" type="number" min="0" step="5" value="24" aria-label="가로 간격" />
-
-        <button id="gapYBtn" class="pill" type="button">세로간격</button>
-        <input id="gapY" class="numInput" type="number" min="0" step="5" value="24" aria-label="세로 간격" />
-
-        <button id="selectMode" class="pill dangerOutline" type="button">선택</button>
-      </div>
-
-      <div class="toolbarRight">
-        <button id="zoomOut" class="pill icon" type="button" aria-label="축소">-</button>
-        <div id="zoomPct" class="zoomPill">100%</div>
-        <button id="zoomIn" class="pill icon" type="button" aria-label="확대">+</button>
-        <button id="resetAll" class="pill" type="button">Reset</button>
-        <div class="hint">Ctrl/⌘ + 휠 : 확대/축소</div>
-        <div id="saveState" class="saveState">저장됨</div>
-      </div>
-    </header>
-
-    <div class="mainGrid">
-      <aside id="sidebar" class="sidebar" aria-label="사이드바">
-        <div class="seg">
-          <button class="segBtn isActive" data-tab="wait" type="button">대기</button>
-          <button class="segBtn" data-tab="layout" type="button">배치</button>
-          <button class="segBtn" data-tab="boxes" type="button">박스</button>
-        </div>
-
-        <section class="panel" data-panel="wait">
-          <div class="panelTitle">대기</div>
-          <div class="row">
-            <input id="waitName" class="textInput" placeholder="이름 입력" />
-            <button id="addWait" class="pill primary" type="button">추가</button>
-          </div>
-          <input id="waitSearch" class="textInput" placeholder="검색 (이름)" />
-          <div id="waitList" class="waitList" aria-label="대기 목록"></div>
-          <div class="panelFoot">※ 대기 항목을 드래그해서 BOX에 드롭 (기존 배치자는 자동으로 대기로)</div>
-        </section>
-
-        <section class="panel" data-panel="layout" hidden>
-          <div class="panelTitle">배치</div>
-          <div class="row">
-            <button id="autoGrid" class="pill" type="button">자동정렬</button>
-            <button id="clearSelection" class="pill" type="button">선택해제</button>
-          </div>
-          <div class="row">
-            <button id="exportJson" class="pill" type="button">내보내기</button>
-            <button id="importJson" class="pill" type="button">불러오기</button>
-          </div>
-          <textarea id="jsonArea" class="textArea" placeholder="JSON 붙여넣기"></textarea>
-        </section>
-
-        <section class="panel" data-panel="boxes" hidden>
-          <div class="panelTitle">박스</div>
-          <div class="row">
-            <button id="addBox" class="pill" type="button">+ 박스 추가</button>
-            <button id="resetBoxes" class="pill dangerOutline" type="button">초기화</button>
-          </div>
-          <div class="row">
-            <label class="label">박스 크기</label>
-            <input id="boxScale" class="range" type="range" min="70" max="140" value="100" />
-          </div>
-        </section>
-      </aside>
-
-      <main class="boardWrap" aria-label="배치도">
-        <div id="board" class="board"></div>
-        <div class="boardFoot">
-          <span class="kbd">Shift</span> + 클릭: 다중 선택 ·
-          <span class="kbd">Tab</span> : 사이드바 ·
-          <span class="kbd">Del</span> : 선택 삭제 ·
-          이름 더블클릭: 대기로
-        </div>
-      </main>
+    <div class="toolbar">
+      <button>가로정렬</button>
+      <button>세로정렬</button>
+      <button>가로간격</button>
+      <button>세로간격</button>
+      <button class="active">선택</button>
     </div>
-  </div>
 
-  <!-- Worker (mobile) UI -->
-  <div id="workerApp" hidden aria-label="근무자 화면"></div>
+    <div class="zoom">
+      <button id="zoomOut">-</button>
+      <span id="zoomValue">100%</span>
+      <button id="zoomIn">+</button>
+      <button id="resetZoom">Reset</button>
+    </div>
+  </header>
 
-  <script src="./app.js?v=pc-v2"></script>
+  <!-- MAIN -->
+  <main class="main">
+    <!-- LEFT PANEL -->
+    <aside class="panel">
+      <div class="tabs">
+        <button class="tab active">대기</button>
+        <button class="tab">배치</button>
+        <button class="tab">박스</button>
+      </div>
+
+      <div class="panel-section">
+        <h3>대기</h3>
+        <div class="input-row">
+          <input id="nameInput" placeholder="이름 입력" />
+          <button id="addBtn">추가</button>
+        </div>
+
+        <div class="list" id="waitList"></div>
+
+        <p class="hint">
+          ※ 대기 항목을 드래그해서 BOX에 드롭<br />
+          (기존 배치자는 자동으로 대기로)
+        </p>
+      </div>
+    </aside>
+
+    <!-- BOARD -->
+    <section class="board-wrapper">
+      <div class="board" id="board"></div>
+
+      <div class="footer-hint">
+        <span>Shift</span> + 클릭 : 다중 선택 ·
+        <span>Tab</span> : 사이드바 ·
+        <span>Del</span> : 선택 삭제
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
 </body>
 </html>
