@@ -1,59 +1,49 @@
 * {
   box-sizing: border-box;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
 }
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top, #1e2a44, #0a1020);
+  background: radial-gradient(circle at top, #1e2f4f, #0a1222);
   color: #fff;
+  height: 100vh;
   overflow: hidden;
 }
 
-/* Topbar */
-.topbar {
-  height: 64px;
+.toolbar {
+  height: 56px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
-  background: linear-gradient(to bottom, #1a2540, #121a30);
+  padding: 0 14px;
+  background: linear-gradient(to right, #1b2c4a, #16233b);
+}
+
+.toolbar button {
+  margin-right: 6px;
+  background: #2b3f63;
+  border: none;
+  color: #fff;
+  border-radius: 14px;
+  padding: 6px 12px;
+  cursor: pointer;
 }
 
 .logo {
   font-weight: 700;
-  margin-right: 16px;
+  margin-right: 12px;
 }
 
-.tool {
-  margin-right: 8px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: #fff;
-  cursor: pointer;
-}
-
-.tool.active {
-  outline: 2px solid #ff6b6b;
-}
-
-.topbar .right button {
-  margin-left: 6px;
-}
-
-/* Layout */
-.container {
+.layout {
   display: flex;
-  height: calc(100vh - 64px);
+  height: calc(100vh - 56px);
 }
 
-.panel {
-  width: 320px;
+.left-panel {
+  width: 340px;
   padding: 16px;
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, #1c2b45, #0e1627);
 }
 
 .tabs {
@@ -61,55 +51,46 @@ body {
   margin-bottom: 12px;
 }
 
-.tab {
+.tabs button {
   flex: 1;
   margin-right: 6px;
-  padding: 10px;
   border-radius: 20px;
-  background: rgba(255,255,255,0.1);
+  background: #2b3f63;
   border: none;
   color: #fff;
+  padding: 8px;
 }
 
-.tab.active {
-  background: #3b6dcc;
+.tabs button.active {
+  background: #3a63a8;
 }
 
-.panel-content h2 {
-  margin-top: 0;
-}
-
-.row {
+.input-row {
   display: flex;
   margin-bottom: 8px;
 }
 
-.row input {
+.input-row input {
   flex: 1;
   margin-right: 6px;
 }
 
 input {
-  padding: 10px;
-  border-radius: 12px;
-  border: none;
-  background: rgba(255,255,255,0.12);
+  background: #1e2f4f;
+  border: 1px solid #3b557d;
   color: #fff;
-}
-
-button {
-  cursor: pointer;
+  padding: 8px;
+  border-radius: 10px;
 }
 
 #addWait {
-  padding: 10px 16px;
-  border-radius: 14px;
+  background: #4d79ff;
   border: none;
-  background: #4d7cff;
+  border-radius: 12px;
   color: #fff;
+  padding: 8px 14px;
 }
 
-/* Wait list */
 #waitList {
   list-style: none;
   padding: 0;
@@ -117,74 +98,64 @@ button {
 }
 
 .wait-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(0,0,0,0.35);
+  background: #101a2e;
   border-radius: 14px;
   padding: 10px;
   margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   cursor: grab;
 }
 
-.wait-time {
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(0,255,180,0.15);
-  color: #6dffd3;
+.timer {
+  color: #6dffce;
   font-size: 13px;
 }
 
-.delete {
-  background: #7a2e2e;
+.wait-item button {
+  background: #7a2c2c;
   border: none;
-  border-radius: 10px;
-  padding: 6px 10px;
   color: #fff;
+  border-radius: 10px;
+  padding: 4px 10px;
 }
 
-/* Board */
-#board {
+.board {
   flex: 1;
   position: relative;
+  background:
+    linear-gradient(#ffffff0a 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff0a 1px, transparent 1px);
   background-size: 40px 40px;
-  background-image:
-    linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
 }
 
-/* Box */
 .box {
   position: absolute;
-  width: 180px;
-  height: 100px;
-  background: rgba(80,120,200,0.35);
-  border-radius: 18px;
+  background: #274a8b;
+  border-radius: 16px;
   padding: 12px;
   cursor: move;
+  user-select: none;
 }
 
 .box.selected {
-  outline: 2px solid #ff6b6b;
-}
-
-.box h3 {
-  margin: 0;
-  font-size: 18px;
+  outline: 2px solid #6da0ff;
 }
 
 .resize {
   position: absolute;
   right: 6px;
   bottom: 6px;
-  width: 14px;
-  height: 14px;
-  background: rgba(255,255,255,0.5);
-  border-radius: 50%;
-  cursor: nwse-resize;
+  width: 12px;
+  height: 12px;
+  background: #6da0ff;
+  cursor: se-resize;
+  border-radius: 4px;
 }
 
 .hint {
   font-size: 12px;
-  opacity: 0.7;
+  opacity: 0.6;
+  margin-top: 12px;
 }
