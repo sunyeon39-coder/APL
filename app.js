@@ -558,13 +558,6 @@
   // ---------- box move / resize ----------
   let drag = null;
 
-  const bumpBoxZ = (boxId) => {
-    const b = getBoxById(boxId);
-    if(!b) return;
-    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number' ? x.z : 0)), 0);
-    b.z = maxZ + 1;
-  };
-
   const onBoxMouseDown = (e, boxId) => {
     // left button only
     if(e.button !== 0) return;
