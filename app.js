@@ -1,30 +1,26 @@
-let waitId = 1;
-let boxId = 1;
 const waitList = document.getElementById("waitList");
 const board = document.getElementById("board");
+const addBtn = document.getElementById("addWait");
+const nameInput = document.getElementById("nameInput");
 
-const waits = [];
-const boxes = [];
+let waits = [];
+let boxes = [];
+let selectedBoxes = new Set();
+let zoom = 1;
 
-function formatTime(ms) {
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  const ss = s % 60;
-  return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-}
+/* ====== TIMER ====== */
+setInterval(() => {
+  waits.forEach(w => w.time++);
+  boxes.forEach(b => b.time++);
+  renderWaits();
+  renderBoxes();
+}, 1000);
 
-/* 대기 추가 */
-document.getElementById("addWait").onclick = () => {
-  const input = document.getElementById("waitInput");
-  if (!input.value) return;
-
-  const w = {
-    id: waitId++,
-    name: input.value,
-    start: Date.now()
-  };
-  waits.push(w);
-  input.value = "";
+/* ====== WAIT ====== */
+addBtn.onclick = () => {
+  if (!nameInput.value) return;
+  waits.push({ id: Date.now(), name: nameInput.value, time: 0 });
+  nameInput.value = "";
   renderWaits();
 };
 
@@ -34,102 +30,106 @@ function renderWaits() {
     const li = document.createElement("li");
     li.className = "wait-item";
     li.draggable = true;
+    li.ondragstart = e => e.dataTransfer.setData("id", w.id);
 
-    const time = document.createElement("span");
-    time.className = "wait-time";
-    time.textContent = formatTime(Date.now() - w.start);
+    li.innerHTML = `
+      <div>
+        <b>${w.name}</b><br />
+        <span class="timer">대기 ${format(w.time)}</span>
+      </div>
+      <button>삭제</button>
+    `;
 
-    setInterval(() => {
-      time.textContent = formatTime(Date.now() - w.start);
-    }, 1000);
-
-    li.innerHTML = `<strong>${w.id}. ${w.name}</strong>`;
-    li.appendChild(time);
-
-    const del = document.createElement("button");
-    del.textContent = "삭제";
-    del.className = "delete";
-    del.onclick = () => {
-      const i = waits.indexOf(w);
-      waits.splice(i, 1);
+    li.querySelector("button").onclick = () => {
+      waits = waits.filter(x => x.id !== w.id);
       renderWaits();
     };
-    li.appendChild(del);
-
-    li.addEventListener("dragstart", e => {
-      e.dataTransfer.setData("text/plain", JSON.stringify(w));
-    });
 
     waitList.appendChild(li);
   });
 }
 
-/* 드롭 → 박스 생성 */
-board.addEventListener("dragover", e => e.preventDefault());
-board.addEventListener("drop", e => {
-  const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-  const idx = waits.findIndex(w => w.id === data.id);
-  if (idx > -1) waits.splice(idx, 1);
-  createBox(data.name, data.start, e.offsetX, e.offsetY);
+/* ====== BOARD DROP ====== */
+board.ondragover = e => e.preventDefault();
+board.ondrop = e => {
+  const id = +e.dataTransfer.getData("id");
+  const w = waits.find(x => x.id === id);
+  if (!w) return;
+  waits = waits.filter(x => x.id !== id);
+
+  boxes.push({
+    ...w,
+    x: e.offsetX,
+    y: e.offsetY,
+    width: 160,
+    height: 80,
+    font: 14
+  });
+
   renderWaits();
-});
+  renderBoxes();
+};
 
-/* 박스 */
-function createBox(name, start, x, y) {
-  const box = document.createElement("div");
-  box.className = "box";
-  box.style.left = x + "px";
-  box.style.top = y + "px";
+/* ====== BOX ====== */
+function renderBoxes() {
+  board.innerHTML = "";
+  boxes.forEach(b => {
+    const div = document.createElement("div");
+    div.className = "box";
+    if (selectedBoxes.has(b)) div.classList.add("selected");
 
-  const title = document.createElement("h3");
-  title.textContent = name;
-  title.ondblclick = () => {
-    const v = prompt("이름 수정", title.textContent);
-    if (v) title.textContent = v;
-  };
+    div.style.left = b.x + "px";
+    div.style.top = b.y + "px";
+    div.style.width = b.width + "px";
+    div.style.height = b.height + "px";
+    div.style.fontSize = b.font + "px";
 
-  const time = document.createElement("div");
-  time.className = "wait-time";
-  setInterval(() => {
-    time.textContent = formatTime(Date.now() - start);
-  }, 1000);
+    div.innerHTML = `
+      <b contenteditable>${b.name}</b><br/>
+      <span class="timer">${format(b.time)}</span>
+      <div class="resize"></div>
+    `;
 
-  const resize = document.createElement("div");
-  resize.className = "resize";
+    /* MOVE */
+    div.onmousedown = e => {
+      if (!e.shiftKey) selectedBoxes.clear();
+      selectedBoxes.add(b);
+      const sx = e.clientX;
+      const sy = e.clientY;
+      const ox = b.x;
+      const oy = b.y;
 
-  box.append(title, time, resize);
-  board.appendChild(box);
-
-  // 이동
-  let dragging = false, ox, oy;
-  box.onmousedown = e => {
-    if (e.target === resize) return;
-    dragging = true;
-    ox = e.offsetX;
-    oy = e.offsetY;
-    box.classList.add("selected");
-  };
-
-  document.onmousemove = e => {
-    if (!dragging) return;
-    box.style.left = e.pageX - board.offsetLeft - ox + "px";
-    box.style.top = e.pageY - board.offsetTop - oy + "px";
-  };
-
-  document.onmouseup = () => dragging = false;
-
-  // 리사이즈
-  resize.onmousedown = e => {
-    e.stopPropagation();
-    const startX = e.pageX;
-    const startY = e.pageY;
-    const w = box.offsetWidth;
-    const h = box.offsetHeight;
-
-    document.onmousemove = ev => {
-      box.style.width = w + (ev.pageX - startX) + "px";
-      box.style.height = h + (ev.pageY - startY) + "px";
+      document.onmousemove = ev => {
+        b.x = ox + (ev.clientX - sx);
+        b.y = oy + (ev.clientY - sy);
+        renderBoxes();
+      };
+      document.onmouseup = () => (document.onmousemove = null);
     };
-    document.onmouseup = () => document.onmousemove = null;
-  };
+
+    /* RESIZE */
+    div.querySelector(".resize").onmousedown = e => {
+      e.stopPropagation();
+      const sw = b.width;
+      const sh = b.height;
+      const sx = e.clientX;
+      const sy = e.clientY;
+
+      document.onmousemove = ev => {
+        b.width = sw + (ev.clientX - sx);
+        b.height = sh + (ev.clientY - sy);
+        renderBoxes();
+      };
+      document.onmouseup = () => (document.onmousemove = null);
+    };
+
+    board.appendChild(div);
+  });
+}
+
+/* ====== UTIL ====== */
+function format(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
+  return `00:${m}:${s}`;
 }
