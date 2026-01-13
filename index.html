@@ -2,34 +2,33 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Box Board</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-<div id="pcApp">
-  <header class="toolbar">
-    <div class="logo">Box Board (관리자)</div>
-    <div class="tools">
-      <button id="saveSlot">저장</button>
-    </div>
-  </header>
-  <div class="main">
-    <aside class="panel">
-      <h2>대기 추가</h2>
-      <div class="add">
-        <input id="waitInput" placeholder="이름 입력">
-        <button id="addWait">추가</button>
-      </div>
-      <ul id="waitList"></ul>
-    </aside>
-    <section id="canvas"></section>
+<header class="toolbar">
+  <div class="logo">Box Board</div>
+  <div class="slots">
+    <button class="slot" data-slot="1">슬롯 1</button>
+    <button class="slot" data-slot="2">슬롯 2</button>
+    <button class="slot" data-slot="3">슬롯 3</button>
   </div>
-</div>
+  <div class="tools">
+    <button id="saveSlot">저장</button>
+    <button id="loadSlot">불러오기</button>
+  </div>
+</header>
 
-<div id="mobileApp">
-  <header class="m-header">근무자 화면</header>
-  <div id="mobileList"></div>
+<div class="main">
+  <aside class="panel">
+    <h2>대기 추가</h2>
+    <div class="add">
+      <input id="waitInput" placeholder="이름 입력">
+      <button id="addWait">추가</button>
+    </div>
+    <ul id="waitList"></ul>
+  </aside>
+  <section id="canvas"></section>
 </div>
 
 <script src="app.js"></script>

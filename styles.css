@@ -1,9 +1,11 @@
 *{box-sizing:border-box;font-family:system-ui}
 body{margin:0;background:#0b1220;color:#fff}
+.toolbar{height:56px;display:flex;align-items:center;gap:12px;padding:0 20px;background:#0d1627}
+.logo{font-weight:700}
+.slots button,.tools button{padding:6px 12px;border-radius:12px;border:0;background:#1e2f4d;color:#fff;cursor:pointer}
+.slots button.active{outline:2px solid #60a5fa}
+.tools{margin-left:auto}
 
-/* PC */
-#pcApp{display:block}
-.toolbar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#0d1627}
 .main{display:flex;height:calc(100vh - 56px)}
 .panel{width:300px;padding:20px;background:rgba(255,255,255,.05)}
 .add{display:flex;gap:8px}
@@ -11,27 +13,13 @@ body{margin:0;background:#0b1220;color:#fff}
 .add button{padding:8px 12px;border-radius:8px;border:0;background:#3b82f6;color:#fff}
 #waitList{list-style:none;padding:0;margin-top:12px}
 #waitList li{padding:6px 8px;background:rgba(255,255,255,.08);margin-bottom:6px;border-radius:6px;cursor:pointer}
-#canvas{flex:1;position:relative}
 
-/* boxes */
-.box{position:absolute;width:170px;height:100px;border-radius:16px;padding:10px;color:#fff}
-.box.wait{background:#1e3a8a}
-.box.work{background:#6d28d9}
-.box.done{background:#065f46}
+#canvas{flex:1;position:relative;background-size:40px 40px;
+background-image:linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px)}
 
-/* Mobile */
-#mobileApp{display:none}
-.m-header{padding:16px;text-align:center;background:#111827;font-weight:600}
-#mobileList{padding:12px}
-.m-card{padding:14px;border-radius:14px;margin-bottom:10px}
-.m-card.wait{background:#1e3a8a}
-.m-card.work{background:#6d28d9}
-.m-card.done{background:#065f46}
-.m-name{font-size:16px;font-weight:600}
-.m-status{font-size:13px;opacity:.8}
-
-/* switch */
-@media(max-width: 768px){
-  #pcApp{display:none}
-  #mobileApp{display:block}
-}
+.box{position:absolute;width:170px;height:100px;border-radius:16px;
+padding:10px;color:#fff;cursor:grab}
+.box.wait{background:linear-gradient(135deg,#334a78,#1b2a44)}
+.box.work{background:linear-gradient(135deg,#7c3aed,#4c1d95)}
+.box.done{background:linear-gradient(135deg,#065f46,#064e3b)}

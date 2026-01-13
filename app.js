@@ -2,44 +2,73 @@ const waitInput=document.getElementById('waitInput');
 const addWait=document.getElementById('addWait');
 const waitList=document.getElementById('waitList');
 const canvas=document.getElementById('canvas');
-const mobileList=document.getElementById('mobileList');
+
+const slotButtons=document.querySelectorAll('.slot');
+const saveBtn=document.getElementById('saveSlot');
+const loadBtn=document.getElementById('loadSlot');
 
 let boxes=[];
 let idSeq=1;
+let currentSlot=1;
 
-// storage
-function save(){localStorage.setItem('boxes',JSON.stringify(boxes));}
-function load(){
-  const raw=localStorage.getItem('boxes');
-  if(!raw) return;
-  boxes=JSON.parse(raw);
-  boxes.forEach(b=>renderBox(b));
-  renderMobile();
+// helpers
+function saveSlot(){
+  localStorage.setItem('slot_'+currentSlot,JSON.stringify(boxes));
+  alert('슬롯 '+currentSlot+' 저장됨');
 }
 
-// render pc box
-function renderBox(b){
-  const el=document.createElement('div');
-  el.className='box '+b.status;
-  el.style.left=b.x+'px';
-  el.style.top=b.y+'px';
-  el.textContent=b.id+'. '+b.name;
-  canvas.appendChild(el);
-}
-
-// render mobile
-function renderMobile(){
-  mobileList.innerHTML='';
-  boxes.forEach(b=>{
-    const d=document.createElement('div');
-    d.className='m-card '+b.status;
-    d.innerHTML=`<div class="m-name">${b.name}</div>
-                 <div class="m-status">${label(b.status)}</div>`;
-    mobileList.appendChild(d);
+function loadSlot(){
+  const raw=localStorage.getItem('slot_'+currentSlot);
+  if(!raw){alert('저장된 데이터 없음');return;}
+  boxes=[];
+  canvas.innerHTML='';
+  JSON.parse(raw).forEach(b=>{
+    idSeq=Math.max(idSeq,b.id+1);
+    createBox(b,true);
   });
 }
 
-function label(s){return s==='wait'?'대기':s==='work'?'배치':'완료'}
+function createBox(data,fromLoad=false){
+  const el=document.createElement('div');
+  el.className='box '+data.status;
+  el.style.left=data.x+'px';
+  el.style.top=data.y+'px';
+  el.textContent=data.id+'. '+data.name;
+  canvas.appendChild(el);
+
+  boxes.push(data);
+  if(!fromLoad) localStorage.setItem('autosave',JSON.stringify(boxes));
+
+  // drag
+  let ox,oy,drag=false;
+  el.onmousedown=e=>{drag=true;ox=e.offsetX;oy=e.offsetY};
+  document.onmousemove=e=>{
+    if(!drag) return;
+    el.style.left=e.pageX-canvas.offsetLeft-ox+'px';
+    el.style.top=e.pageY-canvas.offsetTop-oy+'px';
+  };
+  document.onmouseup=()=>{
+    if(!drag) return;
+    drag=false;
+    data.x=parseInt(el.style.left);
+    data.y=parseInt(el.style.top);
+  };
+
+  // status
+  el.ondblclick=()=>{
+    data.status=data.status==='wait'?'work':data.status==='work'?'done':'wait';
+    el.className='box '+data.status;
+  };
+}
+
+// slot select
+slotButtons.forEach(btn=>{
+  btn.onclick=()=>{
+    slotButtons.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSlot=btn.dataset.slot;
+  };
+});
 
 // add wait
 addWait.onclick=()=>{
@@ -47,14 +76,17 @@ addWait.onclick=()=>{
   const li=document.createElement('li');
   li.textContent=waitInput.value;
   li.onclick=()=>{
-    const b={id:idSeq++,name:waitInput.value,x:40,y:40,status:'wait'};
-    boxes.push(b);
-    renderBox(b);
-    renderMobile();
-    save();
+    createBox({
+      id:idSeq++,
+      name:waitInput.value,
+      x:40,
+      y:40,
+      status:'wait'
+    });
   };
   waitList.appendChild(li);
   waitInput.value='';
 };
 
-load();
+saveBtn.onclick=saveSlot;
+loadBtn.onclick=loadSlot;
