@@ -373,11 +373,12 @@
       seat.className = 'seatPill';
       const seated = b.seatPersonId ? getPersonById(b.seatPersonId) : null;
       if(seated){
-        // Name + (time) inside pill (no "배치" text)
+        // Name + (label,time) inside pill (match screenshot)
         const elapsed = now() - seated.createdAt;
         seat.innerHTML = `
           <div class="seatName">${escapeHTML(seated.name)}</div>
           <div class="seatMeta">
+            <span class="seatLabel">배치</span>
             <span class="seatTime">${fmtMS(elapsed)}</span>
           </div>
         `;
@@ -387,6 +388,7 @@
         seat.innerHTML = `
           <div class="seatName" style="opacity:.85">비어있음</div>
           <div class="seatMeta" style="opacity:.65">
+            <span class="seatLabel">대기</span>
             <span class="seatTime">--:--:--</span>
           </div>
         `;
@@ -556,13 +558,6 @@
 
   // ---------- box move / resize ----------
   let drag = null;
-
-  const bumpBoxZ = (boxId) => {
-    const b = getBoxById(boxId);
-    if(!b) return;
-    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number' ? x.z : 0)), 0);
-    b.z = maxZ + 1;
-  };
 
   const onBoxMouseDown = (e, boxId) => {
     // left button only
