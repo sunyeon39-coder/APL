@@ -1,60 +1,57 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Box Board</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css"/>
 </head>
 <body>
-  <header class="topbar">
-    <div class="left">
-      <div class="logo">Box Board</div>
-      <button class="icon-btn">≡</button>
-      <button class="tool-btn">가로정렬</button>
-      <button class="tool-btn">세로정렬</button>
-      <button class="tool-btn">가로간격</button>
-      <button class="tool-btn">세로간격</button>
-      <button class="tool-btn active">선택</button>
+<header class="topbar">
+  <div class="left">
+    <div class="logo">Box Board</div>
+    <button id="btn-row">가로정렬</button>
+    <button id="btn-col">세로정렬</button>
+    <button id="btn-gapX">가로간격</button>
+    <button id="btn-gapY">세로간격</button>
+    <button id="btn-select" class="active">선택</button>
+  </div>
+  <div class="right">
+    <button id="zoomOut">-</button>
+    <span id="zoomLabel">100%</span>
+    <button id="zoomIn">+</button>
+    <button id="btn-reset">Reset</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <div class="tabs">
+      <button class="tab active">대기</button>
+      <button class="tab">배치</button>
+      <button class="tab">박스</button>
     </div>
-    <div class="right">
-      <button class="zoom-btn" id="zoomOut">-</button>
-      <span id="zoomLabel">100%</span>
-      <button class="zoom-btn" id="zoomIn">+</button>
-      <button class="tool-btn" id="resetZoom">Reset</button>
+
+    <div class="panel">
+      <h3>대기</h3>
+      <div class="input-row">
+        <input id="waitInput" placeholder="이름 입력"/>
+        <button id="addWait">추가</button>
+      </div>
+      <input id="search" class="search" placeholder="검색"/>
+      <div id="waitList" class="wait-list"></div>
+      <p class="hint">대기를 드래그해 보드에 드롭</p>
     </div>
-  </header>
+  </aside>
 
-  <main class="layout">
-    <aside class="sidebar">
-      <div class="tabs">
-        <button class="tab active">대기</button>
-        <button class="tab">배치</button>
-        <button class="tab">박스</button>
-      </div>
+  <section class="board-wrap">
+    <div id="board" class="board"></div>
+    <div class="footer-hint">
+      Shift+클릭 다중선택 · Del 삭제 · 더블클릭 이름수정 · 우하단 드래그 크기조절
+    </div>
+  </section>
+</main>
 
-      <div class="panel">
-        <h2>대기</h2>
-        <div class="input-row">
-          <input id="waitInput" placeholder="이름 입력" />
-          <button id="addWait">추가</button>
-        </div>
-        <input class="search" placeholder="검색 (이름)" />
-        <div id="waitList" class="wait-list"></div>
-        <p class="hint">
-          * 대기 항목을 드래그해서 BOX에 드롭 (기존 배치자는 자동으로 대기로)
-        </p>
-      </div>
-    </aside>
-
-    <section class="board-wrapper">
-      <div id="board" class="board"></div>
-      <div class="footer-hint">
-        Shift + 클릭: 다중 선택 · Tab: 사이드바 · Del: 선택 삭제 · 이름 더블클릭: 대기로
-      </div>
-    </section>
-  </main>
-
-  <script src="./app.js"></script>
+<script src="./app.js"></script>
 </body>
 </html>
