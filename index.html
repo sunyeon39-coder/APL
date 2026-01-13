@@ -2,57 +2,57 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Box Board</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="toolbar">
+  <header class="topbar">
     <div class="left">
       <span class="logo">Box Board</span>
-      <button data-action="align-x">가로정렬</button>
-      <button data-action="align-y">세로정렬</button>
-      <button data-action="gap-x">가로간격</button>
-      <button data-action="gap-y">세로간격</button>
-      <button data-action="select">선택</button>
+      <button class="icon">☰</button>
     </div>
-    <div class="right">
-      <button data-action="zoom-out">-</button>
-      <span id="zoom">100%</span>
-      <button data-action="zoom-in">+</button>
-      <button data-action="reset">Reset</button>
+    <div class="center">
+      <button>가로정렬</button>
+      <button>세로정렬</button>
+      <button>가로간격</button>
+      <button>세로간격</button>
+      <button class="active">선택</button>
+      <span class="zoom">45%</span>
+      <button>Reset</button>
     </div>
+    <div class="right">저장됨</div>
   </header>
 
-  <main class="layout">
-    <!-- LEFT -->
-    <aside class="left-panel">
+  <main class="app">
+    <aside class="sidebar">
       <div class="tabs">
         <button class="active">대기</button>
         <button>배치</button>
         <button>박스</button>
       </div>
 
-      <h2>대기</h2>
+      <div class="panel">
+        <input placeholder="이름 입력" />
+        <button class="add">추가</button>
+        <input placeholder="검색 (이름)" />
 
-      <div class="input-row">
-        <input id="nameInput" placeholder="이름 입력" />
-        <button id="addWait">추가</button>
+        <div class="queue">
+          <div class="item">1 · 대기 00:00:32 <button>삭제</button></div>
+          <div class="item">2 · 대기 00:02:57 <button>삭제</button></div>
+        </div>
       </div>
-
-      <input id="searchInput" placeholder="검색 (이름)" />
-
-      <ul id="waitList"></ul>
-
-      <p class="hint">
-        * 대기 항목을 드래그해서 BOX에 드롭<br />
-        (기존 배치자는 자동으로 대기로)
-      </p>
     </aside>
 
-    <!-- RIGHT -->
-    <section class="board" id="board"></section>
+    <section class="board">
+      <div class="card">1<br/><small>대기</small></div>
+      <div class="card">2<br/><small>배치</small></div>
+      <div class="card">9<br/><small>종료</small></div>
+    </section>
   </main>
 
-  <script src="app.js"></script>
+  <footer class="footer">
+    Shift + 클릭: 다중 선택 · Tab: 사이드바 · Del: 삭제
+  </footer>
 </body>
 </html>
