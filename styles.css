@@ -1,158 +1,18 @@
-* {
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-body {
-  margin: 0;
-  background: radial-gradient(circle at top, #1c2e4a, #0b1020);
-  color: #fff;
-}
-
-/* ===== 상단 ===== */
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  padding: 14px 20px;
-  background: linear-gradient(180deg, #16243c, #0f192c);
-}
-
-.topbar button {
-  margin-left: 6px;
-  padding: 8px 14px;
-  border-radius: 14px;
-  border: none;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-}
-
-.topbar .active {
-  border: 1px solid #ff6b6b;
-}
-
-.title {
-  font-weight: 700;
-  font-size: 18px;
-  margin-right: 10px;
-}
-
-/* ===== 레이아웃 ===== */
-.main {
-  display: flex;
-  height: calc(100vh - 110px);
-}
-
-/* ===== 좌측 ===== */
-.panel {
-  width: 360px;
-  padding: 16px;
-}
-
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.tabs button {
-  flex: 1;
-  padding: 10px;
-  border-radius: 16px;
-  border: none;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-}
-
-.tabs .active {
-  background: rgba(80,140,255,0.35);
-}
-
-.panel-box {
-  background: rgba(255,255,255,0.06);
-  border-radius: 24px;
-  padding: 20px;
-}
-
-.panel-box h2 {
-  margin-top: 0;
-}
-
-.input-row {
-  display: flex;
-  gap: 8px;
-}
-
-.input-row input {
-  flex: 1;
-}
-
-input {
-  padding: 10px;
-  border-radius: 14px;
-  border: none;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-}
-
-.primary {
-  background: #3b82f6;
-  border-radius: 14px;
-}
-
-.waiting-list {
-  list-style: none;
-  padding: 0;
-  margin: 14px 0;
-}
-
-.waiting-item {
-  background: rgba(255,255,255,0.08);
-  border-radius: 18px;
-  padding: 10px;
-  margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
-  cursor: grab;
-}
-
-.timer {
-  color: #7fffd4;
-}
-
-.hint {
-  font-size: 12px;
-  opacity: 0.6;
-}
-
-/* ===== 보드 ===== */
-.board {
-  flex: 1;
-  margin: 16px;
-  border-radius: 28px;
-  background:
-    linear-gradient(transparent 23px, rgba(255,255,255,0.04) 24px),
-    linear-gradient(90deg, transparent 23px, rgba(255,255,255,0.04) 24px);
-  background-size: 24px 24px;
-  padding: 20px;
-  display: flex;
-  gap: 14px;
-}
-
-/* ===== 카드 ===== */
-.card {
-  width: 180px;
-  height: 110px;
-  background: linear-gradient(160deg, #284a74, #1b2f4f);
-  border-radius: 20px;
-  padding: 12px;
-  position: relative;
-}
-
-.card h3 {
-  margin: 0;
-  font-size: 14px;
-}
-
-.card .timer {
-  margin-top: 6px;
-}
+*{box-sizing:border-box;font-family:system-ui,-apple-system;}
+body{margin:0;background:radial-gradient(circle at top,#1b2a44,#0b1020);color:#fff}
+.topbar{height:64px;display:flex;align-items:center;padding:0 20px;background:linear-gradient(to right,#1c2f4a,#16213e)}
+.logo{font-size:22px;font-weight:bold}
+.toolbar{margin-left:auto;display:flex;gap:10px}
+.toolbar button{padding:8px 14px;border-radius:14px;border:none;background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
+.toolbar button.active{outline:2px solid #4cc9f0}
+.layout{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 64px)}
+.panel{padding:16px;border-right:1px solid rgba(255,255,255,.1)}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tab{flex:1;padding:10px;border-radius:12px;background:rgba(255,255,255,.08);border:none;color:#fff;cursor:pointer}
+.tab.active{background:#3a86ff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+#waitList .item{background:rgba(255,255,255,.08);padding:10px;border-radius:12px;margin-top:10px;cursor:grab}
+.board{position:relative;margin:20px;border-radius:20px;background:linear-gradient(145deg,#1e2d4f,#0b132b);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.card{position:absolute;width:160px;height:90px;background:linear-gradient(145deg,#2c4a7a,#1b2f52);border-radius:16px;padding:10px;cursor:pointer}
+.card.selected{outline:2px solid #ff6b6b;box-shadow:0 0 12px rgba(255,107,107,.6)}

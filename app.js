@@ -1,86 +1,48 @@
-const waitingList = document.getElementById("waitingList");
-const board = document.getElementById("board");
-const addBtn = document.getElementById("addBtn");
-const nameInput = document.getElementById("nameInput");
+const waitList=document.getElementById('waitList');
+const board=document.getElementById('board');
+const nameInput=document.getElementById('nameInput');
+const addBtn=document.getElementById('addBtn');
+let selected=new Set();let selectMode=true;
 
-let selectedCards = new Set();
-let selectMode = true;
-let id = 1;
+addBtn.onclick=()=>{if(!nameInput.value)return;
+const d=document.createElement('div');
+d.className='item';d.textContent=nameInput.value;d.draggable=true;
+d.ondragstart=()=>d.classList.add('dragging');
+d.ondragend=()=>d.classList.remove('dragging');
+waitList.appendChild(d);nameInput.value='';};
 
-addBtn.onclick = () => {
-  if (!nameInput.value.trim()) return;
+board.ondragover=e=>e.preventDefault();
+board.ondrop=e=>{e.preventDefault();
+const drag=document.querySelector('.dragging');if(!drag)return;
+const c=document.createElement('div');c.className='card';
+c.style.left=e.offsetX+'px';c.style.top=e.offsetY+'px';
+c.textContent=drag.textContent;
+c.onclick=ev=>{if(!selectMode)return;
+if(!ev.shiftKey){selected.forEach(x=>x.classList.remove('selected'));selected.clear();}
+c.classList.toggle('selected');
+selected.has(c)?selected.delete(c):selected.add(c);};
+board.appendChild(c);drag.remove();};
 
-  const li = document.createElement("li");
-  li.className = "waiting-item";
-  li.draggable = true;
-  li.dataset.id = id++;
+document.addEventListener('keydown',e=>{
+if(e.key==='Delete'){selected.forEach(c=>c.remove());selected.clear();}});
 
-  li.innerHTML = `
-    <div>
-      <strong>${nameInput.value}</strong><br/>
-      <span class="timer">대기 00:00</span>
-    </div>
-    <button>삭제</button>
-  `;
+document.getElementById('btn-select').onclick=e=>{
+selectMode=!selectMode;e.target.classList.toggle('active',selectMode);};
 
-  li.querySelector("button").onclick = () => li.remove();
+document.getElementById('btn-row').onclick=()=>{
+let x=40;selected.forEach(c=>{c.style.left=x+'px';c.style.top='40px';x+=180;});};
 
-  li.ondragstart = e => {
-    e.dataTransfer.setData("text/plain", li.dataset.id);
-    li.classList.add("dragging");
-  };
+document.getElementById('btn-col').onclick=()=>{
+let y=40;selected.forEach(c=>{c.style.left='40px';c.style.top=y+'px';y+=110;});};
 
-  waitingList.appendChild(li);
-  nameInput.value = "";
-};
+document.getElementById('btn-reset').onclick=()=>{
+let x=40,y=40;
+board.querySelectorAll('.card').forEach(c=>{
+c.style.left=x+'px';c.style.top=y+'px';x+=180;
+if(x>board.clientWidth-200){x=40;y+=110;}});};
 
-board.ondragover = e => e.preventDefault();
-
-board.ondrop = e => {
-  e.preventDefault();
-  const dragged = document.querySelector(".dragging");
-  if (!dragged) return;
-
-  const card = document.createElement("div");
-  card.className = "card";
-  card.tabIndex = 0;
-
-  card.innerHTML = `
-    <h3>${dragged.querySelector("strong").innerText}</h3>
-    <div class="timer">대기 00:00</div>
-  `;
-
-  card.onclick = ev => {
-    if (!selectMode) return;
-
-    if (!ev.shiftKey) {
-      selectedCards.forEach(c => c.classList.remove("selected"));
-      selectedCards.clear();
-    }
-
-    card.classList.toggle("selected");
-
-    if (selectedCards.has(card)) {
-      selectedCards.delete(card);
-    } else {
-      selectedCards.add(card);
-    }
-    .card.selected {
-  outline: 2px solid #ff6b6b;
-  box-shadow: 0 0 12px rgba(255,107,107,0.6);
-}
-
-  };
-
-  board.appendChild(card);
-  dragged.remove();
-};
-
-document.addEventListener("keydown", e => {
-  if (e.key === "Delete") {
-    selectedCards.forEach(card => card.remove());
-    selectedCards.clear();
-  }
-});
-
-}, 1000);
+document.querySelectorAll('.tab').forEach(t=>{
+t.onclick=()=>{
+document.querySelectorAll('.tab,.tab-content').forEach(e=>e.classList.remove('active'));
+t.classList.add('active');
+document.getElementById(t.dataset.tab).classList.add('active');};});
