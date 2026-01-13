@@ -1,33 +1,190 @@
-*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto}
-body{margin:0;background:radial-gradient(circle at top,#1c2b46,#050b16);color:#e5ecff;height:100vh;overflow:hidden}
-.topbar{height:60px;display:flex;justify-content:space-between;align-items:center;padding:0 16px;background:linear-gradient(#1e2f4f,#15233a)}
-.topbar button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-.logo{font-weight:700;margin-right:8px}
-.layout{display:flex;height:calc(100vh - 60px)}
-.sidebar{width:320px;padding:14px}
-.tabs{display:flex;gap:6px;margin-bottom:10px}
-.tab{flex:1;padding:8px;border-radius:12px;background:rgba(255,255,255,.08);border:none;color:#fff}
-.tab.active{background:#355d9a}
-.panel{background:rgba(255,255,255,.06);border-radius:16px;padding:12px}
-.input-row{display:flex;gap:6px}
-.input-row input{flex:1}
-input{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px;color:#fff}
-#addWait{background:#4f7cff;border:none;border-radius:10px;color:#fff;padding:8px 12px}
-.search{width:100%;margin-top:6px}
-.wait-list{margin-top:10px;display:flex;flex-direction:column;gap:6px}
-.wait-item{background:rgba(0,0,0,.35);border-radius:10px;padding:8px;display:flex;justify-content:space-between;cursor:grab}
-.wait-item button{background:#7a2e2e;border:none;border-radius:8px;color:#fff;padding:4px 8px}
-.hint{font-size:12px;opacity:.7;margin-top:8px}
-.board-wrap{flex:1;padding:14px;display:flex;flex-direction:column}
-.board{flex:1;position:relative;border-radius:20px;
-  background-image:linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
-                   linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
-  background-size:40px 40px;overflow:hidden;transform-origin:0 0}
-.card{position:absolute;width:160px;height:90px;border-radius:14px;
-  background:linear-gradient(#294b8f,#1b2f5c);padding:8px;color:#fff;cursor:grab}
-.card.selected{outline:3px solid #ff6b6b}
-.card .title{font-weight:600;cursor:text}
-.card .controls{display:flex;gap:6px;margin-top:6px}
-.card .controls button{padding:2px 6px;border-radius:6px;border:none;background:rgba(255,255,255,.2);color:#fff}
-.resize-handle{position:absolute;right:4px;bottom:4px;width:10px;height:10px;background:#fff;border-radius:50%;cursor:nwse-resize}
-.footer-hint{font-size:12px;opacity:.7;text-align:center;margin-top:6px}
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #1e2a44, #0a1020);
+  color: #fff;
+  overflow: hidden;
+}
+
+/* Topbar */
+.topbar {
+  height: 64px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  background: linear-gradient(to bottom, #1a2540, #121a30);
+}
+
+.logo {
+  font-weight: 700;
+  margin-right: 16px;
+}
+
+.tool {
+  margin-right: 8px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  cursor: pointer;
+}
+
+.tool.active {
+  outline: 2px solid #ff6b6b;
+}
+
+.topbar .right button {
+  margin-left: 6px;
+}
+
+/* Layout */
+.container {
+  display: flex;
+  height: calc(100vh - 64px);
+}
+
+.panel {
+  width: 320px;
+  padding: 16px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.tab {
+  flex: 1;
+  margin-right: 6px;
+  padding: 10px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+}
+
+.tab.active {
+  background: #3b6dcc;
+}
+
+.panel-content h2 {
+  margin-top: 0;
+}
+
+.row {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.row input {
+  flex: 1;
+  margin-right: 6px;
+}
+
+input {
+  padding: 10px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
+button {
+  cursor: pointer;
+}
+
+#addWait {
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: none;
+  background: #4d7cff;
+  color: #fff;
+}
+
+/* Wait list */
+#waitList {
+  list-style: none;
+  padding: 0;
+  margin-top: 12px;
+}
+
+.wait-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0,0,0,0.35);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: grab;
+}
+
+.wait-time {
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(0,255,180,0.15);
+  color: #6dffd3;
+  font-size: 13px;
+}
+
+.delete {
+  background: #7a2e2e;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 10px;
+  color: #fff;
+}
+
+/* Board */
+#board {
+  flex: 1;
+  position: relative;
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+}
+
+/* Box */
+.box {
+  position: absolute;
+  width: 180px;
+  height: 100px;
+  background: rgba(80,120,200,0.35);
+  border-radius: 18px;
+  padding: 12px;
+  cursor: move;
+}
+
+.box.selected {
+  outline: 2px solid #ff6b6b;
+}
+
+.box h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.resize {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 14px;
+  height: 14px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 50%;
+  cursor: nwse-resize;
+}
+
+.hint {
+  font-size: 12px;
+  opacity: 0.7;
+}
