@@ -64,6 +64,15 @@
     if(Array.isArray(loaded.selectedBoxIds)) state.selectedBoxIds = loaded.selectedBoxIds;
   }
 
+  // Ensure z-order exists (so overlapped boxes don't show "ghost" toolbars)
+  // Older saves might not have `z`. We assign increasing order by current array order.
+  (() => {
+    let z = 1;
+    state.boxes.forEach(b => {
+      if(typeof b.z !== 'number') b.z = z++;
+    });
+  })();
+
   // ---------- dom refs ----------
   const sidePanel = $('#sidePanel');
   const toggleSide = $('#toggleSide');
@@ -143,6 +152,18 @@
   const getBoxById = (id) => state.boxes.find(b => b.id === id) || null;
   const getPersonById = (id) => state.people.find(p => p.id === id) || null;
 
+  // Bring interacted box to front (fix overlapping artifacts)
+  const bumpBoxZ = (boxId) => {
+    const b = getBoxById(boxId);
+    if(!b) return;
+    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number') ? x.z : 0), 0);
+    const nextZ = maxZ + 1;
+    if(b.z !== nextZ){
+      b.z = nextZ;
+      markDirty();
+    }
+  };
+
   const selectedSet = () => new Set(state.selectedBoxIds);
   const setSelected = (arr) => { state.selectedBoxIds = Array.from(new Set(arr)); markDirty(); renderBoxes(); };
 
@@ -219,6 +240,7 @@
 
   const addBox = () => {
     const num = nextBoxNum();
+    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number') ? x.z : 0), 0);
     const b = {
       id: uid(),
       num,
@@ -228,6 +250,7 @@
       h: 120,
       seatPersonId: null,
       fontScale: 1,
+      z: maxZ + 1,
     };
     state.boxes.push(b);
     markDirty();
@@ -332,6 +355,11 @@
       boxEl.style.top = b.y + 'px';
       boxEl.style.width = b.w + 'px';
       boxEl.style.height = b.h + 'px';
+      // z-order: selected/popover boxes should be on top
+      const baseZ = (typeof b.z === 'number' ? b.z : 1);
+      const popBoost = (openPopoverBoxId === b.id) ? 5000 : 0;
+      const selBoost = s.has(b.id) ? 10000 : 0;
+      boxEl.style.zIndex = String(baseZ + popBoost + selBoost);
       boxEl.style.setProperty('--seatScale', String(b.fontScale || 1));
 
       const numEl = document.createElement('div');
@@ -531,10 +559,19 @@
   // ---------- box move / resize ----------
   let drag = null;
 
+  const bumpBoxZ = (boxId) => {
+    const b = getBoxById(boxId);
+    if(!b) return;
+    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number' ? x.z : 0)), 0);
+    b.z = maxZ + 1;
+  };
+
   const onBoxMouseDown = (e, boxId) => {
     // left button only
     if(e.button !== 0) return;
 
+    // bring this box to front when interacting
+    bumpBoxZ(boxId);
     const boxEl = e.currentTarget;
     const isTool = e.target.closest('.boxTools') || e.target.classList.contains('resizeHandle');
     if(isTool) return;
@@ -571,6 +608,8 @@
   const onResizeMouseDown = (e, boxId) => {
     if(e.button !== 0) return;
     e.stopPropagation();
+    // bring this box to front when resizing
+    bumpBoxZ(boxId);
     closePopover();
 
     if(!selectedSet().has(boxId)) setSelected([boxId]);
