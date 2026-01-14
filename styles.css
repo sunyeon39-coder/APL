@@ -594,3 +594,82 @@ body{
 }
 .chk, .item input[type="checkbox"]{ display:none !important; }
 /* ============================================= */
+
+/* ================= Dashboard (sections) ================= */
+.dashboard{ min-height:100vh; padding:22px 22px 30px; }
+.dashTop{ position:sticky; top:0; z-index:50; padding:10px 0 18px; background: linear-gradient(to bottom, rgba(10,14,25,.92), rgba(10,14,25,.75) 60%, rgba(10,14,25,0)); backdrop-filter: blur(10px); }
+.dashTopInner{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+.dashBrand{ display:flex; flex-direction:column; gap:6px; }
+.dashLogo{ font-weight:900; font-size:18px; letter-spacing:.2px; opacity:.95; }
+.dashDate{ font-weight:900; font-size:34px; letter-spacing:.2px; color: rgba(255, 215, 120, .95); text-shadow: 0 8px 18px rgba(0,0,0,.35); }
+
+.dashGrid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap:18px;
+}
+@media (max-width: 920px){
+  .dashGrid{ grid-template-columns: 1fr; }
+}
+
+.sectionCard{
+  position:relative;
+  border-radius:18px;
+  padding:16px 16px 14px;
+  border:2px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+  box-shadow: 0 10px 26px rgba(0,0,0,.35);
+  cursor:pointer;
+  user-select:none;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.sectionCard.opened{ border-color: rgba(56,154,255,.55); box-shadow: 0 10px 26px rgba(0,0,0,.35), 0 0 0 2px rgba(56,154,255,.10) inset; }
+.sectionCard.running{ border-color: rgba(154,97,255,.55); box-shadow: 0 10px 26px rgba(0,0,0,.35), 0 0 0 2px rgba(154,97,255,.10) inset; }
+.sectionCard:hover{ transform: translateY(-2px); border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.06); }
+.sectionCard:active{ transform: translateY(0); }
+
+.sectionHeader{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.sectionTitle{ font-weight:900; font-size:20px; line-height:1.15; letter-spacing:.2px; }
+.sectionBadge{
+  padding:6px 10px;
+  border-radius:10px;
+  font-weight:900;
+  font-size:13px;
+  border:1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.08);
+  white-space:nowrap;
+}
+.badgeOpened{ background: rgba(56, 154, 255, .20); border-color: rgba(56,154,255,.35); }
+.badgeRunning{ background: rgba(154, 97, 255, .18); border-color: rgba(154,97,255,.35); }
+
+.sectionMeta{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+.metaBox{
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.18);
+  padding:10px 10px 9px;
+}
+.metaLabel{ opacity:.75; font-weight:800; font-size:12px; margin-bottom:6px; }
+.metaValue{ font-weight:900; font-size:16px; font-variant-numeric: tabular-nums; }
+
+/* Board view: back button */
+.canvasWrap{ position:relative; }
+.backBtn{
+  position:absolute;
+  top:12px;
+  right:12px;
+  z-index:60;
+  border-radius:14px;
+  padding:8px 12px;
+  font-weight:900;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.24);
+  color: rgba(255,255,255,.92);
+  backdrop-filter: blur(10px);
+}
+.backBtn:hover{ background: rgba(0,0,0,.32); }
+

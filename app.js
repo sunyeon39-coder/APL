@@ -27,22 +27,40 @@
     return 'tGood';
   };
 
-  // ---------- persistence ----------
-  const LS_KEY = 'boxBoard_state_v2026_01_05';
-  const loadState = () => {
+  // ---------- persistence (per section) ----------
+  const DASH_KEY = 'boxBoard_dashboard_v2026_01_13';
+  const BOARD_KEY_PREFIX = 'boxBoard_board_v2026_01_13:';
+  const boardKey = (sectionId) => `${BOARD_KEY_PREFIX}${sectionId}`;
+
+  const loadBoardState = (sectionId) => {
     try{
-      const raw = localStorage.getItem(LS_KEY);
+      const raw = localStorage.getItem(boardKey(sectionId));
       if(!raw) return null;
       const s = JSON.parse(raw);
       return s && typeof s === 'object' ? s : null;
     }catch(_){ return null; }
   };
-  const saveState = (s) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(s));
+
+  const saveBoardState = (sectionId, s) => {
+    localStorage.setItem(boardKey(sectionId), JSON.stringify(s));
+  };
+
+  const loadDashboard = () => {
+    try{
+      const raw = localStorage.getItem(DASH_KEY);
+      if(!raw) return null;
+      const d = JSON.parse(raw);
+      return d && typeof d === 'object' ? d : null;
+    }catch(_){ return null; }
+  };
+  const saveDashboard = (d) => {
+    localStorage.setItem(DASH_KEY, JSON.stringify(d));
   };
 
   // ---------- state ----------
-  const state = {
+  let currentSectionId = null;
+
+  const defaultState = () => ({
     ui: {
       tab: 'wait',
       sidebarCollapsed: false,
@@ -51,33 +69,30 @@
       waitDensity: 1, // fixed (density controls removed)
     },
     people: [], // {id,name,createdAt,assignedBoxId:null|boxId}
-    boxes: [],  // {id,num,x,y,w,h,seatPersonId:null|personId,fontScale:1}
+    boxes: [],  // {id,num,x,y,w,h,seatPersonId:null|personId,fontScale:1,z,fontScale:1}
     selectedBoxIds: [],
-  };
+  });
 
-  const loaded = loadState();
-  if(loaded){
-    // soft-merge for forward compatibility
-    if(loaded.ui) Object.assign(state.ui, loaded.ui);
-    if(Array.isArray(loaded.people)) state.people = loaded.people;
-    if(Array.isArray(loaded.boxes)) state.boxes = loaded.boxes;
-    if(Array.isArray(loaded.selectedBoxIds)) state.selectedBoxIds = loaded.selectedBoxIds;
-  }
+  let state = defaultState();
 
-  // Ensure z-order exists (so overlapped boxes don't show "ghost" toolbars)
-  // Older saves might not have `z`. We assign increasing order by current array order.
-  (() => {
+  const normalizeState = () => {
+    // Ensure z-order exists + minimum box sizes
     let z = 1;
     state.boxes.forEach(b => {
       if(typeof b.z !== 'number') b.z = z++;
-      // keep legacy saves readable
-      if(typeof b.w === 'number') b.w = Math.max(200, b.w);
-      if(typeof b.h === 'number') b.h = Math.max(110, b.h);
+      if(typeof b.w === 'number') b.w = Math.max(220, b.w);
+      if(typeof b.h === 'number') b.h = Math.max(130, b.h);
       if(typeof b.fontScale !== 'number') b.fontScale = 1;
     });
-  })();
+  };
 
   // ---------- dom refs ----------
+  const dashboardView = $('#dashboardView');
+  const dashGrid = $('#dashGrid');
+  const dashMeta = $('#dashMeta');
+  const appRoot = $('#appRoot');
+  const backToDashboardBtn = $('#backToDashboard');
+
   const sidePanel = $('#sidePanel');
   const toggleSide = $('#toggleSide');
 
@@ -111,6 +126,106 @@
 
   const saveStatus = $('#saveStatus');
 
+  // ---------- dashboard (sections) ----------
+  const defaultSections = () => ([
+    { id:'sec_52', title:'#52 Closer Event - Monster Stack', badge:'Opened', badgeClass:'badgeOpened', meta:[['Buy-in','1,100,000 KRW'],['Time','11:18'],['Entries','138']] },
+    { id:'sec_41', title:'#41 Challenger Event DAY 2', badge:'Opened', badgeClass:'badgeOpened', meta:[['Buy-in','2,000,000 KRW'],['Time','12:00'],['Reg Closes','12:00']] },
+    { id:'sec_king', title:"King's Debut Open DAY 1/C", badge:'Running', badgeClass:'badgeRunning', meta:[['Buy-in','5,000 USDT'],['Time','13:00'],['Entries','148']] },
+    { id:'sec_s2', title:'S2 - NLH 8 Handed Turbo', badge:'Running', badgeClass:'badgeRunning', meta:[['Buy-in','8,000 USDT'],['Time','15:30'],['Reg Closes','19:20']] },
+  ]);
+
+  let dashboard = loadDashboard();
+  if(!dashboard || !Array.isArray(dashboard.sections)){
+    dashboard = { sections: defaultSections(), lastOpened: null };
+    saveDashboard(dashboard);
+  }
+
+  const renderDashboard = () => {
+    const dt = new Date();
+    const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    dashMeta.textContent = `${dt.getDate()} ${months[dt.getMonth()]}, ${dt.getFullYear()} ${weekdays[dt.getDay()]}`;
+
+    dashGrid.innerHTML = '';
+    for(const s of dashboard.sections){
+      const card = document.createElement('div');
+      const status = (s.badgeClass === 'badgeRunning') ? 'running' : 'opened';
+      card.className = `sectionCard ${status}`;
+      card.dataset.sectionId = s.id;
+      card.innerHTML = `
+        <div class="sectionHeader">
+          <div class="sectionTitle">${escapeHTML(s.title)}</div>
+          <div class="sectionBadge ${s.badgeClass||''}">${escapeHTML(s.badge||'')}</div>
+        </div>
+        <div class="sectionMeta">
+          ${Array.isArray(s.meta) ? s.meta.slice(0,3).map(([k,v])=>`
+            <div class="metaBox">
+              <div class="metaLabel">${escapeHTML(k)}</div>
+              <div class="metaValue">${escapeHTML(v)}</div>
+            </div>
+          `).join('') : ''}
+        </div>
+      `;
+      card.addEventListener('click', () => openSection(s.id));
+      dashGrid.appendChild(card);
+    }
+  };
+
+  const showDashboard = () => {
+    dashboardView.classList.remove('hidden');
+    appRoot.classList.add('hidden');
+    currentSectionId = null;
+  };
+
+  const showBoard = () => {
+    dashboardView.classList.add('hidden');
+    appRoot.classList.remove('hidden');
+  };
+
+  function openSection(sectionId){
+    if(!sectionId) return;
+    // persist current board
+    if(currentSectionId){
+      try{ saveBoardState(currentSectionId, state); }catch(_){/* ignore */}
+    }
+    currentSectionId = sectionId;
+    dashboard.lastOpened = sectionId;
+    saveDashboard(dashboard);
+
+    // load state for this section
+    const loaded = loadBoardState(sectionId);
+    state = defaultState();
+    if(loaded && typeof loaded === 'object'){
+      if(loaded.ui) Object.assign(state.ui, loaded.ui);
+      if(Array.isArray(loaded.people)) state.people = loaded.people;
+      if(Array.isArray(loaded.boxes)) state.boxes = loaded.boxes;
+      if(Array.isArray(loaded.selectedBoxIds)) state.selectedBoxIds = loaded.selectedBoxIds;
+    }
+    normalizeState();
+
+    suppressDirty = true;
+    showBoard();
+    applySidebar();
+    applyZoom();
+    selectModeBtn.classList.toggle('active', state.ui.selectMode);
+    setTab(state.ui.tab);
+    renderWait();
+    renderAssigned();
+    renderBoxes();
+    saveStatus.textContent = '저장됨';
+    suppressDirty = false;
+  }
+
+  function backToDashboard(){
+    // save current board before leaving
+    if(currentSectionId){
+      try{ saveBoardState(currentSectionId, state); }catch(_){/* ignore */}
+    }
+    closePopover();
+    currentSectionId = null;
+    showDashboard();
+  }
+
   // waiting time thresholds (ms)
   const WAIT_WARN_MS = 5 * 60 * 1000;   // 5m
   const WAIT_BAD_MS  = 15 * 60 * 1000;  // 15m
@@ -122,12 +237,14 @@
 
   // ---------- save status debounce ----------
   let saveTimer = null;
+  let suppressDirty = false;
   const markDirty = () => {
+    if(suppressDirty) return;
     saveStatus.textContent = '저장 중...';
     saveStatus.style.opacity = '1';
     if(saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      saveState(state);
+      if(currentSectionId) saveBoardState(currentSectionId, state);
       saveStatus.textContent = '저장됨';
     }, 260);
   };
@@ -805,7 +922,7 @@
     updateSeatTimers();
   }, 1000);
 
-  // ---------- initial render ----------
+  // ---------- render helpers ----------
   const renderAll = () => {
     applySidebar();
     applyZoom();
@@ -818,5 +935,15 @@
     renderBoxes();
   };
 
-  renderAll();
+  // ---------- navigation hooks ----------
+  backToDashboardBtn.addEventListener('click', backToDashboard);
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && !appRoot.classList.contains('hidden')){
+      backToDashboard();
+    }
+  });
+
+  // ---------- initial view ----------
+  renderDashboard();
+  showDashboard();
 })();
