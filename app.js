@@ -947,20 +947,29 @@
   renderDashboard();
   showDashboard();
 })();
-const boxesLayer = document.getElementById('boxesLayer');
-const boardDetail = document.getElementById('boardDetail');
-const detailBackBtn = document.getElementById('detailBackBtn');
 
-boxesLayer.addEventListener('click', (e) => {
-  const box = e.target.closest('.box');
-  if (!box) return;
 
-  // 드래그 중이면 무시
-  if (box.dataset.dragging === 'true') return;
+/* ===== Screen Transition v6 ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  const dashboard = document.getElementById('dashboardView');
+  const board = document.getElementById('appRoot');
+  const backBtn = document.getElementById('backToDashboard');
 
-  boardDetail.classList.remove('hidden');
-});
+  if(!dashboard || !board || !backBtn) return;
 
-detailBackBtn.addEventListener('click', () => {
-  boardDetail.classList.add('hidden');
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.sectionCard');
+    if(!card) return;
+
+    dashboard.classList.add('hidden');
+    board.classList.remove('hidden');
+    board.classList.add('screen');
+  });
+
+  backBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    board.classList.add('hidden');
+    dashboard.classList.remove('hidden');
+    dashboard.classList.add('screen');
+  });
 });
