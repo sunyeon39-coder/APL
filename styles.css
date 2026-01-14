@@ -98,3 +98,28 @@ body {
   border-radius: 24px;
   background: linear-gradient(180deg, #0e1728, #090f1c);
 }
+
+/* BOX BOARD */
+.box {
+  position: absolute;
+  width: 140px;
+  height: 90px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #253a63, #1a2744);
+  border: 2px solid rgba(255,255,255,0.25);
+  color: #fff;
+  padding: 10px;
+  cursor: grab;
+  user-select: none;
+}
+
+.box strong {
+  font-size: 18px;
+}
+
+.box span {
+  display: block;
+  font-size: 13px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
