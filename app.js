@@ -947,3 +947,20 @@
   renderDashboard();
   showDashboard();
 })();
+const boxesLayer = document.getElementById('boxesLayer');
+const boardDetail = document.getElementById('boardDetail');
+const detailBackBtn = document.getElementById('detailBackBtn');
+
+boxesLayer.addEventListener('click', (e) => {
+  const box = e.target.closest('.box');
+  if (!box) return;
+
+  // 드래그 중이면 무시
+  if (box.dataset.dragging === 'true') return;
+
+  boardDetail.classList.remove('hidden');
+});
+
+detailBackBtn.addEventListener('click', () => {
+  boardDetail.classList.add('hidden');
+});
