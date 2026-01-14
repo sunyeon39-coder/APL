@@ -2,19 +2,41 @@ const app = document.getElementById('app');
 
 let view = 'dashboard';
 let activeSection = null;
+let dragTarget = null;
+let offsetX = 0;
+let offsetY = 0;
 
 const sections = [
-  { id: 52, title: '#52 Closer Event - Monster Stack', status: 'opened', buyin: '1,100,000 KRW', time: '11:18', entries: 138 },
-  { id: 41, title: '#41 Challenger Event DAY 2', status: 'opened', buyin: '2,000,000 KRW', time: '12:00', entries: '-' },
-  { id: 1, title: "King's Debut Open DAY 1/C", status: 'running', buyin: '5,000 USDT', time: '13:00', entries: 148 },
-  { id: 2, title: 'S2 - NLH 8 Handed Turbo', status: 'running', buyin: '8,000 USDT', time: '15:30', entries: '-' }
+  {
+    id: 52,
+    title: '#52 Closer Event - Monster Stack',
+    status: 'opened',
+    buyin: '1,100,000 KRW',
+    time: '11:18',
+    entries: 138,
+    board: {
+      boxes: [
+        { id: 1, x: 60, y: 80, name: '종욱', time: '00:02:04' }
+      ]
+    }
+  },
+  {
+    id: 41,
+    title: '#41 Challenger Event DAY 2',
+    status: 'opened',
+    buyin: '2,000,000 KRW',
+    time: '12:00',
+    entries: '-',
+    board: { boxes: [] }
+  }
 ];
 
 function render() {
   app.innerHTML = '';
-  if (view === 'dashboard') renderDashboard();
-  else renderBoard();
+  view === 'dashboard' ? renderDashboard() : renderBoard();
 }
+
+/* ---------------- DASHBOARD ---------------- */
 
 function renderDashboard() {
   const header = document.createElement('div');
@@ -26,7 +48,7 @@ function renderDashboard() {
 
   sections.forEach(sec => {
     const card = document.createElement('div');
-    card.className = 'section-card ' + (sec.status === 'running' ? 'running' : '');
+    card.className = 'section-card';
     card.onclick = () => {
       activeSection = sec;
       view = 'board';
@@ -34,11 +56,8 @@ function renderDashboard() {
     };
 
     card.innerHTML = `
-      <div class="section-title">
-        ${sec.title}
-        <span class="badge ${sec.status === 'running' ? 'running' : ''}">
-          ${sec.status === 'running' ? 'Running' : 'Opened'}
-        </span>
+      <div class="section-title">${sec.title}
+        <span class="badge">${sec.status === 'opened' ? 'Opened' : 'Running'}</span>
       </div>
       <div class="info-row">
         <div class="info"><span>Buy-in</span><strong>${sec.buyin}</strong></div>
@@ -49,9 +68,10 @@ function renderDashboard() {
     grid.appendChild(card);
   });
 
-  app.appendChild(header);
-  app.appendChild(grid);
+  app.append(header, grid);
 }
+
+/* ---------------- BOARD ---------------- */
 
 function renderBoard() {
   const header = document.createElement('div');
@@ -60,7 +80,6 @@ function renderBoard() {
     <h2>${activeSection.title}</h2>
     <button class="back-btn">← Back</button>
   `;
-
   header.querySelector('.back-btn').onclick = () => {
     view = 'dashboard';
     activeSection = null;
@@ -70,8 +89,38 @@ function renderBoard() {
   const board = document.createElement('div');
   board.className = 'board-area';
 
-  app.appendChild(header);
-  app.appendChild(board);
+  activeSection.board.boxes.forEach(box => {
+    const el = document.createElement('div');
+    el.className = 'box';
+    el.style.left = box.x + 'px';
+    el.style.top = box.y + 'px';
+
+    el.innerHTML = `
+      <strong>${box.id}</strong>
+      <span>${box.name}</span>
+      <span>${box.time}</span>
+    `;
+
+    el.onmousedown = e => {
+      dragTarget = box;
+      offsetX = e.offsetX;
+      offsetY = e.offsetY;
+    };
+
+    board.appendChild(el);
+  });
+
+  board.onmousemove = e => {
+    if (!dragTarget) return;
+    dragTarget.x = e.offsetX - offsetX;
+    dragTarget.y = e.offsetY - offsetY;
+    render();
+  };
+
+  board.onmouseup = () => dragTarget = null;
+  board.onmouseleave = () => dragTarget = null;
+
+  app.append(header, board);
 }
 
 render();
