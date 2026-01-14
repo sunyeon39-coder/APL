@@ -673,3 +673,6 @@ body{
 }
 .backBtn:hover{ background: rgba(0,0,0,.32); }
 
+.grid{
+  pointer-events: none;
+}
