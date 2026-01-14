@@ -128,7 +128,7 @@
 
   // ---------- dashboard (sections) ----------
   const defaultSections = () => ([
-    { id:'sec_52', title:'#Main Event Day-1', badge:'Opened', badgeClass:'badgeOpened', meta:[['Buy-in','1,100,000 KRW'],['Time','11:18'],['Entries','138']] },
+    { id:'sec_1', title:'#Main Event Day-1', badge:'Opened', badgeClass:'badgeOpened', meta:[['Buy-in','1,100,000 KRW'],['Time','11:18'],['Entries','138']] },
     { id:'sec_41', title:'#41 Challenger Event DAY 2', badge:'Opened', badgeClass:'badgeOpened', meta:[['Buy-in','2,000,000 KRW'],['Time','12:00'],['Reg Closes','12:00']] },
     { id:'sec_king', title:"King's Debut Open DAY 1/C", badge:'Running', badgeClass:'badgeRunning', meta:[['Buy-in','5,000 USDT'],['Time','13:00'],['Entries','148']] },
     { id:'sec_s2', title:'S2 - NLH 8 Handed Turbo', badge:'Running', badgeClass:'badgeRunning', meta:[['Buy-in','8,000 USDT'],['Time','15:30'],['Reg Closes','19:20']] },
