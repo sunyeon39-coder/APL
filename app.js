@@ -1,171 +1,124 @@
 /* =====================================================
-   BOX BOARD — CLEAN SINGLE-STRUCTURE VERSION
+   BOX BOARD — CLEAN STABLE VERSION
    ===================================================== */
-document.querySelector(".layout-loading")?.classList.add("hidden");
 
 const LS_KEY = "boxboard_v1_state";
 
 /* ===============================
    STATE
    =============================== */
-let state = {
+const state = {
   dateText: "",
   boxes: [],
-  waiting: [],          // 🔥 대기자 추가
-  view: "main",
-  currentBoxId: null,
+  waiting: [],
 };
 
-let currentTab = 'box';
+let currentTab = "box"; // box | wait
 let editingBoxId = null;
 
 /* ===============================
    UTIL
    =============================== */
 const uid = () => "b_" + Math.random().toString(36).slice(2) + Date.now();
-const isTyping = (el) =>
-  el && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable);
+const isTyping = el =>
+  el && ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
 
 /* ===============================
    STORAGE
    =============================== */
 function saveState(){
-  localStorage.setItem(LS_KEY, JSON.stringify({
-    dateText: state.dateText,
-    boxes: state.boxes,
-    waiting: state.waiting        // 🔥 저장
-  }));
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
 }
 
 function loadState(){
   const raw = localStorage.getItem(LS_KEY);
   if(!raw) return false;
   try{
-    const parsed = JSON.parse(raw);
-    if(parsed.dateText) state.dateText = parsed.dateText;
-    if(Array.isArray(parsed.boxes)) state.boxes = parsed.boxes;
-    if(Array.isArray(parsed.waiting)) state.waiting = parsed.waiting; // 🔥 로드
+    Object.assign(state, JSON.parse(raw));
     return true;
-  }catch(e){ return false; }
+  }catch{
+    return false;
+  }
 }
 
 /* ===============================
    DOM
    =============================== */
-const appEl = document.getElementById("app");
-const boardEl = document.getElementById("board");
-const dateTextEl = document.getElementById("dateText");
+const boardEl   = document.getElementById("board");
+const dateText = document.getElementById("dateText");
 
-const inputDateText = document.getElementById("inputDateText");
-const saveTextBtn = document.getElementById("saveText");
-const closeTextBtn = document.getElementById("closeText");
+const addBoxBtn     = document.getElementById("addBoxBtn");
+const saveBoxBtn    = document.getElementById("saveBox");
+const cancelBoxBtn  = document.getElementById("cancelBox");
 
-const addBoxBtn = document.getElementById("addBoxBtn");
-const boxTitle = document.getElementById("boxTitle");
-const boxStatus = document.getElementById("boxStatus");
-const boxBuyin = document.getElementById("boxBuyin");
-const boxTime = document.getElementById("boxTime");
+const boxTitle      = document.getElementById("boxTitle");
+const boxStatus     = document.getElementById("boxStatus");
+const boxBuyin      = document.getElementById("boxBuyin");
+const boxTime       = document.getElementById("boxTime");
 const boxExtraLabel = document.getElementById("boxExtraLabel");
 const boxExtraValue = document.getElementById("boxExtraValue");
-const saveBoxBtn = document.getElementById("saveBox");
-const cancelBoxBtn = document.getElementById("cancelBox");
 
-/* 🔥 대기자 DOM */
-const waitingInput = document.getElementById("waitingNameInput");
-const waitingAddBtn = document.getElementById("addWaitingBtn");
-
-if (waitingInput && waitingAddBtn) {
-  const addWaiting = () => {
-    const name = waitingInput.value.trim();
-    if (!name) return;
-
-    state.waiting.push({
-      id: "w_" + Date.now(),
-      name
-    });
-
-    waitingInput.value = "";
-    saveState();
-    renderWait();
-  };
-
-  waitingAddBtn.addEventListener("click", addWaiting);
-
-  waitingInput.addEventListener("keydown", e => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addWaiting();
-    }
-  });
-}
+/* waiting */
+const waitingInput  = document.getElementById("waitingNameInput");
+const waitingBtn    = document.getElementById("addWaitingBtn");
+/* ===============================
+   OVERLAY (기존 모달 연결용)
+   =============================== */
+const overlayBox  = document.getElementById("overlayBox");
+const overlayText = document.getElementById("overlayText");
 
 /* ===============================
    RENDER
    =============================== */
 function renderHeader(){
-  dateTextEl.textContent = state.dateText || "";
+  if(dateText) dateText.textContent = state.dateText || "";
 }
 
-function statusClass(s){
-  s = (s||"").toLowerCase();
-  if(s==="running") return "running";
-  if(s==="closed") return "closed";
-  return "opened";
-}
-
-function renderMain(){
+function renderBoxes(){
   boardEl.innerHTML = "";
 
-  state.boxes.forEach(b=>{
+  state.boxes.forEach(box=>{
     const card = document.createElement("section");
-    card.className = `card ${statusClass(b.status)}`;
-    card.dataset.id = b.id;
-
+    card.className = "card";
     card.innerHTML = `
-      <div class="badge">${b.status}</div>
-      <h3 class="card-title">${b.title}</h3>
+      <div class="badge">${box.status}</div>
+      <h3 class="card-title">${box.title}</h3>
       <div class="meta">
-        <div class="pill"><div class="k">Buy-in</div><div class="v">${b.buyin}</div></div>
-        <div class="pill"><div class="k">Time</div><div class="v">${b.time}</div></div>
-        <div class="pill"><div class="k">${b.extraLabel}</div><div class="v">${b.extraValue}</div></div>
+        <div class="pill"><b>Buy-in</b> ${box.buyin}</div>
+        <div class="pill"><b>Time</b> ${box.time}</div>
+        <div class="pill"><b>${box.extraLabel}</b> ${box.extraValue}</div>
       </div>
     `;
 
-    card.addEventListener("click", () => {
-      const boxId = b.id;
-      window.location.href = `layout_index.html?boxId=${boxId}`;
-    });
+    card.onclick = ()=>{
+      location.href = `layout_index.html?boxId=${box.id}`;
+    };
 
     boardEl.appendChild(card);
   });
 }
 
-/* ===============================
-   🔥 WAITING RENDER (추가)
-   =============================== */
-function renderWait(){
+function renderWaiting(){
   boardEl.innerHTML = "";
 
-  if (!state.waiting.length) {
+  if(!state.waiting.length){
     boardEl.innerHTML = `<div class="empty">대기자 없음</div>`;
     return;
   }
 
-  state.waiting.forEach((w, idx)=>{
+  state.waiting.forEach((w, i)=>{
     const card = document.createElement("section");
     card.className = "card waiting-card";
-
     card.innerHTML = `
       <button class="wait-delete">×</button>
       <h3>${w.name}</h3>
     `;
 
-    // 🔥 삭제 버튼
-    card.querySelector(".wait-delete").onclick = (e)=>{
+    card.querySelector(".wait-delete").onclick = e=>{
       e.stopPropagation();
-      state.waiting.splice(idx,1);
+      state.waiting.splice(i,1);
       saveState();
-      renderWait();
+      render();
     };
 
     boardEl.appendChild(card);
@@ -174,186 +127,154 @@ function renderWait(){
 
 function render(){
   renderHeader();
-
-  if (currentTab === 'box') {
-    renderMain();
-  } else if (currentTab === 'wait') {
-    renderWait();
-  }
+  if(currentTab === "box") renderBoxes();
+  else renderWaiting();
 }
 
 /* ===============================
    EVENTS
    =============================== */
-saveTextBtn.onclick = ()=>{
-  state.dateText = inputDateText.value.trim();
-  saveState();
-  renderHeader();
-};
+   function closeBoxModal(){
+  if (!overlayBox) return;
+  overlayBox.classList.add("hidden");
+  overlayBox.setAttribute("aria-hidden", "true");
+}
 
-addBoxBtn.onclick = ()=>{};
-cancelBoxBtn.onclick = ()=>{};
+function closeTextModal(){
+  if (!overlayText) return;
+  overlayText.classList.add("hidden");
+  overlayText.setAttribute("aria-hidden", "true");
+}
+
+   function openTextModal(){
+  if (!overlayText) return;
+
+  overlayText.classList.remove("hidden");
+  overlayText.setAttribute("aria-hidden", "false");
+
+  // 🔥 핵심: 텍스트 입력값만 세팅
+  if (inputDateText) {
+    inputDateText.value = state.dateText || "";
+  }
+}
+
+
+   function openBoxModal(){
+  if (!overlayBox) return;
+
+  overlayBox.classList.remove("hidden");
+  overlayBox.setAttribute("aria-hidden", "false");
+
+  editingBoxId = null;
+
+  // 입력 초기화 (기존 동작 유지)
+  boxTitle.value = "";
+  boxStatus.value = "Opened";
+  boxBuyin.value = "";
+  boxTime.value = "";
+  boxExtraLabel.value = "Entries";
+  boxExtraValue.value = "";
+}
+
+if(waitingBtn && waitingInput){
+  const addWaiting = ()=>{
+    const name = waitingInput.value.trim();
+    if(!name) return;
+
+    state.waiting.push({ id: uid(), name });
+    waitingInput.value = "";
+
+    currentTab = "wait";
+    saveState();
+    render();
+  };
+
+  waitingBtn.onclick = addWaiting;
+  waitingInput.onkeydown = e=>{
+    if(e.key === "Enter"){
+      e.preventDefault();
+      addWaiting();
+    }
+  };
+}
 
 saveBoxBtn.onclick = ()=>{
-  const data = {
+  const box = {
     id: editingBoxId || uid(),
     title: boxTitle.value || "(untitled)",
     status: boxStatus.value,
     buyin: boxBuyin.value,
     time: boxTime.value,
     extraLabel: boxExtraLabel.value,
-    extraValue: boxExtraValue.value,
+    extraValue: boxExtraValue.value
   };
-  if(editingBoxId)
-    state.boxes = state.boxes.map(b=>b.id===editingBoxId?data:b);
-  else
-    state.boxes.push(data);
 
+  if(editingBoxId){
+    state.boxes = state.boxes.map(b=>b.id===editingBoxId?box:b);
+  }else{
+    state.boxes.push(box);
+  }
+
+  editingBoxId = null;
+  currentTab = "box";
   saveState();
   render();
 };
 
-/* ===============================
-   🔥 WAITING ADD (BUTTON + ENTER)
-   =============================== */
-if (waitingInput && waitingAddBtn) {
-  const addWaiting = ()=>{
-  const name = waitingInput.value.trim();
-  if (!name) return;
-
-  state.waiting.push({
-    id: "w_" + Date.now(),
-    name
-  });
-
-  waitingInput.value = "";
-  saveState();
-
-  // 🔥 핵심
-  currentTab = "wait";
-  render();
+addBoxBtn.onclick = ()=>{
+  openBoxModal();
 };
 
 
-  waitingAddBtn.addEventListener("click", addWaiting);
+document.addEventListener("keydown", e => {
+  if (isTyping(document.activeElement)) return;
 
-  waitingInput.addEventListener("keydown", e=>{
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addWaiting();
+  const key = e.key.toLowerCase();
+if (key === "escape") {
+    e.preventDefault();
+
+    // 텍스트 모달 우선
+    if (overlayText && !overlayText.classList.contains("hidden")) {
+      closeTextModal();
+      return;
     }
-  });
-}
 
-/* ===============================
-   KEYBOARD
-   =============================== */
-document.addEventListener("keydown",(e)=>{
-  if(isTyping(document.activeElement)) return;
-  const k = e.key.toLowerCase();
+    // 그 다음 박스 모달
+    if (overlayBox && !overlayBox.classList.contains("hidden")) {
+      closeBoxModal();
+      return;
+    }
+  }
+  if (key === "w") {
+    e.preventDefault();
+    openBoxModal();     // ✅ 박스 모달
+  }
 
-  if(k==="w") currentTab = "wait", render();
-  if(k==="b") currentTab = "box", render();
+  if (key === "e") {
+    e.preventDefault();
+    openTextModal();    // ✅ 텍스트 모달
+  }
+
+  if (key === "b") {
+    currentTab = "box";
+    render();
+  }
 });
 
 /* ===============================
    BOOT
    =============================== */
-if(!loadState() || !state.boxes || state.boxes.length === 0){
-  state.boxes = [
-    {
-      id: uid(),
-      title: "Sample Box 1",
-      status: "Opened",
-      buyin: "1,000,000 KRW",
-      time: "12:00",
-      extraLabel: "Entries",
-      extraValue: "0"
-    }
-  ];
+if(!loadState() || !state.boxes.length){
+  state.boxes = [{
+    id: uid(),
+    title: "Sample Box",
+    status: "Opened",
+    buyin: "1,000,000 KRW",
+    time: "12:00",
+    extraLabel: "Entries",
+    extraValue: "0"
+  }];
   saveState();
 }
+
 render();
-/* ===============================
-   WAITING PATCH — FORCE BIND (SAFE)
-   =============================== */
-(function(){
-  // ✅ 네 실제 HTML ID
-  const input = document.getElementById("waitingNameInput");
-  const btn   = document.getElementById("addWaitingBtn") || document.getElementById("addWaitingBtn".replace("Btn","Btn")); // (그냥 안전)
-
-  // 버튼 id가 addWaitingBtn 인 걸 확인했으니 그대로 사용
-  // 혹시 너가 addWaitingBtn / addWaitingBtn 혼용했을까봐 위처럼 썼지만,
-  // 아래에서 다시 제대로 잡음:
-  const addBtn = document.getElementById("addWaitingBtn");
-
-  if (!input || !addBtn) {
-    console.warn("[WAITING PATCH] input/button not found", { input, addBtn });
-    return;
-  }
-
-  console.log("[WAITING PATCH] bound OK");
-
-  // state.waiting 없으면 만들어줌 (기존 구조 안 깨짐)
-  if (!Array.isArray(state.waiting)) state.waiting = [];
-
-  // renderWait 없으면 최소 렌더러 만들어줌 (기존 renderWait 있으면 안 건드림)
-  if (typeof renderWait !== "function") {
-    window.renderWait = function(){
-      // boardEl 없으면 못 그림
-      const host = document.getElementById("board");
-      if (!host) return;
-
-      host.innerHTML = "";
-      if (!state.waiting.length) {
-        host.innerHTML = `<div class="empty">대기자 없음</div>`;
-        return;
-      }
-
-      state.waiting.forEach((w, idx) => {
-        const card = document.createElement("section");
-        card.className = "card waiting-card";
-        card.innerHTML = `
-          <button class="wait-delete">×</button>
-          <h3>${w.name}</h3>
-        `;
-        card.querySelector(".wait-delete").addEventListener("click", (e)=>{
-          e.stopPropagation();
-          state.waiting.splice(idx, 1);
-          saveState();
-          renderWait();
-        });
-        host.appendChild(card);
-      });
-    };
-  }
-
-  function addWaiting(){
-    const name = input.value.trim();
-    if (!name) return;
-
-    state.waiting.push({ id: "w_" + Date.now(), name, startedAt: Date.now() });
-    input.value = "";
-
-    saveState();
-
-    // ✅ 안 보이는 문제 방지: wait 탭으로 강제 전환 + render 호출
-    currentTab = "wait";
-    if (typeof render === "function") render();
-    else renderWait();
-
-    console.log("[WAITING PATCH] added:", name, "count:", state.waiting.length);
-  }
-
-  // ✅ 기존에 같은 이벤트가 여러 번 붙어도 문제 줄이기 위해 clone 방식으로 초기화
-  const newBtn = addBtn.cloneNode(true);
-  addBtn.parentNode.replaceChild(newBtn, addBtn);
-
-  newBtn.addEventListener("click", addWaiting);
-  input.addEventListener("keydown", (e)=>{
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addWaiting();
-    }
-  });
-})();
