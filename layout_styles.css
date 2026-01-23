@@ -1,0 +1,339 @@
+/* =================================================
+   Box Board – unified box/card UI (Seat + Waiting)
+   ================================================= */
+
+:root{
+  --bg:#0f1220;
+  --panel:#171a2b;
+  --panel2:#14172a;
+  --text:#e9ecff;
+  --muted:#a9b0d6;
+  --good:#38d39f;
+  --warn:#ffd166;
+  --bad:#ff5c7c;
+  --blue:#4aa3ff;
+  --stroke: rgba(255,255,255,.12);
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --radius:18px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    "Apple SD Gothic Neo","Noto Sans KR", Arial, sans-serif;
+  background:
+    radial-gradient(1200px 700px at 20% 0%, rgba(74,163,255,.14), transparent 60%),
+    radial-gradient(900px 600px at 80% 20%, rgba(56,211,159,.08), transparent 55%),
+    var(--bg);
+  color:var(--text);
+}
+
+/* =================================================
+   COMMON CARD
+   ================================================= */
+
+.card{
+  position:relative;
+  background: linear-gradient(135deg, #182235, #111a2b);
+  border:1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding:8px;
+  box-shadow: var(--shadow);
+  cursor:pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(0,0,0,.45);
+}
+
+/* =================================================
+   META / STATUS / TIME
+   ================================================= */
+
+.meta{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 12px;
+  border-radius:999px;
+  font-weight:800;
+  border:1px solid rgba(255,255,255,.18);
+}
+.pill.good{background:rgba(56,211,159,.12);border-color:rgba(56,211,159,.45)}
+.pill.warn{background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.45)}
+.pill.bad {background:rgba(255,92,124,.12);border-color:rgba(255,92,124,.45)}
+.pill.wait{background:rgba(120,160,255,.12);border-color:rgba(120,160,255,.45)}
+
+.running-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  font-size:12px;
+}
+.running-pill .status{font-weight:900}
+.running-pill .sep{opacity:.5}
+.running-pill .time{
+  font-weight:800;
+  font-variant-numeric: tabular-nums;
+  color:#bfe8ff;
+}
+
+/* =================================================
+   LAYOUT STRUCTURE
+   ================================================= */
+
+.layout-wrap{
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.layout-top{
+  padding:6px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.layout-top .btn{
+  padding:4px 12px;
+  height:28px;
+}
+
+/* =================================================
+   SEAT GRID (상단)
+   ================================================= */
+
+.seat-scroll-area{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:0 16px;
+}
+
+.layout-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap:12px;
+}
+
+/* Seat 삭제 버튼 */
+/* ===============================
+   Seat 삭제 버튼 – Overlay 스타일
+   =============================== */
+
+.seat-delete{
+  position: absolute;
+  top: 8px;
+  right: 8px;
+
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
+
+  color: rgba(255,255,255,.65);
+  font-size: 14px;
+  font-weight: 900;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  /* 🔥 겹쳐 보이는 핵심 */
+  backdrop-filter: blur(4px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.05),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+
+  opacity: .65;
+  transition: all .15s ease;
+}
+
+/* hover 시만 강조 */
+.seat-delete:hover{
+  opacity: 1;
+  background: rgba(255,255,255,.22);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+
+/* =================================================
+   WAIT SECTION (하단 고정 + 내부 스크롤)
+   ================================================= */
+
+.wait-section{
+  height:260px;
+  display:flex;
+  flex-direction:column;
+  border-top:1px solid rgba(255,255,255,.08);
+  background: linear-gradient(
+    180deg,
+    rgba(10,14,24,.9),
+    rgba(5,8,16,.95)
+  );
+}
+
+/* 입력 + 버튼 */
+.waiting-header{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  flex-shrink:0;
+  z-index:2;
+}
+
+/* 입력 */
+#waitingNameInput{
+  background: linear-gradient(135deg, #151d33, #0f162a);
+  color: #e9ecff;
+
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 999px;
+
+  height: 32px;
+  padding: 6px 14px;
+
+  width: 140px;
+  max-width: 60%;
+
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+}
+
+#waitingNameInput::placeholder{
+  color: rgba(233,236,255,.55);
+}
+
+
+/* 버튼 */
+#addWaitingBtn{
+  background: linear-gradient(135deg, #1f2a44, #151d33);
+  color: #e9ecff;
+
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 999px;
+
+  height: 32px;
+  padding: 0 16px;
+
+  font-weight: 800;
+  cursor: pointer;
+
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+}
+
+#addWaitingBtn:hover{
+  background: linear-gradient(135deg, #25325a, #1a2444);
+}
+
+
+/* =================================================
+   WAITING LIST (가로 정렬 + 스크롤)
+   ================================================= */
+
+.wait-scroll{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:8px 12px;
+}
+
+.waiting-grid{
+  display:flex;
+  flex-direction:row;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:flex-start;
+}
+
+/* 대기 카드 */
+.waiting-card{
+  min-width:140px;
+  max-width:220px;
+  height:36px;
+  padding:2px 8px;
+  border-radius:25px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  position:relative;
+}
+
+/* 이름 */
+.waiting-card h3{
+  font-size:16px;
+  margin:0;
+  white-space:nowrap;
+}
+
+/* 시간 */
+.waiting-card .wait-time{
+  font-size:16px;
+  font-weight:900;
+  padding:4px 12px;
+  border-radius:999px;
+  background:rgba(120,160,255,.18);
+  border:1px solid rgba(120,160,255,.45);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 삭제 */
+.waiting-card .wait-delete{
+  position:absolute;
+  top:4px;
+  right:4px;
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  font-size:12px;
+  font-weight:900;
+  background:rgba(255,255,255,.15);
+  color:rgba(255,255,255,.4);
+  cursor:pointer;
+}
+.waiting-card .wait-delete:hover{
+  background:rgba(255,92,124,.9);
+  color:#fff;
+}
+
+/* =================================================
+   INTERACTION
+   ================================================= */
+
+.card.selected{
+  outline:1px solid rgba(255,255,255,.85);
+  outline-offset:2px;
+}
+.card.drag-over{
+  outline:2px dashed rgba(120,180,255,.9);
+  background:rgba(120,180,255,.08);
+}
+
+/* =================================================
+   LOADING OFF
+   ================================================= */
+
+#layoutBootLoading{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}

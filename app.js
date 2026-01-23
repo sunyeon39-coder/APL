@@ -1,975 +1,359 @@
-/* Box Board - app.js (no build, single file)
-   v2026-01-05: add "o" tool button for per-box text size control
-*/
-(() => {
-  'use strict';
+/* =====================================================
+   BOX BOARD — CLEAN SINGLE-STRUCTURE VERSION
+   ===================================================== */
+document.querySelector(".layout-loading")?.classList.add("hidden");
 
-  // ---------- utils ----------
-  const $ = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(2, 6);
-  const now = () => Date.now();
-  const fmtMS = (ms) => {
-    ms = Math.max(0, ms|0);
-    const s = Math.floor(ms/1000);
-    const hh = Math.floor(s/3600);
-    const mm = Math.floor((s%3600)/60);
-    const ss = s%60;
-    return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
-  };
+const LS_KEY = "boxboard_v1_state";
 
-  // time thresholds for list emphasis
-  const pillTimeClass = (elapsedMs) => {
-    const m = elapsedMs / 60000;
-    if(m >= 15) return 'tBad';
-    if(m >= 5) return 'tWarn';
-    return 'tGood';
-  };
+/* ===============================
+   STATE
+   =============================== */
+let state = {
+  dateText: "",
+  boxes: [],
+  waiting: [],          // 🔥 대기자 추가
+  view: "main",
+  currentBoxId: null,
+};
 
-  // ---------- persistence (per section) ----------
-  const DASH_KEY = 'boxBoard_dashboard_v2026_01_13';
-  const BOARD_KEY_PREFIX = 'boxBoard_board_v2026_01_13:';
-  const boardKey = (sectionId) => `${BOARD_KEY_PREFIX}${sectionId}`;
+let currentTab = 'box';
+let editingBoxId = null;
 
-  const loadBoardState = (sectionId) => {
-    try{
-      const raw = localStorage.getItem(boardKey(sectionId));
-      if(!raw) return null;
-      const s = JSON.parse(raw);
-      return s && typeof s === 'object' ? s : null;
-    }catch(_){ return null; }
-  };
+/* ===============================
+   UTIL
+   =============================== */
+const uid = () => "b_" + Math.random().toString(36).slice(2) + Date.now();
+const isTyping = (el) =>
+  el && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable);
 
-  const saveBoardState = (sectionId, s) => {
-    localStorage.setItem(boardKey(sectionId), JSON.stringify(s));
-  };
+/* ===============================
+   STORAGE
+   =============================== */
+function saveState(){
+  localStorage.setItem(LS_KEY, JSON.stringify({
+    dateText: state.dateText,
+    boxes: state.boxes,
+    waiting: state.waiting        // 🔥 저장
+  }));
+}
 
-  const loadDashboard = () => {
-    try{
-      const raw = localStorage.getItem(DASH_KEY);
-      if(!raw) return null;
-      const d = JSON.parse(raw);
-      return d && typeof d === 'object' ? d : null;
-    }catch(_){ return null; }
-  };
-  const saveDashboard = (d) => {
-    localStorage.setItem(DASH_KEY, JSON.stringify(d));
-  };
+function loadState(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(!raw) return false;
+  try{
+    const parsed = JSON.parse(raw);
+    if(parsed.dateText) state.dateText = parsed.dateText;
+    if(Array.isArray(parsed.boxes)) state.boxes = parsed.boxes;
+    if(Array.isArray(parsed.waiting)) state.waiting = parsed.waiting; // 🔥 로드
+    return true;
+  }catch(e){ return false; }
+}
 
-  // ---------- state ----------
-  let currentSectionId = null;
+/* ===============================
+   DOM
+   =============================== */
+const appEl = document.getElementById("app");
+const boardEl = document.getElementById("board");
+const dateTextEl = document.getElementById("dateText");
 
-  const defaultState = () => ({
-    ui: {
-      tab: 'wait',
-      sidebarCollapsed: false,
-      zoom: 1,
-      selectMode: false,
-      waitDensity: 1, // fixed (density controls removed)
-    },
-    people: [], // {id,name,createdAt,assignedBoxId:null|boxId}
-    boxes: [],  // {id,num,x,y,w,h,seatPersonId:null|personId,fontScale:1,z,fontScale:1}
-    selectedBoxIds: [],
-  });
+const inputDateText = document.getElementById("inputDateText");
+const saveTextBtn = document.getElementById("saveText");
+const closeTextBtn = document.getElementById("closeText");
 
-  let state = defaultState();
+const addBoxBtn = document.getElementById("addBoxBtn");
+const boxTitle = document.getElementById("boxTitle");
+const boxStatus = document.getElementById("boxStatus");
+const boxBuyin = document.getElementById("boxBuyin");
+const boxTime = document.getElementById("boxTime");
+const boxExtraLabel = document.getElementById("boxExtraLabel");
+const boxExtraValue = document.getElementById("boxExtraValue");
+const saveBoxBtn = document.getElementById("saveBox");
+const cancelBoxBtn = document.getElementById("cancelBox");
 
-  const normalizeState = () => {
-    // Ensure z-order exists + minimum box sizes
-    let z = 1;
-    state.boxes.forEach(b => {
-      if(typeof b.z !== 'number') b.z = z++;
-      if(typeof b.w === 'number') b.w = Math.max(220, b.w);
-      if(typeof b.h === 'number') b.h = Math.max(130, b.h);
-      if(typeof b.fontScale !== 'number') b.fontScale = 1;
+/* 🔥 대기자 DOM */
+const waitingInput = document.getElementById("waitingNameInput");
+const waitingAddBtn = document.getElementById("addWaitingBtn");
+
+if (waitingInput && waitingAddBtn) {
+  const addWaiting = () => {
+    const name = waitingInput.value.trim();
+    if (!name) return;
+
+    state.waiting.push({
+      id: "w_" + Date.now(),
+      name
     });
-  };
 
-  // ---------- dom refs ----------
-  const dashboardView = $('#dashboardView');
-  const dashGrid = $('#dashGrid');
-  const dashMeta = $('#dashMeta');
-  const appRoot = $('#appRoot');
-  const backToDashboardBtn = $('#backToDashboard');
-
-  const sidePanel = $('#sidePanel');
-  const toggleSide = $('#toggleSide');
-
-  const tabBtns = $$('.tab');
-  const panels = $$('.panel');
-
-  const nameInput = $('#nameInput');
-  const addWaitBtn = $('#addWait');
-  const searchInput = $('#searchInput');
-  const waitList = $('#waitList');
-  // density controls removed
-
-  const assignedList = $('#assignedList');
-
-  const addBoxBtn = $('#addBox');
-  const deleteSelectedBtn = $('#deleteSelected');
-
-  const boxesLayer = $('#boxesLayer');
-  const canvas = $('#canvas');
-  const zoomPct = $('#zoomPct');
-  const zoomIn = $('#zoomIn');
-  const zoomOut = $('#zoomOut');
-  const zoomReset = $('#zoomReset');
-
-  const selectModeBtn = $('#selectMode');
-
-  const alignHBtn = $('#alignH');
-  const alignVBtn = $('#alignV');
-  const spaceHBtn = $('#spaceH');
-  const spaceVBtn = $('#spaceV');
-
-  const saveStatus = $('#saveStatus');
-
-  // ---------- dashboard (sections) ----------
-  const defaultSections = () => ([
-    { id:'sec_1', title:'#Main Event Day-1', badge:'Opened', badgeClass:'badgeOpened', meta:[['Buy-in','1,100,000 KRW'],['Time','11:18'],['Entries','138']] },
-    { id:'sec_41', title:'#41 Challenger Event DAY 2', badge:'Opened', badgeClass:'badgeOpened', meta:[['Buy-in','2,000,000 KRW'],['Time','12:00'],['Reg Closes','12:00']] },
-    { id:'sec_king', title:"King's Debut Open DAY 1/C", badge:'Running', badgeClass:'badgeRunning', meta:[['Buy-in','5,000 USDT'],['Time','13:00'],['Entries','148']] },
-    { id:'sec_s2', title:'S2 - NLH 8 Handed Turbo', badge:'Running', badgeClass:'badgeRunning', meta:[['Buy-in','8,000 USDT'],['Time','15:30'],['Reg Closes','19:20']] },
-  ]);
-
-  let dashboard = loadDashboard();
-  if(!dashboard || !Array.isArray(dashboard.sections)){
-    dashboard = { sections: defaultSections(), lastOpened: null };
-    saveDashboard(dashboard);
-  }
-
-  const renderDashboard = () => {
-    const dt = new Date();
-    const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    dashMeta.textContent = `${dt.getDate()} ${months[dt.getMonth()]}, ${dt.getFullYear()} ${weekdays[dt.getDay()]}`;
-
-    dashGrid.innerHTML = '';
-    for(const s of dashboard.sections){
-      const card = document.createElement('div');
-      const status = (s.badgeClass === 'badgeRunning') ? 'running' : 'opened';
-      card.className = `sectionCard ${status}`;
-      card.dataset.sectionId = s.id;
-      card.innerHTML = `
-        <div class="sectionHeader">
-          <div class="sectionTitle">${escapeHTML(s.title)}</div>
-          <div class="sectionBadge ${s.badgeClass||''}">${escapeHTML(s.badge||'')}</div>
-        </div>
-        <div class="sectionMeta">
-          ${Array.isArray(s.meta) ? s.meta.slice(0,3).map(([k,v])=>`
-            <div class="metaBox">
-              <div class="metaLabel">${escapeHTML(k)}</div>
-              <div class="metaValue">${escapeHTML(v)}</div>
-            </div>
-          `).join('') : ''}
-        </div>
-      `;
-      card.addEventListener('click', () => openSection(s.id));
-      dashGrid.appendChild(card);
-    }
-  };
-
-  const showDashboard = () => {
-    dashboardView.classList.remove('hidden');
-    appRoot.classList.add('hidden');
-    currentSectionId = null;
-  };
-
-  const showBoard = () => {
-    dashboardView.classList.add('hidden');
-    appRoot.classList.remove('hidden');
-  };
-
-  function openSection(sectionId){
-    if(!sectionId) return;
-    // persist current board
-    if(currentSectionId){
-      try{ saveBoardState(currentSectionId, state); }catch(_){/* ignore */}
-    }
-    currentSectionId = sectionId;
-    dashboard.lastOpened = sectionId;
-    saveDashboard(dashboard);
-
-    // load state for this section
-    const loaded = loadBoardState(sectionId);
-    state = defaultState();
-    if(loaded && typeof loaded === 'object'){
-      if(loaded.ui) Object.assign(state.ui, loaded.ui);
-      if(Array.isArray(loaded.people)) state.people = loaded.people;
-      if(Array.isArray(loaded.boxes)) state.boxes = loaded.boxes;
-      if(Array.isArray(loaded.selectedBoxIds)) state.selectedBoxIds = loaded.selectedBoxIds;
-    }
-    normalizeState();
-
-    suppressDirty = true;
-    showBoard();
-    applySidebar();
-    applyZoom();
-    selectModeBtn.classList.toggle('active', state.ui.selectMode);
-    setTab(state.ui.tab);
+    waitingInput.value = "";
+    saveState();
     renderWait();
-    renderAssigned();
-    renderBoxes();
-    saveStatus.textContent = '저장됨';
-    suppressDirty = false;
-  }
+  };
 
-  function backToDashboard(){
-    // save current board before leaving
-    if(currentSectionId){
-      try{ saveBoardState(currentSectionId, state); }catch(_){/* ignore */}
+  waitingAddBtn.addEventListener("click", addWaiting);
+
+  waitingInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addWaiting();
     }
-    closePopover();
-    currentSectionId = null;
-    showDashboard();
-  }
+  });
+}
 
-  // waiting time thresholds (ms)
-  const WAIT_WARN_MS = 5 * 60 * 1000;   // 5m
-  const WAIT_BAD_MS  = 15 * 60 * 1000;  // 15m
-  const timeClass = (elapsedMs) => {
-    if(elapsedMs >= WAIT_BAD_MS) return 'tBad';
-    if(elapsedMs >= WAIT_WARN_MS) return 'tWarn';
-    return 'tGood';
-  };
+/* ===============================
+   RENDER
+   =============================== */
+function renderHeader(){
+  dateTextEl.textContent = state.dateText || "";
+}
 
-  // ---------- save status debounce ----------
-  let saveTimer = null;
-  let suppressDirty = false;
-  const markDirty = () => {
-    if(suppressDirty) return;
-    saveStatus.textContent = '저장 중...';
-    saveStatus.style.opacity = '1';
-    if(saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      if(currentSectionId) saveBoardState(currentSectionId, state);
-      saveStatus.textContent = '저장됨';
-    }, 260);
-  };
+function statusClass(s){
+  s = (s||"").toLowerCase();
+  if(s==="running") return "running";
+  if(s==="closed") return "closed";
+  return "opened";
+}
 
-  // ---------- ui helpers ----------
-  const setTab = (tab) => {
-    state.ui.tab = tab;
-    tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    panels.forEach(p => p.classList.toggle('hidden', p.dataset.panel !== tab));
-    markDirty();
-  };
+function renderMain(){
+  boardEl.innerHTML = "";
 
-  const applySidebar = () => {
-    sidePanel.classList.toggle('collapsed', !!state.ui.sidebarCollapsed);
-  };
+  state.boxes.forEach(b=>{
+    const card = document.createElement("section");
+    card.className = `card ${statusClass(b.status)}`;
+    card.dataset.id = b.id;
 
-  const applyZoom = () => {
-    const z = clamp(state.ui.zoom, 0.3, 2.5);
-    state.ui.zoom = z;
-    canvas.style.transform = `scale(${z})`;
-    zoomPct.textContent = `${Math.round(z*100)}%`;
-  };
-
-  const isSelectToggle = (ev) => state.ui.selectMode || ev.shiftKey;
-
-  const getBoxById = (id) => state.boxes.find(b => b.id === id) || null;
-  const getPersonById = (id) => state.people.find(p => p.id === id) || null;
-
-  // Bring interacted box to front (fix overlapping artifacts)
-  const bumpBoxZ = (boxId) => {
-    const b = getBoxById(boxId);
-    if(!b) return;
-    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number') ? x.z : 0), 0);
-    const nextZ = maxZ + 1;
-    if(b.z !== nextZ){
-      b.z = nextZ;
-      markDirty();
-    }
-  };
-
-  const selectedSet = () => new Set(state.selectedBoxIds);
-  const setSelected = (arr) => { state.selectedBoxIds = Array.from(new Set(arr)); markDirty(); renderBoxes(); };
-
-  const toggleSelectBox = (boxId) => {
-    const s = selectedSet();
-    if(s.has(boxId)) s.delete(boxId); else s.add(boxId);
-    state.selectedBoxIds = Array.from(s);
-    markDirty();
-    renderBoxes();
-  };
-
-  const clearSelection = () => {
-    if(state.selectedBoxIds.length){
-      state.selectedBoxIds = [];
-      markDirty();
-      renderBoxes();
-    }
-  };
-
-  // ---------- people actions ----------
-  const addWaiting = (name) => {
-    name = (name || '').trim();
-    if(!name) return;
-    state.people.unshift({ id: uid(), name, createdAt: now(), assignedBoxId: null });
-    nameInput.value = '';
-    markDirty();
-    renderAll();
-  };
-
-  const deletePerson = (personId) => {
-    // unseat if seated
-    state.boxes.forEach(b => { if(b.seatPersonId === personId) b.seatPersonId = null; });
-    state.people = state.people.filter(p => p.id !== personId);
-    markDirty();
-    renderAll();
-  };
-
-  const unassignPerson = (personId) => {
-    const p = getPersonById(personId);
-    if(!p) return;
-    p.assignedBoxId = null;
-    // also clear seat links in boxes (if any)
-    state.boxes.forEach(b => { if(b.seatPersonId === personId) b.seatPersonId = null; });
-    markDirty();
-    renderAll();
-  };
-
-  const assignPersonToBox = (personId, boxId) => {
-    const p = getPersonById(personId);
-    const b = getBoxById(boxId);
-    if(!p || !b) return;
-
-    // if box had someone, push them back to wait
-    if(b.seatPersonId){
-      const prev = getPersonById(b.seatPersonId);
-      if(prev) prev.assignedBoxId = null;
-    }
-
-    // if this person was in another box, clear that seat
-    state.boxes.forEach(x => { if(x.seatPersonId === personId) x.seatPersonId = null; });
-
-    b.seatPersonId = personId;
-    p.assignedBoxId = boxId;
-
-    markDirty();
-    renderAll();
-  };
-
-  // ---------- box actions ----------
-  const nextBoxNum = () => {
-    const m = state.boxes.reduce((acc,b)=>Math.max(acc, b.num||0), 0);
-    return m + 1;
-  };
-
-  const addBox = () => {
-    const num = nextBoxNum();
-    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number') ? x.z : 0), 0);
-    const b = {
-      id: uid(),
-      num,
-      x: 120 + (num-1)*30,
-      y: 80 + (num-1)*20,
-      w: 240,
-      h: 130,
-      seatPersonId: null,
-      fontScale: 1,
-      z: maxZ + 1,
-    };
-    state.boxes.push(b);
-    markDirty();
-    renderBoxes();
-  };
-
-  const deleteSelectedBoxes = () => {
-    const s = selectedSet();
-    if(!s.size) return;
-    // unassign people seated in deleted boxes
-    state.boxes.forEach(b => {
-      if(s.has(b.id) && b.seatPersonId){
-        const p = getPersonById(b.seatPersonId);
-        if(p) p.assignedBoxId = null;
-      }
-    });
-    state.boxes = state.boxes.filter(b => !s.has(b.id));
-    state.selectedBoxIds = [];
-    markDirty();
-    renderAll();
-  };
-
-  // ---------- render lists ----------
-  const renderWait = () => {
-    const q = (searchInput.value || '').trim().toLowerCase();
-    const waiting = state.people.filter(p => !p.assignedBoxId && (!q || p.name.toLowerCase().includes(q)));
-    // waiting list layout (density controls removed)
-    waitList.classList.remove('density2','density3');
-    waitList.classList.toggle('compact', true);
-
-    waitList.innerHTML = '';
-    waiting.forEach(p => {
-      const el = document.createElement('div');
-      el.className = 'item';
-      el.draggable = true;
-      el.dataset.pid = p.id;
-
-      // 이름(중복 표시 방지): 왼쪽은 이름만, 오른쪽 pill은 시간만
-      const nameEl = document.createElement('div');
-      nameEl.className = 'personName';
-      nameEl.textContent = p.name;
-
-      const pill = document.createElement('div');
-      const elapsed = now() - p.createdAt;
-      pill.className = `pill ${pillTimeClass(elapsed)}`;
-      // label + time (match UI in screenshot)
-      pill.innerHTML = `<span class="label">대기</span><span class="time">${fmtMS(elapsed)}</span>`;
-
-      const del = document.createElement('button');
-      del.className = 'itemBtn';
-      del.textContent = '삭제';
-      del.addEventListener('click', (e)=>{ e.stopPropagation(); deletePerson(p.id); });
-
-      el.addEventListener('dragstart', (e) => {
-        el.classList.add('dragging');
-        e.dataTransfer.setData('text/plain', p.id);
-        e.dataTransfer.effectAllowed = 'move';
-      });
-      el.addEventListener('dragend', () => el.classList.remove('dragging'));
-
-      el.append(nameEl, pill, del);
-      waitList.appendChild(el);
-    });
-  };
-  const renderAssigned = () => {
-    const assigned = state.people.filter(p => !!p.assignedBoxId);
-    assignedList.innerHTML = '';
-    assigned.forEach(p => {
-      const el = document.createElement('div');
-      el.className = 'item';
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'personName';
-      nameEl.textContent = p.name;
-
-      const pill = document.createElement('div');
-      const elapsed = now() - p.createdAt;
-      pill.className = `pill ${pillTimeClass(elapsed)}`;
-      // show only time (no "배치" label)
-      pill.innerHTML = `<span class="time">${fmtMS(elapsed)}</span>`;
-
-      const backBtn = document.createElement('button');
-      backBtn.className = 'itemBtn';
-      backBtn.textContent = '대기';
-
-      pill.addEventListener('dblclick', () => unassignPerson(p.id));
-      backBtn.addEventListener('click', (e)=>{ e.stopPropagation(); unassignPerson(p.id); });
-
-      el.append(nameEl, pill, backBtn);
-      assignedList.appendChild(el);
-    });
-  };
-
-  // ---------- render boxes ----------
-  const renderBoxes = () => {
-    const s = selectedSet();
-    boxesLayer.innerHTML = '';
-    state.boxes.forEach(b => {
-      const boxEl = document.createElement('div');
-      boxEl.className = 'box' + (s.has(b.id) ? ' selected' : '');
-      boxEl.dataset.boxid = b.id;
-      boxEl.style.left = b.x + 'px';
-      boxEl.style.top = b.y + 'px';
-      boxEl.style.width = b.w + 'px';
-      boxEl.style.height = b.h + 'px';
-      // z-order: selected/popover boxes should be on top
-      const baseZ = (typeof b.z === 'number' ? b.z : 1);
-      const popBoost = (openPopoverBoxId === b.id) ? 5000 : 0;
-      const selBoost = s.has(b.id) ? 10000 : 0;
-      boxEl.style.zIndex = String(baseZ + popBoost + selBoost);
-      boxEl.style.setProperty('--seatScale', String(b.fontScale || 1));
-
-      const numEl = document.createElement('div');
-      numEl.className = 'boxNumber';
-      numEl.textContent = String(b.num);
-
-      const inner = document.createElement('div');
-      inner.className = 'boxInner';
-
-      const seat = document.createElement('div');
-      seat.className = 'seatPill';
-      const seated = b.seatPersonId ? getPersonById(b.seatPersonId) : null;
-      if(seated){
-        // Name + (time) inside pill (no "배치" text)
-        const elapsed = now() - seated.createdAt;
-        seat.innerHTML = `
-          <div class="seatName">${escapeHTML(seated.name)}</div>
-          <div class="seatMeta">
-            <span class="seatTime">${fmtMS(elapsed)}</span>
-          </div>
-        `;
-        seat.title = '더블클릭: 대기로';
-        seat.addEventListener('dblclick', (e)=>{ e.stopPropagation(); unassignPerson(seated.id); });
-      }else{
-        seat.innerHTML = `
-          <div class="seatName" style="opacity:.85">비어있음</div>
-          <div class="seatMeta" style="opacity:.65">
-            <span class="seatTime">--:--:--</span>
-          </div>
-        `;
-      }
-      inner.appendChild(seat);
-
-      // tools
-      const tools = document.createElement('div');
-      tools.className = 'boxTools';
-
-      // o button (settings)
-      const oBtn = makeToolDot('o', '글자 크기');
-      oBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleBoxPopover(boxEl, b.id);
-      });
-
-      // return button (↩) = send seated to wait
-      const retBtn = makeToolDot('↩', '대기로');
-      retBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(b.seatPersonId) unassignPerson(b.seatPersonId);
-      });
-
-      // x button = clear seat
-      const xBtn = makeToolDot('×', '비우기');
-      xBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(b.seatPersonId){
-          const p = getPersonById(b.seatPersonId);
-          if(p) p.assignedBoxId = null;
-          b.seatPersonId = null;
-          markDirty();
-          renderAll();
-        }
-      });
-
-      tools.append(oBtn, retBtn, xBtn);
-
-      const handle = document.createElement('div');
-      handle.className = 'resizeHandle';
-      handle.title = '크기 조절';
-
-      boxEl.append(numEl, inner, tools, handle);
-      boxesLayer.appendChild(boxEl);
-
-      // If a popover was open, it would disappear on the 1s re-render.
-      // Re-create it so it stays open.
-      ensureBoxPopover(boxEl, b.id);
-
-      // drag/drop from wait list
-      boxEl.addEventListener('dragover', (e)=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; });
-      boxEl.addEventListener('drop', (e)=>{
-        e.preventDefault();
-        const pid = e.dataTransfer.getData('text/plain');
-        if(pid) assignPersonToBox(pid, b.id);
-      });
-
-      // selection + move
-      boxEl.addEventListener('mousedown', (e) => onBoxMouseDown(e, b.id));
-      handle.addEventListener('mousedown', (e) => onResizeMouseDown(e, b.id));
-      // prevent drag when clicking tools
-      tools.addEventListener('mousedown', (e)=> e.stopPropagation());
-    });
-  };
-
-  const escapeHTML = (s) => String(s)
-    .replaceAll('&','&amp;').replaceAll('<','&lt;')
-    .replaceAll('>','&gt;').replaceAll('"','&quot;')
-    .replaceAll("'","&#039;");
-
-  const makeToolDot = (txt, title) => {
-    const d = document.createElement('div');
-    d.className = 'toolDot';
-    d.textContent = txt;
-    d.title = title;
-    return d;
-  };
-
-  // ---------- popover (o button) ----------
-  let openPopoverBoxId = null;
-
-  const closePopover = () => {
-    if(!openPopoverBoxId) return;
-    const boxEl = boxesLayer.querySelector(`.box[data-boxid="${openPopoverBoxId}"]`);
-    if(boxEl){
-      const pop = boxEl.querySelector('.boxPopover');
-      if(pop) pop.remove();
-    }
-    openPopoverBoxId = null;
-  };
-
-  // build popover (shared by click + rerender)
-  const buildBoxPopover = (boxEl, boxId) => {
-    const b = getBoxById(boxId);
-    if(!b) return null;
-
-    const pop = document.createElement('div');
-    pop.className = 'boxPopover';
-    pop.innerHTML = `
-      <div class="popTitle">글자 크기</div>
-      <div class="popRow">
-        <button class="popBtn" data-act="minus">−</button>
-        <div class="popVal" id="popVal">x${(b.fontScale||1).toFixed(1)}</div>
-        <button class="popBtn" data-act="plus">＋</button>
+    card.innerHTML = `
+      <div class="badge">${b.status}</div>
+      <h3 class="card-title">${b.title}</h3>
+      <div class="meta">
+        <div class="pill"><div class="k">Buy-in</div><div class="v">${b.buyin}</div></div>
+        <div class="pill"><div class="k">Time</div><div class="v">${b.time}</div></div>
+        <div class="pill"><div class="k">${b.extraLabel}</div><div class="v">${b.extraValue}</div></div>
       </div>
-      <button class="popLink" data-act="reset">기본으로</button>
     `;
 
-    const updateVal = () => {
-      const val = pop.querySelector('#popVal');
-      if(val) val.textContent = `x${(b.fontScale||1).toFixed(1)}`;
-      boxEl.style.setProperty('--seatScale', String(b.fontScale||1));
-    };
-
-    pop.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const act = e.target && e.target.dataset ? e.target.dataset.act : null;
-      if(!act) return;
-      const step = 0.1;
-      if(act === 'minus') b.fontScale = clamp((b.fontScale||1) - step, 0.7, 1.6);
-      if(act === 'plus')  b.fontScale = clamp((b.fontScale||1) + step, 0.7, 1.6);
-      if(act === 'reset') b.fontScale = 1;
-      updateVal();
-      markDirty();
+    card.addEventListener("click", () => {
+      const boxId = b.id;
+      window.location.href = `layout_index.html?boxId=${boxId}`;
     });
 
-    // prevent moving while using popover
-    pop.addEventListener('mousedown', (e)=> e.stopPropagation());
-
-    // keep value synced if needed
-    pop._updateVal = updateVal;
-    return pop;
-  };
-
-  const ensureBoxPopover = (boxEl, boxId) => {
-    if(openPopoverBoxId !== boxId) return;
-    if(boxEl.querySelector('.boxPopover')) return;
-    const pop = buildBoxPopover(boxEl, boxId);
-    if(pop) boxEl.appendChild(pop);
-  };
-
-  const toggleBoxPopover = (boxEl, boxId) => {
-    // close another box's popover
-    if(openPopoverBoxId && openPopoverBoxId !== boxId) closePopover();
-
-    const existing = boxEl.querySelector('.boxPopover');
-    if(existing){
-      existing.remove();
-      openPopoverBoxId = null;
-      return;
-    }
-
-    openPopoverBoxId = boxId;
-    const pop = buildBoxPopover(boxEl, boxId);
-    if(pop) boxEl.appendChild(pop);
-  };
-
-  // close popover on outside click
-  document.addEventListener('mousedown', (e) => {
-    if(!openPopoverBoxId) return;
-    const boxEl = boxesLayer.querySelector(`.box[data-boxid="${openPopoverBoxId}"]`);
-    if(!boxEl) { openPopoverBoxId = null; return; }
-    if(boxEl.contains(e.target)) return; // inside
-    closePopover();
+    boardEl.appendChild(card);
   });
+}
 
-  // ---------- box move / resize ----------
-  let drag = null;
+/* ===============================
+   🔥 WAITING RENDER (추가)
+   =============================== */
+function renderWait(){
+  boardEl.innerHTML = "";
 
-  const onBoxMouseDown = (e, boxId) => {
-    // left button only
-    if(e.button !== 0) return;
+  if (!state.waiting.length) {
+    boardEl.innerHTML = `<div class="empty">대기자 없음</div>`;
+    return;
+  }
 
-    // bring this box to front when interacting
-    bumpBoxZ(boxId);
-    const boxEl = e.currentTarget;
-    const isTool = e.target.closest('.boxTools') || e.target.classList.contains('resizeHandle');
-    if(isTool) return;
+  state.waiting.forEach((w, idx)=>{
+    const card = document.createElement("section");
+    card.className = "card waiting-card";
 
-    const toggle = isSelectToggle(e);
-    if(toggle){
-      toggleSelectBox(boxId);
-      return;
-    }
+    card.innerHTML = `
+      <button class="wait-delete">×</button>
+      <h3>${w.name}</h3>
+    `;
 
-    // if not selected, select single
-    if(!selectedSet().has(boxId)){
-      setSelected([boxId]);
-    }
-
-    closePopover();
-
-    const z = state.ui.zoom || 1;
-    const startX = e.clientX;
-    const startY = e.clientY;
-
-    const selIds = state.selectedBoxIds.length ? state.selectedBoxIds : [boxId];
-    const starts = selIds.map(id => {
-      const b = getBoxById(id);
-      return b ? {id, x:b.x, y:b.y} : null;
-    }).filter(Boolean);
-
-    drag = { type:'move', startX, startY, starts, zoom:z };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
-
-  const onResizeMouseDown = (e, boxId) => {
-    if(e.button !== 0) return;
-    e.stopPropagation();
-    // bring this box to front when resizing
-    bumpBoxZ(boxId);
-    closePopover();
-
-    if(!selectedSet().has(boxId)) setSelected([boxId]);
-
-    const b = getBoxById(boxId);
-    if(!b) return;
-    const z = state.ui.zoom || 1;
-    drag = {
-      type:'resize',
-      boxId,
-      startX: e.clientX,
-      startY: e.clientY,
-      startW: b.w,
-      startH: b.h,
-      zoom: z,
+    // 🔥 삭제 버튼
+    card.querySelector(".wait-delete").onclick = (e)=>{
+      e.stopPropagation();
+      state.waiting.splice(idx,1);
+      saveState();
+      renderWait();
     };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
 
-  const onMouseMove = (e) => {
-    if(!drag) return;
-    const dx = (e.clientX - drag.startX) / drag.zoom;
-    const dy = (e.clientY - drag.startY) / drag.zoom;
+    boardEl.appendChild(card);
+  });
+}
 
-    if(drag.type === 'move'){
-      drag.starts.forEach(s => {
-        const b = getBoxById(s.id);
-        if(!b) return;
-        b.x = Math.round(s.x + dx);
-        b.y = Math.round(s.y + dy);
-      });
-      renderBoxes();
-      markDirty();
-      return;
-    }
+function render(){
+  renderHeader();
 
-    if(drag.type === 'resize'){
-      const b = getBoxById(drag.boxId);
-      if(!b) return;
-      // Prevent overly tiny boxes that make the UI look "squeezed" / text clipped
-      b.w = Math.round(clamp(drag.startW + dx, 200, 640));
-      b.h = Math.round(clamp(drag.startH + dy, 110, 420));
-      renderBoxes();
-      markDirty();
-    }
-  };
+  if (currentTab === 'box') {
+    renderMain();
+  } else if (currentTab === 'wait') {
+    renderWait();
+  }
+}
 
-  const onMouseUp = () => {
-    drag = null;
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-  };
+/* ===============================
+   EVENTS
+   =============================== */
+saveTextBtn.onclick = ()=>{
+  state.dateText = inputDateText.value.trim();
+  saveState();
+  renderHeader();
+};
 
-  // ---------- align / distribute ----------
-  const getSelectedBoxes = () => {
-    const s = selectedSet();
-    return state.boxes.filter(b => s.has(b.id));
-  };
+addBoxBtn.onclick = ()=>{};
+cancelBoxBtn.onclick = ()=>{};
 
-  const alignH = () => {
-    const sel = getSelectedBoxes();
-    if(sel.length < 2) return;
-    const y = Math.round(sel.reduce((acc,b)=>acc+b.y,0)/sel.length);
-    sel.forEach(b => b.y = y);
-    markDirty(); renderBoxes();
+saveBoxBtn.onclick = ()=>{
+  const data = {
+    id: editingBoxId || uid(),
+    title: boxTitle.value || "(untitled)",
+    status: boxStatus.value,
+    buyin: boxBuyin.value,
+    time: boxTime.value,
+    extraLabel: boxExtraLabel.value,
+    extraValue: boxExtraValue.value,
   };
-  const alignV = () => {
-    const sel = getSelectedBoxes();
-    if(sel.length < 2) return;
-    const x = Math.round(sel.reduce((acc,b)=>acc+b.x,0)/sel.length);
-    sel.forEach(b => b.x = x);
-    markDirty(); renderBoxes();
-  };
-  const spaceH = () => {
-    const sel = getSelectedBoxes().sort((a,b)=>a.x-b.x);
-    if(sel.length < 3) return;
-    const left = sel[0].x;
-    const right = sel[sel.length-1].x;
-    const gap = (right - left) / (sel.length-1);
-    sel.forEach((b,i)=> b.x = Math.round(left + gap*i));
-    markDirty(); renderBoxes();
-  };
-  const spaceV = () => {
-    const sel = getSelectedBoxes().sort((a,b)=>a.y-b.y);
-    if(sel.length < 3) return;
-    const top = sel[0].y;
-    const bottom = sel[sel.length-1].y;
-    const gap = (bottom - top) / (sel.length-1);
-    sel.forEach((b,i)=> b.y = Math.round(top + gap*i));
-    markDirty(); renderBoxes();
-  };
+  if(editingBoxId)
+    state.boxes = state.boxes.map(b=>b.id===editingBoxId?data:b);
+  else
+    state.boxes.push(data);
 
-  // ---------- events ----------
-  tabBtns.forEach(btn => btn.addEventListener('click', ()=> setTab(btn.dataset.tab)));
+  saveState();
+  render();
+};
 
-  toggleSide.addEventListener('click', () => {
-    state.ui.sidebarCollapsed = !state.ui.sidebarCollapsed;
-    applySidebar();
-    markDirty();
+/* ===============================
+   🔥 WAITING ADD (BUTTON + ENTER)
+   =============================== */
+if (waitingInput && waitingAddBtn) {
+  const addWaiting = ()=>{
+  const name = waitingInput.value.trim();
+  if (!name) return;
+
+  state.waiting.push({
+    id: "w_" + Date.now(),
+    name
   });
 
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'Tab'){
+  waitingInput.value = "";
+  saveState();
+
+  // 🔥 핵심
+  currentTab = "wait";
+  render();
+};
+
+
+  waitingAddBtn.addEventListener("click", addWaiting);
+
+  waitingInput.addEventListener("keydown", e=>{
+    if (e.key === "Enter") {
       e.preventDefault();
-      state.ui.sidebarCollapsed = !state.ui.sidebarCollapsed;
-      applySidebar();
-      markDirty();
-    }
-    if(e.key === 'Delete' || e.key === 'Backspace'){
-      // don't hijack when typing
-      const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
-      if(tag === 'input' || tag === 'textarea') return;
-      deleteSelectedBoxes();
-    }
-    if(e.key === 'Escape'){
-      closePopover();
-      clearSelection();
+      addWaiting();
     }
   });
+}
 
-  addWaitBtn.addEventListener('click', ()=> addWaiting(nameInput.value));
-  nameInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') addWaiting(nameInput.value); });
+/* ===============================
+   KEYBOARD
+   =============================== */
+document.addEventListener("keydown",(e)=>{
+  if(isTyping(document.activeElement)) return;
+  const k = e.key.toLowerCase();
 
-  searchInput.addEventListener('input', ()=> renderWait());
-  // density controls removed
-
-  addBoxBtn.addEventListener('click', addBox);
-  deleteSelectedBtn.addEventListener('click', deleteSelectedBoxes);
-
-  selectModeBtn.addEventListener('click', () => {
-    state.ui.selectMode = !state.ui.selectMode;
-    selectModeBtn.classList.toggle('active', state.ui.selectMode);
-    markDirty();
-  });
-
-  alignHBtn.addEventListener('click', alignH);
-  alignVBtn.addEventListener('click', alignV);
-  spaceHBtn.addEventListener('click', spaceH);
-  spaceVBtn.addEventListener('click', spaceV);
-
-  zoomIn.addEventListener('click', ()=> { state.ui.zoom = clamp(state.ui.zoom + 0.1, 0.3, 2.5); applyZoom(); markDirty(); });
-  zoomOut.addEventListener('click', ()=> { state.ui.zoom = clamp(state.ui.zoom - 0.1, 0.3, 2.5); applyZoom(); markDirty(); });
-  zoomReset.addEventListener('click', ()=> { state.ui.zoom = 1; applyZoom(); markDirty(); });
-
-  // ctrl/meta + wheel zoom
-  const canvasWrap = document.querySelector('.canvasWrap');
-  canvasWrap.addEventListener('wheel', (e) => {
-    if(!(e.ctrlKey || e.metaKey)) return;
-    e.preventDefault();
-    const delta = Math.sign(e.deltaY);
-    state.ui.zoom = clamp(state.ui.zoom + (delta>0 ? -0.06 : 0.06), 0.3, 2.5);
-    applyZoom();
-    markDirty();
-  }, { passive:false });
-
-  // click empty canvas clears selection / popover
-  canvasWrap.addEventListener('mousedown', (e) => {
-    const hitBox = e.target.closest('.box');
-    if(!hitBox){
-      closePopover();
-      if(!isSelectToggle(e)) clearSelection();
-    }
-  });
-
-  // ---------- ticker (update timers) ----------
-  const updateSeatTimers = () => {
-    // Update only the time text inside existing box DOM (NO full re-render).
-    // This keeps the o-button popover from disappearing/flickering.
-    for(const b of state.boxes){
-      const boxEl = boxesLayer.querySelector(`.box[data-boxid="${b.id}"]`);
-      if(!boxEl) continue;
-      if(b.seatPersonId){
-        const p = getPersonById(b.seatPersonId);
-        if(!p) continue;
-        const nameEl = boxEl.querySelector(".seatName");
-        const timeEl = boxEl.querySelector(".seatTime");
-        if(nameEl && nameEl.textContent !== p.name) nameEl.textContent = p.name;
-        if(timeEl) timeEl.textContent = fmtMS(now() - p.createdAt);
-      } else {
-        const timeEl = boxEl.querySelector(".seatTime");
-        if(timeEl) timeEl.textContent = '--:--:--';
-      }
-
-      if(openPopoverBoxId === b.id){
-        const pop = boxEl.querySelector(".boxPopover");
-        if(pop && typeof pop._updateVal === "function") pop._updateVal();
-      }
-    }
-  };
-
-  setInterval(() => {
-    // list timers
-    renderWait();
-    renderAssigned();
-    // box timers (no DOM rebuild)
-    updateSeatTimers();
-  }, 1000);
-
-  // ---------- render helpers ----------
-  const renderAll = () => {
-    applySidebar();
-    applyZoom();
-    selectModeBtn.classList.toggle('active', state.ui.selectMode);
-    // waiting list density buttons
-    try{ applyDensityUI(); }catch(_){/* ignore */}
-    setTab(state.ui.tab);
-    renderWait();
-    renderAssigned();
-    renderBoxes();
-  };
-
-  // ---------- navigation hooks ----------
-  backToDashboardBtn.addEventListener('click', backToDashboard);
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape' && !appRoot.classList.contains('hidden')){
-      backToDashboard();
-    }
-  });
-
-  // ---------- initial view ----------
-  renderDashboard();
-  showDashboard();
-})();
-
-
-/* ===== Screen Transition v6 ===== */
-document.addEventListener('DOMContentLoaded', () => {
-  const dashboard = document.getElementById('dashboardView');
-  const board = document.getElementById('appRoot');
-  const backBtn = document.getElementById('backToDashboard');
-
-  if(!dashboard || !board || !backBtn) return;
-
-  document.addEventListener('click', (e) => {
-    const card = e.target.closest('.sectionCard');
-    if(!card) return;
-
-    dashboard.classList.add('hidden');
-    board.classList.remove('hidden');
-    board.classList.add('screen');
-  });
-
-  backBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    board.classList.add('hidden');
-    dashboard.classList.remove('hidden');
-    dashboard.classList.add('screen');
-  });
+  if(k==="w") currentTab = "wait", render();
+  if(k==="b") currentTab = "box", render();
 });
+
+/* ===============================
+   BOOT
+   =============================== */
+if(!loadState() || !state.boxes || state.boxes.length === 0){
+  state.boxes = [
+    {
+      id: uid(),
+      title: "Sample Box 1",
+      status: "Opened",
+      buyin: "1,000,000 KRW",
+      time: "12:00",
+      extraLabel: "Entries",
+      extraValue: "0"
+    }
+  ];
+  saveState();
+}
+render();
+/* ===============================
+   WAITING PATCH — FORCE BIND (SAFE)
+   =============================== */
+(function(){
+  // ✅ 네 실제 HTML ID
+  const input = document.getElementById("waitingNameInput");
+  const btn   = document.getElementById("addWaitingBtn") || document.getElementById("addWaitingBtn".replace("Btn","Btn")); // (그냥 안전)
+
+  // 버튼 id가 addWaitingBtn 인 걸 확인했으니 그대로 사용
+  // 혹시 너가 addWaitingBtn / addWaitingBtn 혼용했을까봐 위처럼 썼지만,
+  // 아래에서 다시 제대로 잡음:
+  const addBtn = document.getElementById("addWaitingBtn");
+
+  if (!input || !addBtn) {
+    console.warn("[WAITING PATCH] input/button not found", { input, addBtn });
+    return;
+  }
+
+  console.log("[WAITING PATCH] bound OK");
+
+  // state.waiting 없으면 만들어줌 (기존 구조 안 깨짐)
+  if (!Array.isArray(state.waiting)) state.waiting = [];
+
+  // renderWait 없으면 최소 렌더러 만들어줌 (기존 renderWait 있으면 안 건드림)
+  if (typeof renderWait !== "function") {
+    window.renderWait = function(){
+      // boardEl 없으면 못 그림
+      const host = document.getElementById("board");
+      if (!host) return;
+
+      host.innerHTML = "";
+      if (!state.waiting.length) {
+        host.innerHTML = `<div class="empty">대기자 없음</div>`;
+        return;
+      }
+
+      state.waiting.forEach((w, idx) => {
+        const card = document.createElement("section");
+        card.className = "card waiting-card";
+        card.innerHTML = `
+          <button class="wait-delete">×</button>
+          <h3>${w.name}</h3>
+        `;
+        card.querySelector(".wait-delete").addEventListener("click", (e)=>{
+          e.stopPropagation();
+          state.waiting.splice(idx, 1);
+          saveState();
+          renderWait();
+        });
+        host.appendChild(card);
+      });
+    };
+  }
+
+  function addWaiting(){
+    const name = input.value.trim();
+    if (!name) return;
+
+    state.waiting.push({ id: "w_" + Date.now(), name, startedAt: Date.now() });
+    input.value = "";
+
+    saveState();
+
+    // ✅ 안 보이는 문제 방지: wait 탭으로 강제 전환 + render 호출
+    currentTab = "wait";
+    if (typeof render === "function") render();
+    else renderWait();
+
+    console.log("[WAITING PATCH] added:", name, "count:", state.waiting.length);
+  }
+
+  // ✅ 기존에 같은 이벤트가 여러 번 붙어도 문제 줄이기 위해 clone 방식으로 초기화
+  const newBtn = addBtn.cloneNode(true);
+  addBtn.parentNode.replaceChild(newBtn, addBtn);
+
+  newBtn.addEventListener("click", addWaiting);
+  input.addEventListener("keydown", (e)=>{
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addWaiting();
+    }
+  });
+})();

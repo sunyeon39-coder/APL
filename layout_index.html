@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Layout</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="layout_styles.css">
+</head>
+<body>
+
+<div class="layout-wrap">
+
+  <!-- 상단 -->
+  <div class="layout-top">
+    <button id="addSeatBtn" class="btn primary">+ Seat 추가</button>
+    <button onclick="history.back()" class="btn back-btn">Back</button>
+  </div>
+
+  <!-- Seat 영역 (스크롤) -->
+  <div class="seat-scroll-area">
+    <div id="layoutGrid" class="layout-grid"></div>
+  </div>
+
+  <!-- 대기자 영역 -->
+  <div class="wait-section">
+
+    <!-- 입력 + 버튼 (고정) -->
+    <div class="waiting-header">
+      <input
+        type="text"
+        id="waitingNameInput"
+        placeholder="대기자 이름"
+      />
+      <button id="addWaitingBtn">+ 대기자 추가</button>
+    </div>
+
+    <!-- 대기자 목록 (스크롤) -->
+    <div class="wait-scroll">
+      <section
+        class="waiting-grid"
+        id="waitingList">
+      </section>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="layout_app.js"></script>
+</body>
+</html>
