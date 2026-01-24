@@ -1,4 +1,5 @@
-console.log("LAYOUT JS PARSE OK");
+console.log("🔥 REAL layout_app.js LOADED");
+
 
 /* =================================================
    BoxBoard Layout App – FINAL STABLE (PERSIST)
