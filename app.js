@@ -12,10 +12,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const boxId = params.get("boxId");
   console.log("[layout] boxId:", boxId);
 
+  if (!boxId) {
+    alert("Invalid layout link");
+    return;
+  }
+
   // 2️⃣ state
   const raw = localStorage.getItem("boxboard_v1_state");
   if (!raw) {
-    console.error("[layout] no localStorage state");
     alert("No board data");
     return;
   }
@@ -24,13 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
   try {
     state = JSON.parse(raw);
   } catch (e) {
-    console.error("[layout] invalid JSON", e);
     alert("Broken board data");
     return;
   }
 
   if (!Array.isArray(state.boxes)) {
-    console.error("[layout] boxes missing", state);
     alert("Invalid board structure");
     return;
   }
@@ -39,15 +41,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const box = state.boxes.find(b => b.id === boxId);
   console.log("[layout] found box:", box);
 
+  if (!box) {
+    alert("Board not found");
+    return;
+  }
 
   // 4️⃣ render
   renderLayout(box);
 
-  // 5️⃣ loader OFF (반드시 마지막)
+  // 5️⃣ loader OFF
   const loader = document.getElementById("layoutLoading");
   if (loader) loader.classList.add("hidden");
-
 });
+
 
 
 /* ---------- DOM ---------- */
