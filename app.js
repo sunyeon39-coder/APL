@@ -1,62 +1,48 @@
 /* =====================================================
-   BOX BOARD — CLEAN SINGLE-STRUCTURE VERSION
+   BOX BOARD — CLEAN SINGLE-STRUCTURE VERSION (FINAL)
    ===================================================== */
+import { db } from "./firebase.js";
+import {
+  doc,
+  setDoc,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+/* ===============================
+   CONST
+   =============================== */
+const STATE_REF = doc(db, "boxboard", "state");
 const LS_KEY = "boxboard_v1_state";
-// 🔥 메인 페이지 로딩 오버레이 강제 해제
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("[layout] boot");
 
-  // 1️⃣ boxId
-  const params = new URLSearchParams(window.location.search);
-  const boxId = params.get("boxId");
-  console.log("[layout] boxId:", boxId);
+/* ===============================
+   FLAGS
+   =============================== */
+let isApplyingRemoteState = false;
 
-  if (!boxId) {
-    alert("Invalid layout link");
-    return;
-  }
+/* ===============================
+   STATE
+   =============================== */
+let state = {
+  dateText: "",
+  boxes: [],
+  view: "main",        // main | layout
+  currentBoxId: null,
+};
 
-  // 2️⃣ state
-  const raw = localStorage.getItem("boxboard_v1_state");
-  if (!raw) {
-    alert("No board data");
-    return;
-  }
+let currentTab = "box";
+let editingBoxId = null;
 
-  let state;
-  try {
-    state = JSON.parse(raw);
-  } catch (e) {
-    alert("Broken board data");
-    return;
-  }
+/* ===============================
+   UTIL
+   =============================== */
+const uid = () => "b_" + Math.random().toString(36).slice(2) + Date.now();
+const isTyping = (el) =>
+  el && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable);
 
-  if (!Array.isArray(state.boxes)) {
-    alert("Invalid board structure");
-    return;
-  }
-
-  // 3️⃣ find box
-  const box = state.boxes.find(b => b.id === boxId);
-  console.log("[layout] found box:", box);
-
-  if (!box) {
-    alert("Board not found");
-    return;
-  }
-
-  // 4️⃣ render
-  renderLayout(box);
-
-  // 5️⃣ loader OFF
-  const loader = document.getElementById("layoutLoading");
-  if (loader) loader.classList.add("hidden");
-});
-
-
-
-/* ---------- DOM ---------- */
+/* ===============================
+   DOM
+   =============================== */
 const appEl = document.getElementById("app");
 const boardEl = document.getElementById("board");
 const dateTextEl = document.getElementById("dateText");
@@ -78,27 +64,24 @@ const boxExtraValue = document.getElementById("boxExtraValue");
 const saveBoxBtn = document.getElementById("saveBox");
 const cancelBoxBtn = document.getElementById("cancelBox");
 
-/* ---------- STATE ---------- */
-let state = {
-  dateText: "",
-  boxes: [],
-  view: "main",        // main | layout
-  currentBoxId: null,
-};
+/* ===============================
+   STORAGE
+   =============================== */
+async function saveState(){
+  if (isApplyingRemoteState) return;
 
-let currentTab = 'box';
-let editingBoxId = null;
-
-/* ---------- UTIL ---------- */
-const uid = () => "b_" + Math.random().toString(36).slice(2) + Date.now();
-const isTyping = (el) =>
-  el && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable);
-
-function saveState(){
-  localStorage.setItem(LS_KEY, JSON.stringify({
+  const payload = {
     dateText: state.dateText,
-    boxes: state.boxes
-  }));
+    boxes: state.boxes,
+    updatedAt: serverTimestamp()
+  };
+
+  try {
+    await setDoc(STATE_REF, payload, { merge: true });
+    localStorage.setItem(LS_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.error("saveState failed", e);
+  }
 }
 
 function loadState(){
@@ -109,16 +92,42 @@ function loadState(){
     if(parsed.dateText) state.dateText = parsed.dateText;
     if(Array.isArray(parsed.boxes)) state.boxes = parsed.boxes;
     return true;
-  }catch(e){ return false; }
+  }catch(e){
+    return false;
+  }
 }
 
-/* ---------- MODALS ---------- */
+/* ===============================
+   FIRESTORE SUBSCRIBE
+   =============================== */
+function subscribeState(){
+  onSnapshot(STATE_REF, (snap) => {
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+
+    isApplyingRemoteState = true;
+
+    state.dateText = data.dateText || "";
+    state.boxes = Array.isArray(data.boxes) ? data.boxes : [];
+
+    render();
+
+    isApplyingRemoteState = false;
+  });
+}
+
+/* ===============================
+   MODALS
+   =============================== */
 function openTextModal(){
   inputDateText.value = state.dateText || "";
   overlayText.classList.remove("hidden");
   setTimeout(()=>inputDateText.focus(),0);
 }
-function closeTextModal(){ overlayText.classList.add("hidden"); }
+function closeTextModal(){
+  overlayText.classList.add("hidden");
+}
 
 function openBoxModal(box=null){
   overlayBox.classList.remove("hidden");
@@ -138,21 +147,19 @@ function closeBoxModal(){
   editingBoxId = null;
 }
 
-/* ---------- NAV ---------- */
-function openLayout(boxId){
-  state.view = "layout";
-  state.currentBoxId = boxId;
-  render();
-}
+/* ===============================
+   NAV
+   =============================== */
 function backToMain(){
   state.view = "main";
   state.currentBoxId = null;
-
-  currentTab = 'box'; 
+  currentTab = "box";
   render();
 }
 
-/* ---------- RENDER ---------- */
+/* ===============================
+   RENDER
+   =============================== */
 function renderHeader(){
   dateTextEl.textContent = state.dateText || "";
 }
@@ -182,75 +189,25 @@ function renderMain(){
       </div>
     `;
 
-    // ✅ 카드 클릭 → layout 이동 (여기만 존재)
-    card.addEventListener("click", () => {
-      const loader = document.getElementById("layoutLoading");
-      if (loader) loader.classList.remove("hidden");
-
-      const boxId = b.id;
-      requestAnimationFrame(() => {
-        window.location.href = `layout_index.html?boxId=${boxId}`;
-      });
-    });
-
     boardEl.appendChild(card);
   });
 }
 
-document.addEventListener("click", (e) => {
-  const card = e.target.closest(".card");
-  if (!card) return;
-
-  const boxId = card.dataset.id;
-  if (!boxId) {
-    console.error("no boxId on card");
-    return;
-  }
-
-  window.location.href =
-    `layout_index.html?boxId=${boxId}&from=board`;
-});
-
-
-
-function renderLayout(){
-  const box = state.boxes.find(b=>b.id===state.currentBoxId);
-  appEl.innerHTML = `
-    <div class="layout-wrap">
-      <div class="layout-top">
-        <div class="layout-title">${box?.title || "Layout"}</div>
-        <button class="btn back-btn">Back</button>
-      </div>
-      <div class="layout-grid">
-        ${Array.from({length:24},(_,i)=>`<div class="layout-cell">${i+1}</div>`).join("")}
-      </div>
-    </div>
-  `;
-  document.querySelector(".back-btn").onclick = backToMain;
-}
-
 function render(){
   renderHeader();
-
-  if (state.view === "layout") {
-    renderLayout();
-    return;
-  }
-
-  if (currentTab === 'box') {
-    renderMain();
-  } else if (currentTab === 'wait') {
-    renderWait();
-  } else if (currentTab === 'seat') {
-    renderSeat();
-  }
+  renderMain();
 }
 
-/* ---------- EVENTS ---------- */
+/* ===============================
+   EVENTS
+   =============================== */
 saveTextBtn.onclick = ()=>{
   state.dateText = inputDateText.value.trim();
-  saveState(); closeTextModal(); renderHeader();
+  saveState();
+  closeTextModal();
+  renderHeader();
 };
+
 closeTextBtn.onclick = closeTextModal;
 
 addBoxBtn.onclick = ()=>openBoxModal(null);
@@ -266,39 +223,49 @@ saveBoxBtn.onclick = ()=>{
     extraLabel: boxExtraLabel.value,
     extraValue: boxExtraValue.value,
   };
-  if(editingBoxId)
-    state.boxes = state.boxes.map(b=>b.id===editingBoxId?data:b);
-  else
-    state.boxes.push(data);
 
-  saveState(); closeBoxModal(); render();
+  if(editingBoxId){
+    state.boxes = state.boxes.map(b=>b.id===editingBoxId?data:b);
+  } else {
+    state.boxes.push(data);
+  }
+
+  saveState();
+  closeBoxModal();
+  render();
 };
 
-/* ---------- KEYBOARD ---------- */
+/* 카드 클릭 → layout 이동 (단일 핸들러) */
+document.addEventListener("click", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+
+  const boxId = card.dataset.id;
+  if (!boxId) return;
+
+  const loader = document.getElementById("layoutLoading");
+  if (loader) loader.classList.remove("hidden");
+
+  requestAnimationFrame(() => {
+    window.location.href = `layout_index.html?boxId=${boxId}`;
+  });
+});
+
+/* ===============================
+   KEYBOARD
+   =============================== */
 document.addEventListener("keydown",(e)=>{
   if(isTyping(document.activeElement)) return;
   const k = e.key.toLowerCase();
 
   if(k==="escape"){ closeBoxModal(); closeTextModal(); }
   if(k==="e") openTextModal();
-  if(k==="w" && state.view==="main") openBoxModal(null);
-  if(k==="b" && state.view==="layout") backToMain();
+  if(k==="w") openBoxModal(null);
 });
 
-/* ---------- BOOTSTRAP ---------- */
-if(!loadState() || !state.boxes || state.boxes.length === 0){
-  state.boxes = [
-    {
-      id: uid(),
-      title: "Sample Box 1",
-      status: "Opened",
-      buyin: "1,000,000 KRW",
-      time: "12:00",
-      extraLabel: "Entries",
-      extraValue: "0"
-    }
-  ];
-  saveState();
-}
+/* ===============================
+   BOOTSTRAP
+   =============================== */
+subscribeState();
+loadState();
 render();
-

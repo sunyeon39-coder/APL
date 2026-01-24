@@ -1,14 +1,25 @@
 console.log("🔥 REAL layout_app.js LOADED");
 
-
 /* =================================================
-   BoxBoard Layout App – FINAL STABLE (PERSIST)
+   BoxBoard Layout App – FINAL STABLE (SYNCED)
    ================================================= */
+import { db } from "./firebase.js";
+import {
+  doc,
+  setDoc,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* ===============================
    CONST
    =============================== */
+const STATE_REF = doc(db, "boxboard", "state");
 const LS_KEY = "boxboard_layout_state";
+
+/* ===============================
+   FLAGS
+   =============================== */
+let isApplyingRemoteLayout = false;
 
 /* ===============================
    TIMER UTIL
@@ -28,42 +39,9 @@ function formatElapsed(ms) {
 let selectedSeat = null;
 let selectedWaiting = null;
 
-const box = {
+const layout = {
   seats: {},
   waiting: []
-};
-window.__box = box;
-
-/* ===============================
-   LOCAL STORAGE
-   =============================== */
-function saveLocal() {
-  localStorage.setItem(LS_KEY, JSON.stringify(box));
-}
-
-function loadLocal() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (!raw) return false;
-  try {
-    const saved = JSON.parse(raw);
-    box.seats = saved.seats || {};
-    box.waiting = saved.waiting || [];
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/* ===============================
-   FIRESTORE HANDLE
-   =============================== */
-const fs = {
-  ready: false,
-  db: null,
-  doc: null,
-  setDoc: null,
-  onSnapshot: null,
-  LAYOUT_REF: null,
 };
 
 /* ===============================
@@ -72,7 +50,6 @@ const fs = {
 function getBoxId() {
   return new URLSearchParams(location.search).get("boxId");
 }
-
 function mustEl(id) {
   const el = document.getElementById(id);
   if (!el) throw new Error(`필수 DOM 요소 없음: #${id}`);
@@ -80,140 +57,86 @@ function mustEl(id) {
 }
 
 /* ===============================
-   FIRESTORE INIT
+   LOCAL STORAGE
    =============================== */
-async function ensureFirestoreReady() {
-  if (fs.ready) return true;
+function saveLocal() {
+  localStorage.setItem(LS_KEY, JSON.stringify(layout));
+}
+function loadLocal() {
+  const raw = localStorage.getItem(LS_KEY);
+  if (!raw) return false;
   try {
-    const firestore = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const localFirebase = await import("./firebase.js");
-
-    fs.doc = firestore.doc;
-    fs.setDoc = firestore.setDoc;
-    fs.onSnapshot = firestore.onSnapshot;
-    fs.db = localFirebase.db;
-
-    const boxId = getBoxId();
-    if (!boxId) throw new Error("boxId 없음");
-
-    fs.LAYOUT_REF = fs.doc(fs.db, "boards", boxId);
-    fs.ready = true;
+    const saved = JSON.parse(raw);
+    layout.seats = saved.seats || {};
+    layout.waiting = saved.waiting || [];
     return true;
   } catch {
-    fs.ready = false;
     return false;
   }
 }
 
 /* ===============================
-   FIRESTORE WRITE
+   WRITE LAYOUT (SAFE)
    =============================== */
 async function writeLayout(next) {
-  const ok = await ensureFirestoreReady();
-  if (!ok) throw new Error("Firestore unavailable");
+  if (isApplyingRemoteLayout) return;
 
-  const merged = { ...box, ...next };
-  await fs.setDoc(fs.LAYOUT_REF, merged, { merge: true });
+  const boxId = getBoxId();
+  if (!boxId) return;
 
-  Object.assign(box, merged);
+  const snap = await new Promise(res =>
+    onSnapshot(STATE_REF, s => s.exists() && res(s), { once: true })
+  );
+  if (!snap) return;
+
+  const data = snap.data();
+  const boxes = (data.boxes || []).map(b =>
+    b.id === boxId
+      ? { ...b, layout: { ...(b.layout || {}), ...next } }
+      : b
+  );
+
+  await setDoc(STATE_REF, { boxes }, { merge: true });
+
+  Object.assign(layout, next);
   saveLocal();
 }
 
 /* ===============================
    SUBSCRIBE
    =============================== */
-async function subscribeLayout() {
-  const ok = await ensureFirestoreReady();
+function subscribeLayout() {
+  const boxId = getBoxId();
+  if (!boxId) return;
 
-  if (!ok) {
-    loadLocal();
+  onSnapshot(STATE_REF, snap => {
+    if (!snap.exists()) return;
+
+    const box = snap.data().boxes?.find(b => b.id === boxId);
+    if (!box) return;
+
+    isApplyingRemoteLayout = true;
+
+    layout.seats = box.layout?.seats || {};
+    layout.waiting = box.layout?.waiting || [];
+
+    saveLocal();
     renderLayout();
     renderWaitList();
-    return;
-  }
 
-  fs.onSnapshot(fs.LAYOUT_REF, snap => {
-    if (snap.exists()) {
-      const data = snap.data();
-      box.seats = data.seats || {};
-      box.waiting = data.waiting || [];
-      saveLocal();
-    }
-    renderLayout();
-    renderWaitList();
+    isApplyingRemoteLayout = false;
   });
 }
 
 /* ===============================
-   LOCAL FALLBACK
-   =============================== */
-function localCommit() {
-  saveLocal();
-  renderLayout();
-  renderWaitList();
-}
-
-/* ===============================
-   ADD WAITING
-   =============================== */
-async function addWaiting() {
-  const input = mustEl("waitingNameInput");
-  const name = input.value.trim();
-  if (!name) return;
-
-  const next = [
-    ...box.waiting,
-    { id: "w_" + Date.now(), name, startedAt: Date.now() }
-  ];
-
-  try {
-    await writeLayout({ waiting: next });
-  } catch {
-    box.waiting = next;
-    localCommit();
-  }
-
-  input.value = "";
-}
-
-/* ===============================
-   ASSIGN
-   =============================== */
-async function tryAssign() {
-  if (!selectedSeat || !selectedWaiting) return;
-
-  const i = selectedSeat.seatIndex;
-  const nextSeats = { ...box.seats };
-  const nextWaiting = box.waiting.filter(w => w.id !== selectedWaiting.id);
-
-  if (nextSeats[i]) {
-    nextWaiting.push({ ...nextSeats[i], startedAt: Date.now() });
-  }
-
-  nextSeats[i] = { ...selectedWaiting, startedAt: Date.now() };
-
-  selectedSeat = null;
-  selectedWaiting = null;
-
-  try {
-    await writeLayout({ seats: nextSeats, waiting: nextWaiting });
-  } catch {
-    box.seats = nextSeats;
-    box.waiting = nextWaiting;
-    localCommit();
-  }
-}
-
-/* ===============================
-   RENDER SEATS
+   RENDER (기존 로직 그대로)
    =============================== */
 function renderLayout() {
-  const grid = document.getElementById("layoutGrid");
-  if (!grid) return;
+  const grid = mustEl("layoutGrid");
   grid.innerHTML = "";
 
-  Object.keys(box.seats).sort((a,b)=>a-b).forEach(i => {
-    const d = box.seats[i];
+  Object.keys(layout.seats).sort((a,b)=>a-b).forEach(i => {
+    const d = layout.seats[i];
     const seat = document.createElement("section");
     seat.className = "card";
 
@@ -233,54 +156,37 @@ function renderLayout() {
       }, 180);
     };
 
-    seat.ondblclick = async e => {
+    seat.ondblclick = e => {
       e.preventDefault();
-      if (!box.seats[i]) return;
-
-      const p = box.seats[i];
-      const nextSeats = { ...box.seats, [i]: null };
-      const nextWaiting = [...box.waiting, { ...p, startedAt: Date.now() }];
-
-      try {
-        await writeLayout({ seats: nextSeats, waiting: nextWaiting });
-      } catch {
-        box.seats = nextSeats;
-        box.waiting = nextWaiting;
-        localCommit();
-      }
+      if (!layout.seats[i]) return;
+      const p = layout.seats[i];
+      writeLayout({
+        seats: { ...layout.seats, [i]: null },
+        waiting: [...layout.waiting, { ...p, startedAt: Date.now() }]
+      });
     };
 
-    seat.querySelector(".seat-delete").onclick = async e => {
+    seat.querySelector(".seat-delete").onclick = e => {
       e.stopPropagation();
-      const next = { ...box.seats };
+      const next = { ...layout.seats };
       delete next[i];
-
-      try {
-        await writeLayout({ seats: next });
-      } catch {
-        box.seats = next;
-        localCommit();
-      }
+      writeLayout({ seats: next });
     };
 
     grid.appendChild(seat);
   });
 }
 
-/* ===============================
-   RENDER WAITING
-   =============================== */
 function renderWaitList() {
-  const list = document.getElementById("waitingList");
-  if (!list) return;
+  const list = mustEl("waitingList");
   list.innerHTML = "";
 
-  if (!box.waiting.length) {
+  if (!layout.waiting.length) {
     list.innerHTML = `<div class="empty">대기자 없음</div>`;
     return;
   }
 
-  box.waiting.forEach(w => {
+  layout.waiting.forEach(w => {
     const card = document.createElement("section");
     card.className = "card waiting-card";
     card.innerHTML = `
@@ -293,15 +199,9 @@ function renderWaitList() {
 
     card.onclick = () => selectedWaiting = w;
 
-    card.querySelector(".wait-delete").onclick = async e => {
+    card.querySelector(".wait-delete").onclick = e => {
       e.stopPropagation();
-      const next = box.waiting.filter(x => x.id !== w.id);
-      try {
-        await writeLayout({ waiting: next });
-      } catch {
-        box.waiting = next;
-        localCommit();
-      }
+      writeLayout({ waiting: layout.waiting.filter(x => x.id !== w.id) });
     };
 
     list.appendChild(card);
@@ -312,72 +212,24 @@ function renderWaitList() {
    INIT
    =============================== */
 document.addEventListener("DOMContentLoaded", () => {
-
-  // ✅ 1. 로컬 먼저 로드
   loadLocal();
   renderLayout();
   renderWaitList();
-
-  // ✅ 2. Seat 추가
-  mustEl("addSeatBtn").onclick = async () => {
-    const n = Number(prompt("Seat 번호 입력"));
-    if (!Number.isInteger(n) || n <= 0 || box.seats[n]) return;
-
-    const nextSeats = { ...box.seats, [n]: null };
-
-    // 🔥 즉시 반영
-    box.seats = nextSeats;
-    renderLayout();
-    saveLocal();
-
-    // 🔥 Firestore는 동기화용
-    try {
-      await writeLayout({ seats: nextSeats });
-    } catch {
-      // 이미 로컬 반영됨
-    }
-  };
-
-  // ✅ 3. Back 버튼
-  const backBtn = document.getElementById("layoutBackBtn");
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      if (history.length > 1) history.back();
-      else location.href = "index.html";
-    });
-  }
-
-  // ✅ 4. 대기자 입력 & 버튼
-  const waitingInput = mustEl("waitingNameInput");
-  const addWaitingBtn = mustEl("addWaitingBtn");
-
-  addWaitingBtn.onclick = () => {
-    addWaiting();
-  };
-
-  // 🔥 5. IME 대응
-  let composing = false;
-
-  waitingInput.addEventListener("compositionstart", () => {
-    composing = true;
-  });
-
-  waitingInput.addEventListener("compositionend", () => {
-    composing = false;
-  });
-
-  waitingInput.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !composing) {
-      e.preventDefault();
-      addWaiting();
-    }
-  });
-
-  // ✅ 6. 🔥🔥🔥 Firestore / Local subscribe 시작
   subscribeLayout();
 
-});
+  mustEl("addSeatBtn").onclick = () => {
+    const n = Number(prompt("Seat 번호 입력"));
+    if (!Number.isInteger(n) || n <= 0 || layout.seats[n]) return;
+    writeLayout({ seats: { ...layout.seats, [n]: null } });
+  };
 
+  mustEl("addWaitingBtn").onclick = addWaiting;
+
+  const backBtn = document.getElementById("layoutBackBtn");
+  if (backBtn) {
+    backBtn.onclick = () => history.length > 1 ? history.back() : location.href = "index.html";
+  }
+});
 
 /* ===============================
    TIMER LOOP
