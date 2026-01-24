@@ -1,3 +1,5 @@
+console.log("LAYOUT JS PARSE OK");
+
 /* =================================================
    BoxBoard Layout App – FINAL STABLE (PERSIST)
    ================================================= */
