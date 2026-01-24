@@ -1,242 +1,1075 @@
-/* =================================================
-   BoxBoard Layout App – FINAL STABLE (Layout ONLY)
-   ================================================= */
+console.log('APP START');
 
-let selectedSeat = null;
-let selectedWaiting = null;
-
-let state = null;
-let box = null;
-
-/* ===============================
-   STORAGE
-   =============================== */
-function loadState() {
-  return JSON.parse(localStorage.getItem("boxboard_v1_state") || "{}");
+// ===== SAFETY INIT =====
+if (localStorage.getItem("viewMode") === null) {
+  localStorage.setItem("viewMode", "main");
 }
 
-function saveState() {
-  localStorage.setItem("boxboard_v1_state", JSON.stringify(state));
+if (localStorage.getItem("layoutEnabled") === null) {
+  localStorage.setItem("layoutEnabled", "true");
 }
+// =======================
 
-function getBoxId() {
-  return new URLSearchParams(location.search).get("boxId");
-}
+/* Box Board - app.js (no build, single file)
+   v2026-01-05: add "o" tool button for per-box text size control
+*/
+(() => {
+  'use strict';
 
-/* ===============================
-   TIMER
-   =============================== */
-function updateTimes() {
-  const now = Date.now();
-  document.querySelectorAll(".time[data-start]").forEach(el => {
-    const start = Number(el.dataset.start);
-    if (!start) return;
-    const diff = Math.floor((now - start) / 1000);
-    el.textContent =
-      String(Math.floor(diff / 60)).padStart(2, "0") +
-      ":" +
-      String(diff % 60).padStart(2, "0");
-  });
-}
-
-/* ===============================
-   INIT (단 1번)
-   =============================== */
-document.addEventListener("DOMContentLoaded", () => {
-  state = loadState();
-  if (!state?.boxes) return;
-
-  box = state.boxes.find(b => b.id === getBoxId());
-  if (!box) return;
-
-  box.seats ||= {};
-  box.waiting ||= [];
-
-  renderLayout();
-  renderWaitList();
-  setInterval(updateTimes, 1000);
-
-  /* Seat Add */
-  document.getElementById("addSeatBtn")?.addEventListener("click", () => {
-    const n = Number(prompt("Seat 번호 입력"));
-    if (!Number.isInteger(n) || n <= 0) return;
-
-    if (box.seats[n]) return alert("이미 존재");
-
-    box.seats[n] = null;
-    saveState();
-    renderLayout();
-  });
-
-  /* Waiting Add */
-  const waitingInput = document.getElementById("waitingNameInput");
-  const addWaitingBtn = document.getElementById("addWaitingBtn");
-
-  const addWaiting = () => {
-    const name = waitingInput.value.trim();
-    if (!name) return;
-
-    box.waiting.push({
-      id: "w_" + Date.now(),
-      name,
-      startedAt: Date.now()
-    });
-
-    waitingInput.value = "";
-    saveState();
-    renderWaitList();
+  // ---------- utils ----------
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(2, 6);
+  const now = () => Date.now();
+  const fmtMS = (ms) => {
+    ms = Math.max(0, ms|0);
+    const s = Math.floor(ms/1000);
+    const hh = Math.floor(s/3600);
+    const mm = Math.floor((s%3600)/60);
+    const ss = s%60;
+    return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   };
 
-  addWaitingBtn?.addEventListener("click", addWaiting);
-  waitingInput?.addEventListener("keydown", e => {
-    if (e.key === "Enter") addWaiting();
-  });
-});
-
-/* ===============================
-   ASSIGN
-   =============================== */
-function tryAssign() {
-  if (!selectedSeat || !selectedWaiting) return;
-
-  const i = selectedSeat.seatIndex;
-
-  if (box.seats[i]) {
-    box.waiting.push({
-      id: "w_" + Date.now(),
-      name: box.seats[i].name,
-      startedAt: Date.now()
-    });
-  }
-
-  box.seats[i] = {
-    id: selectedWaiting.id,
-    name: selectedWaiting.name,
-    startedAt: Date.now()
+  // time thresholds for list emphasis
+  const pillTimeClass = (elapsedMs) => {
+    const m = elapsedMs / 60000;
+    if(m >= 15) return 'tBad';
+    if(m >= 5) return 'tWarn';
+    return 'tGood';
   };
 
-  box.waiting = box.waiting.filter(w => w.id !== selectedWaiting.id);
+  // ---------- persistence ----------
+  const LS_KEY = 'boxBoard_state_v2026_01_05';
+  const loadState = () => {
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return null;
+      const s = JSON.parse(raw);
+      return s && typeof s === 'object' ? s : null;
+    }catch(_){ return null; }
+  };
+  const saveState = (s) => {
+    localStorage.setItem(LS_KEY, JSON.stringify(s));
+  };
 
-  selectedSeat = null;
-  selectedWaiting = null;
+  // ---------- state ----------
+  const state = {
+    ui: {
+      tab: 'wait',
+      sidebarCollapsed: false,
+      zoom: 1,
+      selectMode: false,
+      waitDensity: 1, // fixed (density controls removed)
+    },
+    people: [], // {id,name,/*createdAt*/,assignedBoxId:null|boxId}
+    boxes: [],  // {id,num,x,y,w,h,seatPersonId:null|personId,fontScale:1}
+    selectedBoxIds: [],
+  };
 
-  saveState();
-  renderLayout();
-  renderWaitList();
-}
-
-/* ===============================
-   RENDER SEATS
-   =============================== */
-function renderLayout() {
-  const grid = document.getElementById("layoutGrid");
-  if (!grid) return;
-
-  grid.innerHTML = "";
-
-  Object.keys(box.seats)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .forEach(i => {
-      const d = box.seats[i];
-      const seat = document.createElement("section");
-      seat.className = "card collapsed";
-      seat._blockClick = false;
-
-      seat.innerHTML = `
-        <div class="badge">Seat ${i}</div>
-        <button class="seat-delete wait-delete">×</button>
-        <h3>${d ? d.name : "비어있음"}</h3>
-        <div class="meta">
-          ${
-            d
-              ? `<div class="pill good">
-                   Running · <span class="time" data-start="${d.startedAt}">00:00</span>
-                 </div>`
-              : `<div class="pill">Empty</div>`
-          }
-        </div>
-      `;
-
-      seat.onclick = () => {
-        if (seat._blockClick) return;
-        selectedSeat = { seatIndex: i };
-        if (selectedWaiting) tryAssign();
-      };
-
-      seat.ondblclick = e => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  seat._blockClick = true;
-  setTimeout(() => (seat._blockClick = false), 0);
-
-  // 좌석에 사람이 없으면 아무것도 안 함
-  if (!box.seats[i]) return;
-
-  // 1) 배치된 사람을 대기자로 이동 (중복 방지)
-  const person = box.seats[i];
-  const already = box.waiting.some(w => w.id === person.id);
-  if (!already) {
-    box.waiting.push({
-      id: person.id,          // ✅ 기존 사람 id 유지 (중복 방지 핵심)
-      name: person.name,
-      startedAt: Date.now()
-    });
+  const loaded = loadState();
+  if(loaded){
+    // soft-merge for forward compatibility
+    if(loaded.ui) Object.assign(state.ui, loaded.ui);
+    if(Array.isArray(loaded.people)) state.people = loaded.people;
+    if(Array.isArray(loaded.boxes)) state.boxes = loaded.boxes;
+    if(Array.isArray(loaded.selectedBoxIds)) state.selectedBoxIds = loaded.selectedBoxIds;
   }
 
-  // 2) 좌석은 삭제하지 말고 "비움" 처리
-  box.seats[i] = null;
+  // Ensure z-order exists (so overlapped boxes don't show "ghost" toolbars)
+  // Older saves might not have `z`. We assign increasing order by current array order.
+  (() => {
+    let z = 1;
+    state.boxes.forEach(b => {
+      if(typeof b.z !== 'number') b.z = z++;
+      // keep legacy saves readable
+      if(typeof b.w === 'number') b.w = Math.max(200, b.w);
+      if(typeof b.h === 'number') b.h = Math.max(110, b.h);
+      if(typeof b.fontScale !== 'number') b.fontScale = 1;
+    });
+  })();
 
-  saveState();
-  renderLayout();
-  renderWaitList();
+  // ---------- dom refs ----------
+  const sidePanel = $('#sidePanel');
+  const toggleSide = $('#toggleSide');
+
+  const tabBtns = $$('.tab');
+  const panels = $$('.panel');
+
+  const nameInput = $('#nameInput');
+  const addWaitBtn = $('#addWait');
+  const searchInput = $('#searchInput');
+  const waitList = $('#waitList');
+  // density controls removed
+
+  const assignedList = $('#assignedList');
+
+  const addBoxBtn = $('#addBox');
+  const deleteSelectedBtn = $('#deleteSelected');
+
+  const boxesLayer = $('#boxesLayer');
+  const canvas = $('#canvas');
+  const zoomPct = $('#zoomPct');
+  const zoomIn = $('#zoomIn');
+  const zoomOut = $('#zoomOut');
+  const zoomReset = $('#zoomReset');
+
+  const selectModeBtn = $('#selectMode');
+
+  const alignHBtn = $('#alignH');
+  const alignVBtn = $('#alignV');
+  const spaceHBtn = $('#spaceH');
+  const spaceVBtn = $('#spaceV');
+
+  const saveStatus = $('#saveStatus');
+
+  // waiting time thresholds (ms)
+  const WAIT_WARN_MS = 5 * 60 * 1000;   // 5m
+  const WAIT_BAD_MS  = 15 * 60 * 1000;  // 15m
+  const timeClass = (elapsedMs) => {
+    if(elapsedMs >= WAIT_BAD_MS) return 'tBad';
+    if(elapsedMs >= WAIT_WARN_MS) return 'tWarn';
+    return 'tGood';
+  };
+
+  // ---------- save status debounce ----------
+  let saveTimer = null;
+  const markDirty = () => {
+  // ✅ 즉시 화면 갱신
+  if (window.renderAll) {
+    renderAll();
+  }
+
+  // ---- 기존 저장 로직 ----
+  const markDirty = () => {
+  saveStatus.textContent = '저장 중...';
+  saveStatus.style.opacity = '1';
+
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveState(state);
+    saveStatus.textContent = '저장됨';
+  }, 260);
+ }
+
+}
+
+
+  // ---------- ui helpers ----------
+  const setTab = (tab) => {
+    state.ui.tab = tab;
+    tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    panels.forEach(p => p.classList.toggle('hidden', p.dataset.panel !== tab));
+    markDirty();
+  };
+
+  const applySidebar = () => {
+    sidePanel.classList.toggle('collapsed', !!state.ui.sidebarCollapsed);
+  };
+
+  const applyZoom = () => {
+    const z = clamp(state.ui.zoom, 0.3, 2.5);
+    canvas.style.transform = `scale(${z})`;
+    zoomPct.textContent = `${Math.round(z*100)}%`;
+  };
+
+  const isSelectToggle = (ev) => state.ui.selectMode || ev.shiftKey;
+
+  const getBoxById = (id) => state.boxes.find(b => b.id === id) || null;
+  const getPersonById = (id) => state.people.find(p => p.id === id) || null;
+
+  // Bring interacted box to front (fix overlapping artifacts)
+  const bumpBoxZ = (boxId) => {
+    const b = getBoxById(boxId);
+    if(!b) return;
+    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number') ? x.z : 0), 0);
+    const nextZ = maxZ + 1;
+    if(b.z !== nextZ){
+      b.z = nextZ;
+      markDirty();
+    }
+  };
+
+  const selectedSet = () => new Set(state.selectedBoxIds);
+  const setSelected = (arr) => { state.selectedBoxIds = Array.from(new Set(arr)); markDirty(); renderBoxes(); };
+
+  const toggleSelectBox = (boxId) => {
+    const s = selectedSet();
+    if(s.has(boxId)) s.delete(boxId); else s.add(boxId);
+    state.selectedBoxIds = Array.from(s);
+    markDirty();
+    renderBoxes();
+  };
+
+  const clearSelection = () => {
+    if(state.selectedBoxIds.length){
+      state.selectedBoxIds = [];
+      markDirty();
+      renderBoxes();
+    }
+  };
+
+  // ---------- people actions ----------
+  const addWaiting = (name) => {
+    name = (name || '').trim();
+    if(!name) return;
+    state.people.unshift({ id: uid(), name, assignedBoxId: null, waitingStartedAt: now(), seatedStartedAt: null });
+    nameInput.value = '';
+    markDirty();
+    renderWait();
+  };
+
+ const deletePerson = (personId) => {
+  // 좌석에 앉아 있던 사람 제거
+  state.boxes.forEach(b => {
+    if (b.seatPersonId === personId) b.seatPersonId = null;
+  });
+
+  // 대기 목록에서 제거
+  state.people = state.people.filter(p => p.id !== personId);
+
+  renderWait();   // ⭐ 이것이 핵심
+  markDirty();
 };
 
-      seat.querySelector(".seat-delete").onclick = e => {
-        e.stopPropagation();
-        delete box.seats[i];
-        saveState();
-        renderLayout();
-      };
 
-      grid.appendChild(seat);
+  const unassignPerson = (personId) => {
+    const p = getPersonById(personId);
+    if(!p) return;
+    p.assignedBoxId = null;
+      p.waitingStartedAt = now();
+      p.seatedStartedAt = null;
+    // also clear seat links in boxes (if any)
+    state.boxes.forEach(b => { if(b.seatPersonId === personId) b.seatPersonId = null; });
+    markDirty();
+    renderAll();
+  };
+
+  const assignPersonToBox = (personId, boxId) => {
+    const p = getPersonById(personId);
+    const b = getBoxById(boxId);
+    if(!p || !b) return;
+
+    // if box had someone, push them back to wait
+    if(b.seatPersonId){
+      const prev = getPersonById(b.seatPersonId);
+      if(prev) 
+        prev.assignedBoxId = null;
+      prev.seatedStartedAt = null;
+      prev.waitingStartedAt = now();
+      markDirty();
+      renderAll();
+    };
+
+    // if this person was in another box, clear that seat
+    state.boxes.forEach(x => { if(x.seatPersonId === personId) x.seatPersonId = null; });
+
+    b.seatPersonId = personId;
+    p.assignedBoxId = boxId;
+      p.seatedStartedAt = now();
+      p.waitingStartedAt = null;
+
+    markDirty();
+    renderAll();
+  };
+
+  // ---------- box actions ----------
+  const nextBoxNum = () => {
+    const m = state.boxes.reduce((acc,b)=>Math.max(acc, b.num||0), 0);
+    return m + 1;
+  };
+
+  const addBox = () => {
+    const num = nextBoxNum();
+    const maxZ = state.boxes.reduce((m, x) => Math.max(m, (typeof x.z === 'number') ? x.z : 0), 0);
+    const b = {
+      id: uid(),
+      num,
+      x: 120 + (num-1)*30,
+      y: 80 + (num-1)*20,
+      w: 240,
+      h: 130,
+      seatPersonId: null,
+      fontScale: 1,
+      z: maxZ + 1,
+    };
+    state.boxes.push(b);
+    markDirty();
+    renderBoxes();
+  };
+
+  const deleteSelectedBoxes = () => {
+    const s = selectedSet();
+    if(!s.size) return;
+    // unassign people seated in deleted boxes
+    state.boxes.forEach(b => {
+      if(s.has(b.id) && b.seatPersonId){
+        const p = getPersonById(b.seatPersonId);
+        if(p) p.assignedBoxId = null;
+      p.waitingStartedAt = now();
+      p.seatedStartedAt = null;
+      }
     });
+    state.boxes = state.boxes.filter(b => !s.has(b.id));
+    state.selectedBoxIds = [];
+    markDirty();
+   renderAll();;
+  };
+
+  // ---------- render lists ----------
+  const renderWait = () => {
+    const q = (searchInput.value || '').trim().toLowerCase();
+
+const waiting = state.people.filter(p => {
+  if (p.assignedBoxId !== null) return false;
+  if (!q) return true;
+  return p.name.toLowerCase().includes(q);
+});
+
+    console.log('waiting:', waiting);
+
+
+    waitList.innerHTML = '';
+    waiting.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.dataset.pid = p.id;
+// ===== DRAG SOURCE: waiting person =====
+el.draggable = true;
+el.addEventListener('dragstart', (e) => {
+  console.log('dragstart', p.id);
+
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('type', 'person');
+  e.dataTransfer.setData('personId', p.id);
+
+  // Safari 필수
+  e.dataTransfer.setData('text/plain', p.id);
+});
+
+      // 이름(중복 표시 방지): 왼쪽은 이름만, 오른쪽 pill은 시간만
+      const nameEl = document.createElement('div');
+      nameEl.className = 'personName';
+      nameEl.textContent = p.name;
+
+      const pill = document.createElement('div');
+      const elapsed = now() - (p.assignedBoxId ? p.seatedStartedAt : p.waitingStartedAt);
+      pill.className = `pill ${pillTimeClass(elapsed)}`;
+      // label + time (match UI in screenshot)
+      pill.innerHTML = `<span class="label">대기</span><span class="time">${fmtMS(elapsed)}</span>`;
+
+      const del = document.createElement('button');
+      del.className = 'itemBtn';
+del.textContent = '삭제';
+
+// ⭐ 1️⃣ 이 줄을 추가 (제일 중요)
+del.addEventListener('mousedown', (e) => {
+  e.preventDefault();     // 드래그 시작 차단
+  e.stopPropagation();
+});
+
+// 2️⃣ 기존 click 유지
+del.addEventListener('click', (e) => {
+  e.stopPropagation();
+  console.log('DELETE CLICKED');
+  deletePerson(p.id);
+});
+      el.addEventListener('dragstart', (e) => {
+        el.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', p.id);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+      el.append(nameEl, pill, del);
+      waitList.appendChild(el);
+    });
+  };
+  const renderAssigned = () => {
+    const assigned = state.people.filter(p => !!p.assignedBoxId);
+    assignedList.innerHTML = '';
+    assigned.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'item';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'personName';
+      nameEl.textContent = p.name;
+
+      const pill = document.createElement('div');
+      const elapsed = now() - (p.assignedBoxId ? p.seatedStartedAt : p.waitingStartedAt);
+      pill.className = `pill ${pillTimeClass(elapsed)}`;
+      // show only time (no "배치" label)
+      pill.innerHTML = `<span class="time">${fmtMS(elapsed)}</span>`;
+
+      const backBtn = document.createElement('button');
+      backBtn.className = 'itemBtn';
+      backBtn.textContent = '대기';
+
+      pill.addEventListener('dblclick', () => unassignPerson(p.id));
+      backBtn.addEventListener('click', (e)=>{ e.stopPropagation(); unassignPerson(p.id); });
+
+      el.append(nameEl, pill, backBtn);
+      assignedList.appendChild(el);
+    });
+  };
+
+  // ---------- render boxes ----------
+  const renderBoxes = () => {
+    const s = selectedSet();
+    boxesLayer.innerHTML = '';
+    state.boxes.forEach(b => {
+      const boxEl = document.createElement('div');
+      boxEl.className = 'box' + (s.has(b.id) ? ' selected' : '');
+      boxEl.dataset.boxid = b.id;
+      boxEl.style.left = b.x + 'px';
+      boxEl.style.top = b.y + 'px';
+      boxEl.style.width = b.w + 'px';
+      boxEl.style.height = b.h + 'px';
+      // z-order: selected/popover boxes should be on top
+      const baseZ = (typeof b.z === 'number' ? b.z : 1);
+      const popBoost = (openPopoverBoxId === b.id) ? 5000 : 0;
+      const selBoost = s.has(b.id) ? 10000 : 0;
+      boxEl.style.zIndex = String(baseZ + popBoost + selBoost);
+      boxEl.style.setProperty('--seatScale', String(b.fontScale || 1));
+// ===== [DROP TARGET: person → box] =====
+
+boxEl.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  boxEl.classList.add('drag-over');
+});
+boxEl.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+});
+
+
+boxEl.addEventListener('dragleave', () => {
+  boxEl.classList.remove('drag-over');
+});
+
+boxEl.addEventListener('drop', (e) => {
+  e.preventDefault();
+  boxEl.classList.remove('drag-over');
+
+  const type = e.dataTransfer.getData('type');
+  if (type !== 'person') return;
+
+  const personId = e.dataTransfer.getData('personId');
+  const person = getPersonById(personId);
+  if (!person) return;
+
+  // 🔥 1. 이 박스에 이미 사람이 있으면 → 그 사람을 대기로 돌림
+  if (b.seatPersonId) {
+    const prev = getPersonById(b.seatPersonId);
+    if (prev) {
+      prev.assignedBoxId = null;
+      prev.waitingStartedAt = Date.now();
+      prev.seatedStartedAt = null;
+    }
+  }
+
+  // 🔥 2. 드롭된 사람을 이 박스에 앉힘
+  person.assignedBoxId = b.id;
+  person.seatedStartedAt = Date.now();
+  person.waitingStartedAt = null;
+
+  // 🔥 3. 박스는 이 사람을 기억
+  b.seatPersonId = person.id;
+
+  markDirty();
+  renderAll();
+});
+
+
+
+      const numEl = document.createElement('div');
+      numEl.className = 'boxNumber';
+      numEl.textContent = String(b.num);
+
+      const inner = document.createElement('div');
+      inner.className = 'boxInner';
+
+      const seat = document.createElement('div');
+      seat.className = 'seatPill';
+      const seated = b.seatPersonId ? getPersonById(b.seatPersonId) : null;
+      if(seated){
+        // Name + (time) inside pill (no "배치" text)
+        let baseTime;
+if (seated.assignedBoxId) {
+  baseTime = seated.seatedStartedAt;
+} else {
+  baseTime = seated.waitingStartedAt;
 }
 
-/* ===============================
-   RENDER WAITING
-   =============================== */
-function renderWaitList() {
-  const list = document.getElementById("waitingList");
-  if (!list) return;
+const elapsed = now() - baseTime;
 
-  list.innerHTML = "";
+        seat.innerHTML = `
+          <div class="seatName">${escapeHTML(seated.name)}</div>
+          <div class="seatMeta">
+            <span class="seatTime">${fmtMS(elapsed)}</span>
+          </div>
+        `;
+        seat.title = '더블클릭: 대기로';
+        seat.addEventListener('dblclick', (e)=>{ e.stopPropagation(); unassignPerson(seated.id); });
+      }else{
+        seat.innerHTML = `
+          <div class="seatName" style="opacity:.85">비어있음</div>
+          <div class="seatMeta" style="opacity:.65">
+            <span class="seatTime">--:--:--</span>
+          </div>
+        `;
+      }
+      inner.appendChild(seat);
 
-  if (!box.waiting.length) {
-    list.innerHTML = `<div class="empty">대기자 없음</div>`;
+      // tools
+      const tools = document.createElement('div');
+      tools.className = 'boxTools';
+
+      // o button (settings)
+      const oBtn = makeToolDot('o', '글자 크기');
+      oBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleBoxPopover(boxEl, b.id);
+      });
+
+      // return button (↩) = send seated to wait
+      const retBtn = makeToolDot('↩', '대기로');
+      retBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if(b.seatPersonId) unassignPerson(b.seatPersonId);
+      });
+
+      // x button = clear seat
+      const xBtn = makeToolDot('×', '비우기');
+      xBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if(b.seatPersonId){
+          const p = getPersonById(b.seatPersonId);
+          if(p) p.assignedBoxId = null;
+      p.waitingStartedAt = now();
+      p.seatedStartedAt = null;
+          b.seatPersonId = null;
+          markDirty();
+          renderAll();
+        }
+      });
+
+      tools.append(oBtn, retBtn, xBtn);
+
+      const handle = document.createElement('div');
+      handle.className = 'resizeHandle';
+      handle.title = '크기 조절';
+
+      boxEl.append(numEl, inner, tools, handle);
+      boxesLayer.appendChild(boxEl);
+
+      // If a popover was open, it would disappear on the 1s re-render.
+      // Re-create it so it stays open.
+      ensureBoxPopover(boxEl, b.id);
+
+      // drag/drop from wait list
+      boxEl.addEventListener('dragover', (e)=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; });
+      boxEl.addEventListener('drop', (e)=>{
+        e.preventDefault();
+        const pid = e.dataTransfer.getData('text/plain');
+        if(pid) assignPersonToBox(pid, b.id);
+      });
+
+      // selection + move
+      boxEl.addEventListener('mousedown', (e) => onBoxMouseDown(e, b.id));
+      handle.addEventListener('mousedown', (e) => onResizeMouseDown(e, b.id));
+      // prevent drag when clicking tools
+      tools.addEventListener('mousedown', (e)=> e.stopPropagation());
+    });
+  };
+
+  const escapeHTML = (s) => String(s)
+    .replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('>','&gt;').replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+
+  const makeToolDot = (txt, title) => {
+    const d = document.createElement('div');
+    d.className = 'toolDot';
+    d.textContent = txt;
+    d.title = title;
+    return d;
+  };
+
+  // ---------- popover (o button) ----------
+  let openPopoverBoxId = null;
+
+  const closePopover = () => {
+    if(!openPopoverBoxId) return;
+    const boxEl = boxesLayer.querySelector(`.box[data-boxid="${openPopoverBoxId}"]`);
+    if(boxEl){
+      const pop = boxEl.querySelector('.boxPopover');
+      if(pop) pop.remove();
+    }
+    openPopoverBoxId = null;
+  };
+
+  // build popover (shared by click + rerender)
+  const buildBoxPopover = (boxEl, boxId) => {
+    const b = getBoxById(boxId);
+    if(!b) return null;
+
+    const pop = document.createElement('div');
+    pop.className = 'boxPopover';
+    pop.innerHTML = `
+      <div class="popTitle">글자 크기</div>
+      <div class="popRow">
+        <button class="popBtn" data-act="minus">−</button>
+        <div class="popVal" id="popVal">x${(b.fontScale||1).toFixed(1)}</div>
+        <button class="popBtn" data-act="plus">＋</button>
+      </div>
+      <button class="popLink" data-act="reset">기본으로</button>
+    `;
+
+    const updateVal = () => {
+      const val = pop.querySelector('#popVal');
+      if(val) val.textContent = `x${(b.fontScale||1).toFixed(1)}`;
+      boxEl.style.setProperty('--seatScale', String(b.fontScale||1));
+    };
+
+    pop.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const act = e.target && e.target.dataset ? e.target.dataset.act : null;
+      if(!act) return;
+      const step = 0.1;
+      if(act === 'minus') b.fontScale = clamp((b.fontScale||1) - step, 0.7, 1.6);
+      if(act === 'plus')  b.fontScale = clamp((b.fontScale||1) + step, 0.7, 1.6);
+      if(act === 'reset') b.fontScale = 1;
+      updateVal();
+      markDirty();
+    });
+
+    // prevent moving while using popover
+    pop.addEventListener('mousedown', (e)=> e.stopPropagation());
+
+    // keep value synced if needed
+    pop._updateVal = updateVal;
+    return pop;
+  };
+
+  const ensureBoxPopover = (boxEl, boxId) => {
+    if(openPopoverBoxId !== boxId) return;
+    if(boxEl.querySelector('.boxPopover')) return;
+    const pop = buildBoxPopover(boxEl, boxId);
+    if(pop) boxEl.appendChild(pop);
+  };
+
+  const toggleBoxPopover = (boxEl, boxId) => {
+    // close another box's popover
+    if(openPopoverBoxId && openPopoverBoxId !== boxId) closePopover();
+
+    const existing = boxEl.querySelector('.boxPopover');
+    if(existing){
+      existing.remove();
+      openPopoverBoxId = null;
+      return;
+    }
+
+    openPopoverBoxId = boxId;
+    const pop = buildBoxPopover(boxEl, boxId);
+    if(pop) boxEl.appendChild(pop);
+  };
+
+  // close popover on outside click
+  document.addEventListener('mousedown', (e) => {
+    if(!openPopoverBoxId) return;
+    const boxEl = boxesLayer.querySelector(`.box[data-boxid="${openPopoverBoxId}"]`);
+    if(!boxEl) { openPopoverBoxId = null; return; }
+    if(boxEl.contains(e.target)) return; // inside
+    closePopover();
+  });
+
+  // ---------- box move / resize ----------
+  let drag = null;
+
+  const onBoxMouseDown = (e, boxId) => {
+    // left button only
+    if(e.button !== 0) return;
+
+    // bring this box to front when interacting
+    bumpBoxZ(boxId);
+    const boxEl = e.currentTarget;
+    const isTool = e.target.closest('.boxTools') || e.target.classList.contains('resizeHandle');
+    if(isTool) return;
+
+    const toggle = isSelectToggle(e);
+    if(toggle){
+      toggleSelectBox(boxId);
+      return;
+    }
+
+    // if not selected, select single
+    if(!selectedSet().has(boxId)){
+      setSelected([boxId]);
+    }
+
+    closePopover();
+
+    const z = state.ui.zoom || 1;
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    const selIds = state.selectedBoxIds.length ? state.selectedBoxIds : [boxId];
+    const starts = selIds.map(id => {
+      const b = getBoxById(id);
+      return b ? {id, x:b.x, y:b.y} : null;
+    }).filter(Boolean);
+
+    drag = { type:'move', startX, startY, starts, zoom:z };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const onResizeMouseDown = (e, boxId) => {
+    if(e.button !== 0) return;
+    e.stopPropagation();
+    // bring this box to front when resizing
+    bumpBoxZ(boxId);
+    closePopover();
+
+    if(!selectedSet().has(boxId)) setSelected([boxId]);
+
+    const b = getBoxById(boxId);
+    if(!b) return;
+    const z = state.ui.zoom || 1;
+    drag = {
+      type:'resize',
+      boxId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: b.w,
+      startH: b.h,
+      zoom: z,
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const onMouseMove = (e) => {
+    if(!drag) return;
+    const dx = (e.clientX - drag.startX) / drag.zoom;
+    const dy = (e.clientY - drag.startY) / drag.zoom;
+
+    if(drag.type === 'move'){
+      drag.starts.forEach(s => {
+        const b = getBoxById(s.id);
+        if(!b) return;
+        b.x = Math.round(s.x + dx);
+        b.y = Math.round(s.y + dy);
+      });
+      renderBoxes();
+      markDirty();
+      return;
+    }
+
+    if(drag.type === 'resize'){
+      const b = getBoxById(drag.boxId);
+      if(!b) return;
+      // Prevent overly tiny boxes that make the UI look "squeezed" / text clipped
+      b.w = Math.round(clamp(drag.startW + dx, 200, 640));
+      b.h = Math.round(clamp(drag.startH + dy, 110, 420));
+      renderBoxes();
+      markDirty();
+    }
+  };
+
+  const onMouseUp = () => {
+    drag = null;
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  };
+
+  // ---------- align / distribute ----------
+  const getSelectedBoxes = () => {
+    const s = selectedSet();
+    return state.boxes.filter(b => s.has(b.id));
+  };
+
+  const alignH = () => {
+    const sel = getSelectedBoxes();
+    if(sel.length < 2) return;
+    const y = Math.round(sel.reduce((acc,b)=>acc+b.y,0)/sel.length);
+    sel.forEach(b => b.y = y);
+    markDirty(); renderBoxes();
+  };
+  const alignV = () => {
+    const sel = getSelectedBoxes();
+    if(sel.length < 2) return;
+    const x = Math.round(sel.reduce((acc,b)=>acc+b.x,0)/sel.length);
+    sel.forEach(b => b.x = x);
+    markDirty(); renderBoxes();
+  };
+  const spaceH = () => {
+    const sel = getSelectedBoxes().sort((a,b)=>a.x-b.x);
+    if(sel.length < 3) return;
+    const left = sel[0].x;
+    const right = sel[sel.length-1].x;
+    const gap = (right - left) / (sel.length-1);
+    sel.forEach((b,i)=> b.x = Math.round(left + gap*i));
+    markDirty(); renderBoxes();
+  };
+  const spaceV = () => {
+    const sel = getSelectedBoxes().sort((a,b)=>a.y-b.y);
+    if(sel.length < 3) return;
+    const top = sel[0].y;
+    const bottom = sel[sel.length-1].y;
+    const gap = (bottom - top) / (sel.length-1);
+    sel.forEach((b,i)=> b.y = Math.round(top + gap*i));
+    markDirty(); renderBoxes();
+  };
+
+  // ---------- events ----------
+  tabBtns.forEach(btn => btn.addEventListener('click', ()=> setTab(btn.dataset.tab)));
+
+  toggleSide.addEventListener('click', () => {
+    state.ui.sidebarCollapsed = !state.ui.sidebarCollapsed;
+    applySidebar();
+    markDirty();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      state.ui.sidebarCollapsed = !state.ui.sidebarCollapsed;
+      applySidebar();
+      markDirty();
+    }
+    if(e.key === 'Delete' || e.key === 'Backspace'){
+      // don't hijack when typing
+      const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+      if(tag === 'input' || tag === 'textarea') return;
+      deleteSelectedBoxes();
+    }
+    if(e.key === 'Escape'){
+      closePopover();
+      clearSelection();
+    }
+  });
+
+  addWaitBtn.addEventListener('click', ()=> addWaiting(nameInput.value));
+  nameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') addWaiting(nameInput.value);
+});
+
+  searchInput.addEventListener('input', ()=> renderWait());
+  // density controls removed
+
+  addBoxBtn.addEventListener('click', addBox);
+  deleteSelectedBtn.addEventListener('click', deleteSelectedBoxes);
+
+  selectModeBtn.addEventListener('click', () => {
+    state.ui.selectMode = !state.ui.selectMode;
+    selectModeBtn.classList.toggle('active', state.ui.selectMode);
+    markDirty();
+  });
+
+  alignHBtn.addEventListener('click', alignH);
+  alignVBtn.addEventListener('click', alignV);
+  spaceHBtn.addEventListener('click', spaceH);
+  spaceVBtn.addEventListener('click', spaceV);
+
+  zoomIn.addEventListener('click', ()=> { state.ui.zoom = clamp(state.ui.zoom + 0.1, 0.3, 2.5); applyZoom(); markDirty(); });
+  zoomOut.addEventListener('click', ()=> { state.ui.zoom = clamp(state.ui.zoom - 0.1, 0.3, 2.5); applyZoom(); markDirty(); });
+  zoomReset.addEventListener('click', ()=> { state.ui.zoom = 1; applyZoom(); markDirty(); });
+
+  // ctrl/meta + wheel zoom
+  const canvasWrap = document.querySelector('.canvasWrap');
+  canvasWrap.addEventListener('wheel', (e) => {
+    if(!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    const delta = Math.sign(e.deltaY);
+    state.ui.zoom = clamp(state.ui.zoom + (delta>0 ? -0.06 : 0.06), 0.3, 2.5);
+    applyZoom();
+    markDirty();
+  }, { passive:false });
+
+  // click empty canvas clears selection / popover
+  canvasWrap.addEventListener('mousedown', (e) => {
+    const hitBox = e.target.closest('.box');
+    if(!hitBox){
+      closePopover();
+      if(!isSelectToggle(e)) clearSelection();
+    }
+  });
+
+  // ---------- ticker (update timers) ----------
+  const updateSeatTimers = () => {
+    // Update only the time text inside existing box DOM (NO full re-render).
+    // This keeps the o-button popover from disappearing/flickering.
+    for(const b of state.boxes){
+      const boxEl = boxesLayer.querySelector(`.box[data-boxid="${b.id}"]`);
+      if(!boxEl) continue;
+      if(b.seatPersonId){
+        const p = getPersonById(b.seatPersonId);
+        if(!p) continue;
+        const nameEl = boxEl.querySelector(".seatName");
+        const timeEl = boxEl.querySelector(".seatTime");
+        if(nameEl && nameEl.textContent !== p.name) nameEl.textContent = p.name;
+        const timeEL = boxEl.querySelector('.time');
+        if (timeEl) {
+        };
+  let baseTime;
+  if (p.assignedBoxId) {
+    baseTime = p.seatedStartedAt;
+  } else {
+    baseTime = p.waitingStartedAt;
+  }
+  timeEl.textContent = fmtMS(now() - baseTime);
+};
+      if(openPopoverBoxId === b.id){
+        const pop = boxEl.querySelector(".boxPopover");
+        if(pop && typeof pop._updateVal === "function") pop._updateVal();
+      }
+    };
+    const updateWaitingTimers = () => {
+  const nowTs = now();
+
+  document.querySelectorAll('.item').forEach(el => {
+    const pid = el.dataset.pid;
+    if (!pid) return;
+
+    const p = getPersonById(pid);
+    if (!p || !p.waitingStartedAt) return;
+
+    const elapsed = nowTs - p.waitingStartedAt;
+
+    const timeEl = el.querySelector('.time');
+    if (timeEl) {
+      timeEl.textContent = fmtMS(elapsed);
+    }
+
+    const pill = el.querySelector('.pill');
+    if (pill) {
+      pill.className = `pill ${pillTimeClass(elapsed)}`;
+    }
+  });
+};
+
+  };
+setInterval(updateSeatTimers, 1000);
+
+  setInterval(() => {
+    // list timers
+    renderWait();
+    renderAssigned();
+    // box timers (no DOM rebuild)
+    updateSeatTimers();
+  }, 1000);
+
+  // ---------- initial render ----------
+  const renderAll = () => {
+    applySidebar();
+    selectModeBtn.classList.toggle('active', state.ui.selectMode);
+    // waiting list density buttons
+    try{ applyDensityUI(); }catch(_){/* ignore */}
+    renderWait();
+    renderAssigned();
+    renderBoxes();
+  };
+
+  window.renderAll = renderAll;
+  
+// ================= Timer State Fix (waiting / seated) =================
+
+// Ensure default state fields
+function ensureTimerState(item){
+  if(!item.status) item.status = 'waiting';
+  if(item.status === 'waiting'){
+    if(!item.waitingStartedAt) item.waitingStartedAt = Date.now();
+    item.seatedStartedAt = null;
+  }else if(item.status === 'seated'){
+    if(!item.seatedStartedAt) item.seatedStartedAt = Date.now();
+    item.waitingStartedAt = null;
+  }
+}
+
+// Move item to waiting
+function moveToWaiting(item){
+  item.status = 'waiting';
+  item.waitingStartedAt = Date.now();
+  item.seatedStartedAt = null;
+  
+}
+
+// Move item to seated
+function moveToSeated(item){
+  item.status = 'seated';
+  item.seatedStartedAt = Date.now();
+  item.waitingStartedAt = null;
+  renderAll();
+}
+
+// Get elapsed ms based on status
+function getElapsed(item){
+  if(item.status === 'waiting' && item.waitingStartedAt){
+    return Date.now() - item.waitingStartedAt;
+  }
+  if(item.status === 'seated' && item.seatedStartedAt){
+    return Date.now() - item.seatedStartedAt;
+  }
+  return 0;
+}
+
+// Format mm:ss
+function fmt(ms){
+  const s = Math.floor(ms/1000);
+  const m = Math.floor(s/60);
+  const r = s%60;
+  return String(m).padStart(2,'0')+':'+String(r).padStart(2,'0');
+}
+
+// Hook into render timer labels
+function updateTimerLabel(el, item){
+  ensureTimerState(item);
+  el.textContent = (item.status === 'waiting' ? '대기 ' : '') + fmt(getElapsed(item));
+}
+
+// =====================================================================
+
+
+// ===== Robust Status Change Reset (auto-detect) =====
+function ensureStatusReset(item){
+  if(!item._lastStatus){
+    item._lastStatus = item.status || 'waiting';
+    if(item._lastStatus === 'waiting'){
+      item.waitingStartedAt = Date.now();
+    } else {
+      item.seatedStartedAt = Date.now();
+    }
     return;
   }
 
-  box.waiting.forEach(w => {
-    const card = document.createElement("section");
-    card.className = "card waiting-card";
+  if(item._lastStatus !== item.status){
+    if(item.status === 'waiting'){
+      item.waitingStartedAt = Date.now();
+      item.seatedStartedAt = null;
+    }
+    else if(item.status === 'seated'){
+      item.seatedStartedAt = Date.now();
+      item.waitingStartedAt = null;
+    }
 
-    card.innerHTML = `
-      <span class="time" data-start="${w.startedAt}">00:00</span>
-      <button class="seat-delete wait-delete">×</button>
-      <h3>${w.name}</h3>
-    `;
+    // ✅ 여기 있어야 함
+    item._lastStatus = item.status;
+  }
+}
+const layoutBackBtn = document.getElementById('layoutBack');
 
-    card.onclick = () => (selectedWaiting = w);
-
-    card.querySelector(".wait-delete").onclick = e => {
-      e.stopPropagation();
-      box.waiting = box.waiting.filter(x => x.id !== w.id);
-      saveState();
-      renderWaitList();
-    };
-
-    list.appendChild(card);
+if (layoutBackBtn) {
+  layoutBackBtn.addEventListener('click', () => {
+    const layout = document.getElementById('layoutContainer');
+    if (layout) {
+      layout.style.display = 'none';
+    }
+    localStorage.setItem('layoutEnabled', 'false');
   });
 }
+
+})();

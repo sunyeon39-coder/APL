@@ -1,29 +1,24 @@
+
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Box Board</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
   <div class="app">
-
-    <!-- ===== HEADER ===== -->
     <header class="header">
       <div class="header-left">
         <div class="brand">Box Board</div>
-        <div id="dateText" class="dateText"></div>
+        <div id="dateText" class="dateText">asd</div>
       </div>
       <div class="header-right">
-        <button id="addBoxBtn" class="btn btn-primary">+ Add Box</button>
       </div>
     </header>
 
-    <!-- ===== BOARD (❗ 단 하나만 유지) ===== -->
     <main id="board" class="board"></main>
-
   </div>
 
   <!-- ===== Board Text Editor (E) ===== -->
@@ -38,13 +33,7 @@
 
       <label class="field">
         <div class="field-label">Title Text</div>
-        <input
-          id="inputTitleText"
-          class="field-input"
-          type="text"
-          value="Box Board"
-          disabled
-        />
+        <input id="inputTitleText" class="field-input" type="text" value="Box Board" disabled />
       </label>
 
       <div class="modal-actions">
@@ -52,31 +41,19 @@
         <button id="closeText" class="btn">Close</button>
       </div>
 
-      <div class="hint">
-        Press <b>E</b> to open / <b>ESC</b> to close
-      </div>
+      <div class="hint">Press <b>E</b> to open / <b>ESC</b> to close</div>
     </div>
   </div>
 
-  <!-- ===== Box Editor (W / + Add Box) ===== -->
+  <!-- ===== Box Editor (W or + Add Box or ✏) ===== -->
   <div id="overlayBox" class="overlay hidden" aria-hidden="true">
-    <div
-      class="modal modal-wide"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Create / Edit Box"
-    >
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-label="Create / Edit Box">
       <div class="modal-title">Create / Edit Box</div>
 
       <div class="grid">
         <label class="field">
           <div class="field-label">Title</div>
-          <input
-            id="boxTitle"
-            class="field-input"
-            type="text"
-            placeholder="#41 Challenger Event DAY 2"
-          />
+          <input id="boxTitle" class="field-input" type="text" placeholder="#41 Challenger Event DAY 2" />
         </label>
 
         <label class="field">
@@ -90,22 +67,12 @@
 
         <label class="field">
           <div class="field-label">Buy-in</div>
-          <input
-            id="boxBuyin"
-            class="field-input"
-            type="text"
-            placeholder="2,000,000 KRW"
-          />
+          <input id="boxBuyin" class="field-input" type="text" placeholder="2,000,000 KRW" />
         </label>
 
         <label class="field">
           <div class="field-label">Time</div>
-          <input
-            id="boxTime"
-            class="field-input"
-            type="text"
-            placeholder="12:00"
-          />
+          <input id="boxTime" class="field-input" type="text" placeholder="12:00" />
         </label>
 
         <label class="field">
@@ -118,12 +85,7 @@
 
         <label class="field">
           <div class="field-label">Extra Value</div>
-          <input
-            id="boxExtraValue"
-            class="field-input"
-            type="text"
-            placeholder="138"
-          />
+          <input id="boxExtraValue" class="field-input" type="text" placeholder="138" />
         </label>
       </div>
 
@@ -132,18 +94,17 @@
         <button id="cancelBox" class="btn">Cancel</button>
       </div>
 
-      <div class="hint">
-        Press <b>W</b> to create / <b>ESC</b> to close
-      </div>
+      <div class="hint">Press <b>W</b> to create / <b>ESC</b> to close</div>
     </div>
   </div>
 
-  <!-- ===== Loading ===== -->
-  <div id="layoutLoading" class="layout-loading hidden">
-    <div class="spinner"></div>
-    <div class="loading-text">Loading layout…</div>
-  </div>
-
   <script src="app.js"></script>
+
+<!-- Layout Overlay -->
+<div id="layoutContainer" style="display:none;position:fixed;inset:0;z-index:9999;background:#0b1020">
+<button id="layoutBack" class="layout-back-btn">← 뒤로</button>
+  <iframe id="layoutFrame" src="" style="width:100%;height:100%;border:0"></iframe>
+</div>
+
 </body>
 </html>
