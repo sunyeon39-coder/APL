@@ -1,32 +1,49 @@
-console.log("🔥 REAL layout_app.js LOADED");
+console.log("🔥 layout_app.js FINAL SYNC LOADED");
 
 /* =================================================
-   BoxBoard Layout App – FINAL STABLE (SYNCED + SAFE)
-   - Firestore: boxboard/state 안 boxes[].layout 에 저장
-   - Local: 즉시 반영(실패해도 UI 유지)
+   BoxBoard Layout App – FINAL SYNC VERSION
    ================================================= */
 
 import { db } from "./firebase.js";
 import {
   doc,
   setDoc,
-  onSnapshot,
-  getDoc
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* ===============================
    CONST
    =============================== */
 const STATE_REF = doc(db, "boxboard", "state");
+const LS_KEY = "boxboard_layout_state_v2";
 
 /* ===============================
    FLAGS
    =============================== */
-let isApplyingRemoteLayout = false;
+let hydrated = false;          // Firestore 최초 수신 여부
+let isRemoteApplying = false; // 무한 루프 방지
 
 /* ===============================
-   TIMER UTIL
+   STATE
    =============================== */
+const layout = {
+  seats: {},     // { [seatNumber]: { name, startedAt } | null }
+  waiting: []    // [{ id, name, startedAt }]
+};
+
+/* ===============================
+   UTIL
+   =============================== */
+const $ = id => document.getElementById(id);
+
+function getBoxId() {
+  return new URLSearchParams(location.search).get("boxId");
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2) + Date.now();
+}
+
 function formatElapsed(ms) {
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
@@ -37,48 +54,19 @@ function formatElapsed(ms) {
 }
 
 /* ===============================
-   GLOBAL STATE
+   LOCAL (fallback only)
    =============================== */
-let selectedSeat = null;
-let selectedWaiting = null;
-
-const layout = {
-  seats: {},   // { "1": {id,name,startedAt} | null, ... }  / 존재하는 seat key만 표시
-  waiting: []  // [{id,name,startedAt}, ...]
-};
-
-/* ===============================
-   UTIL
-   =============================== */
-function getBoxId() {
-  return new URLSearchParams(location.search).get("boxId");
-}
-
-function mustEl(id) {
-  const el = document.getElementById(id);
-  if (!el) throw new Error(`필수 DOM 요소 없음: #${id}`);
-  return el;
-}
-
-/* ===============================
-   LOCAL STORAGE (box별 분리 저장)
-   =============================== */
-function lsKey() {
-  const boxId = getBoxId() || "no_box";
-  return `boxboard_layout_state_${boxId}`;
-}
-
 function saveLocal() {
-  localStorage.setItem(lsKey(), JSON.stringify(layout));
+  localStorage.setItem(LS_KEY, JSON.stringify(layout));
 }
 
 function loadLocal() {
-  const raw = localStorage.getItem(lsKey());
+  const raw = localStorage.getItem(LS_KEY);
   if (!raw) return false;
   try {
-    const saved = JSON.parse(raw);
-    layout.seats = saved.seats || {};
-    layout.waiting = saved.waiting || [];
+    const data = JSON.parse(raw);
+    layout.seats = data.seats || {};
+    layout.waiting = data.waiting || [];
     return true;
   } catch {
     return false;
@@ -86,53 +74,7 @@ function loadLocal() {
 }
 
 /* ===============================
-   UI 즉시 반영(핵심)
-   =============================== */
-function applyLocalNext(next) {
-  if (next.seats) layout.seats = next.seats;
-  if (next.waiting) layout.waiting = next.waiting;
-  saveLocal();
-  renderLayout();
-  renderWaitList();
-}
-
-/* ===============================
-   FIRESTORE WRITE (boxes[].layout에 저장)
-   - 실패해도 UI는 이미 반영되어 있음
-   =============================== */
-async function writeLayout(next) {
-  if (isApplyingRemoteLayout) return;
-
-  const boxId = getBoxId();
-  if (!boxId) return;
-
-  // 🔥 1. 로컬 상태 먼저 확정
-  Object.assign(layout, next);
-  saveLocal();
-
-  // 🔥 2. Firestore는 "반영"만
-  try {
-    await setDoc(
-      STATE_REF,
-      {
-        boxes: firebaseBoxes => {
-          const boxes = firebaseBoxes || [];
-          return boxes.map(b =>
-            b.id === boxId
-              ? { ...b, layout: { ...layout } }
-              : b
-          );
-        }
-      },
-      { merge: true }
-    );
-  } catch (e) {
-    console.warn("Firestore sync 실패 (UI 유지)", e);
-  }
-}
-
-/* ===============================
-   SUBSCRIBE (실시간 반영)
+   FIRESTORE SUBSCRIBE (🔥 핵심)
    =============================== */
 function subscribeLayout() {
   const boxId = getBoxId();
@@ -144,7 +86,8 @@ function subscribeLayout() {
     const box = snap.data().boxes?.find(b => b.id === boxId);
     if (!box) return;
 
-    isApplyingRemoteLayout = true;
+    isRemoteApplying = true;
+    hydrated = true;
 
     layout.seats = box.layout?.seats || {};
     layout.waiting = box.layout?.waiting || [];
@@ -153,125 +96,99 @@ function subscribeLayout() {
     renderLayout();
     renderWaitList();
 
-    isApplyingRemoteLayout = false;
+    isRemoteApplying = false;
   });
 }
 
-
 /* ===============================
-   ACTIONS
+   WRITE TO FIRESTORE
    =============================== */
-async function addWaiting() {
-  const input = mustEl("waitingNameInput");
-  const name = (input.value || "").trim();
-  if (!name) return;
+async function writeLayout(next) {
+  if (isRemoteApplying) return;
 
-  const nextWaiting = [
-    ...layout.waiting,
-    { id: "w_" + Date.now(), name, startedAt: Date.now() }
-  ];
+  const boxId = getBoxId();
+  if (!boxId) return;
 
-  input.value = "";
-  selectedWaiting = null;
+  const snap = await new Promise(res =>
+    onSnapshot(STATE_REF, s => s.exists() && res(s), { once: true })
+  );
+  if (!snap) return;
 
-  await writeLayout({ waiting: nextWaiting });
-}
+  const data = snap.data();
 
-async function tryAssign() {
-  if (!selectedSeat || !selectedWaiting) return;
+  const boxes = (data.boxes || []).map(b =>
+    b.id === boxId
+      ? { ...b, layout: { ...(b.layout || {}), ...next } }
+      : b
+  );
 
-  const seatKey = String(selectedSeat.seatIndex);
-  const nextSeats = { ...layout.seats };
-  const nextWaiting = layout.waiting.filter(w => w.id !== selectedWaiting.id);
+  await setDoc(STATE_REF, { boxes }, { merge: true });
 
-  // 이미 사람이 앉아 있으면 그 사람을 대기자로 밀어내기
-  if (nextSeats[seatKey]) {
-    nextWaiting.push({ ...nextSeats[seatKey], startedAt: Date.now() });
-  }
-
-  // 선택된 대기자를 seat에 앉힘
-  nextSeats[seatKey] = { ...selectedWaiting, startedAt: Date.now() };
-
-  selectedSeat = null;
-  selectedWaiting = null;
-
-  await writeLayout({ seats: nextSeats, waiting: nextWaiting });
+  Object.assign(layout, next);
+  saveLocal();
 }
 
 /* ===============================
-   RENDER: SEATS
+   RENDER – SEATS
    =============================== */
 function renderLayout() {
-  const grid = mustEl("layoutGrid");
+  const grid = $("layoutGrid");
   grid.innerHTML = "";
 
-  const keys = Object.keys(layout.seats).sort((a, b) => Number(a) - Number(b));
+  Object.keys(layout.seats)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .forEach(i => {
+      const d = layout.seats[i];
 
-  keys.forEach((k) => {
-    const d = layout.seats[k]; // null 또는 사람 객체
+      const seat = document.createElement("section");
+      seat.className = "card";
 
-    const seat = document.createElement("section");
-    seat.className = "card";
+      seat.innerHTML = `
+        <div class="badge">Seat ${i}</div>
+        <button class="seat-delete">×</button>
+        <h3>${d ? d.name : "비어있음"}</h3>
+        ${d ? `<div class="pill running">
+          <span class="time" data-start="${d.startedAt}">0:00</span>
+        </div>` : ""}
+      `;
 
-    // 선택 표시(옵션)
-    if (selectedSeat?.seatIndex === k) seat.classList.add("selected");
+      // 단일 클릭: 선택
+      seat.onclick = () => {
+        if (!selectedWaiting) return;
+        assignWaitingToSeat(i);
+      };
 
-    seat.innerHTML = `
-      <div class="badge">Seat ${k}</div>
-      <button class="seat-delete" type="button" aria-label="delete">×</button>
-      <h3>${d ? d.name : "비어있음"}</h3>
-      ${
-        d
-          ? `<div class="pill running"><span class="time" data-start="${d.startedAt}">0:00</span></div>`
-          : ""
-      }
-    `;
+      // 더블 클릭: Seat → Waiting
+      seat.ondblclick = e => {
+        e.preventDefault();
+        if (!layout.seats[i]) return;
 
-    // 단일 클릭: seat 선택 + 대기자 선택되어 있으면 배정
-    let t = null;
-    seat.addEventListener("click", () => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        selectedSeat = { seatIndex: k };
-        if (selectedWaiting) tryAssign();
-        renderLayout();
-        renderWaitList();
-      }, 120);
+        const p = layout.seats[i];
+        writeLayout({
+          seats: { ...layout.seats, [i]: null },
+          waiting: [...layout.waiting, { ...p, id: uid(), startedAt: Date.now() }]
+        });
+      };
+
+      seat.querySelector(".seat-delete").onclick = e => {
+        e.stopPropagation();
+        const next = { ...layout.seats };
+        delete next[i];
+        writeLayout({ seats: next });
+      };
+
+      grid.appendChild(seat);
     });
-
-    // 더블클릭: seat에 사람 있으면 대기자로 빼기(너 요구)
-    seat.addEventListener("dblclick", (e) => {
-      e.preventDefault();
-      if (!layout.seats[k]) return;
-
-      const p = layout.seats[k];
-      const nextSeats = { ...layout.seats, [k]: null };
-      const nextWaiting = [...layout.waiting, { ...p, startedAt: Date.now() }];
-
-      writeLayout({ seats: nextSeats, waiting: nextWaiting });
-    });
-
-    // 삭제 버튼: seat 자체 제거
-    seat.querySelector(".seat-delete").addEventListener("click", (e) => {
-      e.stopPropagation();
-      const nextSeats = { ...layout.seats };
-      delete nextSeats[k];
-
-      // 선택 상태 정리
-      if (selectedSeat?.seatIndex === k) selectedSeat = null;
-
-      writeLayout({ seats: nextSeats });
-    });
-
-    grid.appendChild(seat);
-  });
 }
 
 /* ===============================
-   RENDER: WAITING
+   RENDER – WAITING
    =============================== */
+let selectedWaiting = null;
+
 function renderWaitList() {
-  const list = mustEl("waitingList");
+  const list = $("waitingList");
   list.innerHTML = "";
 
   if (!layout.waiting.length) {
@@ -279,102 +196,114 @@ function renderWaitList() {
     return;
   }
 
-  layout.waiting.forEach((w) => {
+  layout.waiting.forEach(w => {
     const card = document.createElement("section");
-    card.className = "card waiting-card";
-
-    if (selectedWaiting?.id === w.id) card.classList.add("selected");
+    card.className = "waiting-card card";
 
     card.innerHTML = `
       <h3>${w.name}</h3>
       <div class="pill waiting">
         <span class="time" data-start="${w.startedAt}">0:00</span>
       </div>
-      <button class="wait-delete" type="button" aria-label="delete">×</button>
+      <button class="wait-delete">×</button>
     `;
 
-    // 클릭: 대기자 선택
-    card.addEventListener("click", () => {
-      selectedWaiting = w;
-      if (selectedSeat) tryAssign();
-      renderLayout();
-      renderWaitList();
-    });
+    card.onclick = () => selectedWaiting = w;
 
-    // 삭제
-    card.querySelector(".wait-delete").addEventListener("click", (e) => {
+    card.querySelector(".wait-delete").onclick = e => {
       e.stopPropagation();
-      const nextWaiting = layout.waiting.filter(x => x.id !== w.id);
-      if (selectedWaiting?.id === w.id) selectedWaiting = null;
-      writeLayout({ waiting: nextWaiting });
-    });
+      writeLayout({
+        waiting: layout.waiting.filter(x => x.id !== w.id)
+      });
+    };
 
     list.appendChild(card);
   });
 }
 
 /* ===============================
-   INIT
+   ACTIONS
    =============================== */
-mustEl("addSeatBtn").onclick = async () => {
-  const input = prompt("Seat 번호 입력");
-  if (input === null) return;
+function assignWaitingToSeat(seatIndex) {
+  if (!selectedWaiting) return;
 
-  const n = Number(input.trim());
-  if (!Number.isInteger(n) || n <= 0) {
-    alert("올바른 번호를 입력하세요");
-    return;
-  }
-
-  if (layout.seats[n]) {
-    alert("이미 존재하는 Seat 번호입니다");
-    return;
-  }
-
-  // 🔥 즉시 로컬 반영 (이게 핵심)
-  layout.seats = { ...layout.seats, [n]: null };
-  saveLocal();
-  renderLayout();
-
-  // 🔥 Firestore는 동기화만
-  try {
-    await writeLayout({ seats: layout.seats });
-  } catch (e) {
-    console.warn("Seat sync 실패", e);
-  }
-};
-
-  // 4) 대기자 추가 버튼
-  mustEl("addWaitingBtn").addEventListener("click", addWaiting);
-
-  // Enter로도 추가(IME 대응)
-  const waitingInput = mustEl("waitingNameInput");
-  let composing = false;
-  waitingInput.addEventListener("compositionstart", () => (composing = true));
-  waitingInput.addEventListener("compositionend", () => (composing = false));
-  waitingInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !composing) {
-      e.preventDefault();
-      addWaiting();
-    }
+  writeLayout({
+    seats: {
+      ...layout.seats,
+      [seatIndex]: { name: selectedWaiting.name, startedAt: Date.now() }
+    },
+    waiting: layout.waiting.filter(w => w.id !== selectedWaiting.id)
   });
 
-  // 5) Back 버튼
-  const backBtn = document.getElementById("layoutBackBtn");
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      if (history.length > 1) history.back();
-      else location.href = "index.html";
-    });
-  }
+  selectedWaiting = null;
+}
 
+function addWaiting() {
+  const input = $("waitingNameInput");
+  const name = input.value.trim();
+  if (!name) return;
+
+  writeLayout({
+    waiting: [...layout.waiting, { id: uid(), name, startedAt: Date.now() }]
+  });
+
+  input.value = "";
+}
+
+/* ===============================
+   INIT
+   =============================== */
+document.addEventListener("DOMContentLoaded", () => {
+  // 🔥 Firestore 우선
+  subscribeLayout();
+
+  // fallback
+  setTimeout(() => {
+    if (!hydrated) {
+      loadLocal();
+      renderLayout();
+      renderWaitList();
+    }
+  }, 500);
+
+  $("addSeatBtn").onclick = async () => {
+    const input = prompt("Seat 번호 입력");
+    if (input === null) return;
+
+    const n = Number(input.trim());
+    if (!Number.isInteger(n) || n <= 0) {
+      alert("올바른 번호를 입력하세요");
+      return;
+    }
+    if (layout.seats[n]) {
+      alert("이미 존재하는 Seat 입니다");
+      return;
+    }
+
+    layout.seats = { ...layout.seats, [n]: null };
+    saveLocal();
+    renderLayout();
+
+    try {
+      await writeLayout({ seats: layout.seats });
+    } catch (e) {
+      console.warn("Seat sync 실패", e);
+    }
+  };
+
+  $("addWaitingBtn").onclick = addWaiting;
+
+  $("layoutBackBtn")?.addEventListener("click", () => {
+    history.length > 1 ? history.back() : location.href = "index.html";
+  });
+});
 
 /* ===============================
    TIMER LOOP
    =============================== */
 setInterval(() => {
   const now = Date.now();
-  document.querySelectorAll(".time[data-start]").forEach((el) => {
+  document.querySelectorAll(".time[data-start]").forEach(el => {
     const start = Number(el.dataset.start);
     if (start) el.textContent = formatElapsed(now - start);
   });
