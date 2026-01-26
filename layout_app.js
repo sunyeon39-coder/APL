@@ -106,38 +106,28 @@ async function writeLayout(next) {
   const boxId = getBoxId();
   if (!boxId) return;
 
-  // 1) UI 먼저 반영 (실패해도 화면 유지)
-  const optimistic = {
-    seats: next.seats ?? layout.seats,
-    waiting: next.waiting ?? layout.waiting
-  };
-  applyLocalNext(optimistic);
+  // 🔥 1. 로컬 상태 먼저 확정
+  Object.assign(layout, next);
+  saveLocal();
 
-  // 2) Firestore 동기화
+  // 🔥 2. Firestore는 "반영"만
   try {
-    const snap = await getDoc(STATE_REF);
-    if (!snap.exists()) return;
-
-    const data = snap.data();
-    const prevBoxes = Array.isArray(data.boxes) ? data.boxes : [];
-
-    const boxes = prevBoxes.map(b => {
-      if (b.id !== boxId) return b;
-      const prevLayout = b.layout || {};
-      return {
-        ...b,
-        layout: {
-          ...prevLayout,
-          ...(next.seats ? { seats: next.seats } : null),
-          ...(next.waiting ? { waiting: next.waiting } : null)
+    await setDoc(
+      STATE_REF,
+      {
+        boxes: firebaseBoxes => {
+          const boxes = firebaseBoxes || [];
+          return boxes.map(b =>
+            b.id === boxId
+              ? { ...b, layout: { ...layout } }
+              : b
+          );
         }
-      };
-    });
-
-    await setDoc(STATE_REF, { boxes }, { merge: true });
+      },
+      { merge: true }
+    );
   } catch (e) {
-    console.warn("⚠️ Firestore sync failed (UI kept):", e);
-    // UI는 이미 반영되어 있으니 여기서 끝
+    console.warn("Firestore sync 실패 (UI 유지)", e);
   }
 }
 
@@ -148,7 +138,7 @@ function subscribeLayout() {
   const boxId = getBoxId();
   if (!boxId) return;
 
-  onSnapshot(STATE_REF, (snap) => {
+  onSnapshot(STATE_REF, snap => {
     if (!snap.exists()) return;
 
     const box = snap.data().boxes?.find(b => b.id === boxId);
@@ -158,6 +148,7 @@ function subscribeLayout() {
 
     layout.seats = box.layout?.seats || {};
     layout.waiting = box.layout?.waiting || [];
+
     saveLocal();
     renderLayout();
     renderWaitList();
@@ -165,6 +156,7 @@ function subscribeLayout() {
     isApplyingRemoteLayout = false;
   });
 }
+
 
 /* ===============================
    ACTIONS
@@ -324,35 +316,33 @@ function renderWaitList() {
 /* ===============================
    INIT
    =============================== */
-document.addEventListener("DOMContentLoaded", () => {
-  // 1) 로컬 먼저
-  loadLocal();
+mustEl("addSeatBtn").onclick = async () => {
+  const input = prompt("Seat 번호 입력");
+  if (input === null) return;
+
+  const n = Number(input.trim());
+  if (!Number.isInteger(n) || n <= 0) {
+    alert("올바른 번호를 입력하세요");
+    return;
+  }
+
+  if (layout.seats[n]) {
+    alert("이미 존재하는 Seat 번호입니다");
+    return;
+  }
+
+  // 🔥 즉시 로컬 반영 (이게 핵심)
+  layout.seats = { ...layout.seats, [n]: null };
+  saveLocal();
   renderLayout();
-  renderWaitList();
 
-  // 2) 구독 시작
-  subscribeLayout();
-
-  // 3) Seat 추가 버튼
-  mustEl("addSeatBtn").addEventListener("click", async () => {
-    const input = prompt("Seat 번호 입력");
-    if (input === null) return;
-
-    const n = Number(String(input).trim());
-    if (!Number.isInteger(n) || n <= 0) {
-      alert("올바른 번호를 입력하세요");
-      return;
-    }
-
-    const key = String(n);
-    if (Object.prototype.hasOwnProperty.call(layout.seats, key)) {
-      alert("이미 존재하는 Seat 번호입니다");
-      return;
-    }
-
-    const nextSeats = { ...layout.seats, [key]: null };
-    await writeLayout({ seats: nextSeats });
-  });
+  // 🔥 Firestore는 동기화만
+  try {
+    await writeLayout({ seats: layout.seats });
+  } catch (e) {
+    console.warn("Seat sync 실패", e);
+  }
+};
 
   // 4) 대기자 추가 버튼
   mustEl("addWaitingBtn").addEventListener("click", addWaiting);
@@ -377,7 +367,7 @@ document.addEventListener("DOMContentLoaded", () => {
       else location.href = "index.html";
     });
   }
-});
+
 
 /* ===============================
    TIMER LOOP
