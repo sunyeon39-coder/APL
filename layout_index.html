@@ -2,6 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
   <title>Layout</title>
 
   <link rel="stylesheet" href="styles.css">
@@ -9,14 +13,20 @@
 </head>
 <body>
 
+  <!-- Optional loading overlay -->
+  <div id="layoutBootLoading" class="layout-loading hidden">
+    <div class="spinner"></div>
+    <div>Loading…</div>
+  </div>
+
   <div class="layout-wrap">
 
     <!-- =========================
          TOP BAR (고정)
     ========================== -->
     <div class="layout-top">
-      <button id="addSeatBtn" class="btn">+ Seat 추가</button>
-      <button id="layoutBackBtn" class="btn back-btn">Back</button>
+      <button id="addSeatBtn" class="btn" type="button">+ Seat 추가</button>
+      <button id="layoutBackBtn" class="btn back-btn" type="button">Back</button>
     </div>
 
     <!-- =========================
@@ -33,12 +43,15 @@
     ========================== -->
     <div class="bottom-area">
 
-      <div class="waiting-header">
+      <div class="waiting-header" role="group" aria-label="대기자 추가">
         <input
           id="waitingNameInput"
+          type="text"
+          inputmode="text"
+          autocomplete="off"
           placeholder="대기자 이름"
         />
-        <button id="addWaitingBtn">+ 대기자 추가</button>
+        <button id="addWaitingBtn" type="button">+ 대기자 추가</button>
       </div>
 
       <div class="wait-scroll">

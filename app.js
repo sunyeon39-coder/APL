@@ -130,6 +130,8 @@ function closeTextModal(){
 }
 
 function openBoxModal(box=null){
+  closeTextModal(); // 🔥 다른 모달 무조건 닫기
+
   overlayBox.classList.remove("hidden");
   editingBoxId = box?.id || null;
 
@@ -142,6 +144,7 @@ function openBoxModal(box=null){
 
   setTimeout(()=>boxTitle.focus(),0);
 }
+
 function closeBoxModal(){
   overlayBox.classList.add("hidden");
   editingBoxId = null;
@@ -180,15 +183,90 @@ function renderMain(){
     card.dataset.id = b.id;
 
     card.innerHTML = `
-      <div class="badge">${b.status}</div>
-      <h3 class="card-title">${b.title}</h3>
-      <div class="meta">
-        <div class="pill"><div class="k">Buy-in</div><div class="v">${b.buyin}</div></div>
-        <div class="pill"><div class="k">Time</div><div class="v">${b.time}</div></div>
-        <div class="pill"><div class="k">${b.extraLabel}</div><div class="v">${b.extraValue}</div></div>
-      </div>
-    `;
+  <div class="badge">${b.status}</div>
 
+  <!-- Hover Bar -->
+  <div class="card-hover-bar">
+    <div class="card-hover-title">${b.title}</div>
+    <div class="card-hover-actions">
+      <button class="hover-btn edit" title="Edit">✏</button>
+      <button class="hover-btn delete" title="Delete">✕</button>
+    </div>
+  </div>
+
+  <h3 class="card-title">${b.title}</h3>
+
+  <div class="meta">
+    <div class="pill">
+      <div class="k">Buy-in</div>
+      <div class="v">${b.buyin}</div>
+    </div>
+    <div class="pill">
+      <div class="k">Time</div>
+      <div class="v">${b.time}</div>
+    </div>
+    <div class="pill">
+      <div class="k">${b.extraLabel}</div>
+      <div class="v">${b.extraValue}</div>
+    </div>
+  </div>
+`;
+
+    // ✏ Edit
+card.querySelector(".edit").addEventListener("click", (e) => {
+  e.stopPropagation();
+  openBoxModal(b);
+});
+
+// ✕ Delete
+card.querySelector(".delete").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (!confirm(`"${b.title}" 박스를 삭제할까요?`)) return;
+  state.boxes = state.boxes.filter(x => x.id !== b.id);
+  saveState();
+  render();
+});
+/* ===============================
+   📱 Mobile Long Press (Hover Bar)
+   =============================== */
+let pressTimer = null;
+let longPressed = false;
+
+document.addEventListener("touchstart", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) {
+    document
+      .querySelectorAll(".card.show-hover")
+      .forEach(c => c.classList.remove("show-hover"));
+  }
+});
+
+
+card.addEventListener("touchend", () => {
+  clearTimeout(pressTimer);
+});
+
+card.addEventListener("touchmove", () => {
+  clearTimeout(pressTimer);
+});
+
+   /* ===============================
+       3️⃣ 카드 전체 클릭 → Layout 이동
+       =============================== */
+    card.addEventListener("click", () => {
+  if (longPressed) return; // ⭐ 롱프레스 후 클릭 무시
+
+  const loader = document.getElementById("layoutLoading");
+  if (loader) loader.classList.remove("hidden");
+
+  window.location.href = `layout_index.html?boxId=${b.id}`;
+});
+
+
+
+    /* ===============================
+       4️⃣ DOM에 추가 (항상 마지막)
+       =============================== */
     boardEl.appendChild(card);
   });
 }

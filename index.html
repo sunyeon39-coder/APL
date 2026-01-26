@@ -1,6 +1,5 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,7 +15,13 @@
         <div id="dateText" class="dateText">asd</div>
       </div>
       <div class="header-right">
-        <button id="addBoxBtn" class="btn btn-primary">+ Add Box</button>
+        <button
+          id="addBoxBtn"
+          class="btn btn-primary"
+          type="button"
+        >
+          + Add Box
+        </button>
       </div>
     </header>
 
@@ -35,12 +40,18 @@
 
       <label class="field">
         <div class="field-label">Title Text</div>
-        <input id="inputTitleText" class="field-input" type="text" value="Box Board" disabled />
+        <input
+          id="inputTitleText"
+          class="field-input"
+          type="text"
+          value="Box Board"
+          disabled
+        />
       </label>
 
       <div class="modal-actions">
-        <button id="saveText" class="btn">Save</button>
-        <button id="closeText" class="btn">Close</button>
+        <button id="saveText" class="btn" type="button">Save</button>
+        <button id="closeText" class="btn" type="button">Close</button>
       </div>
 
       <div class="hint">Press <b>E</b> to open / <b>ESC</b> to close</div>
@@ -49,13 +60,18 @@
 
   <!-- ===== Box Editor (W or + Add Box or ✏) ===== -->
   <div id="overlayBox" class="overlay hidden" aria-hidden="true">
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-label="Create / Edit Box">
+    <div
+      class="modal modal-wide"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create / Edit Box"
+    >
       <div class="modal-title">Create / Edit Box</div>
 
       <div class="grid">
         <label class="field">
           <div class="field-label">Title</div>
-          <input id="boxTitle" class="field-input" type="text" placeholder="#41 Challenger Event DAY 2" />
+          <input id="boxTitle" class="field-input" type="text" />
         </label>
 
         <label class="field">
@@ -69,12 +85,12 @@
 
         <label class="field">
           <div class="field-label">Buy-in</div>
-          <input id="boxBuyin" class="field-input" type="text" placeholder="2,000,000 KRW" />
+          <input id="boxBuyin" class="field-input" type="text" />
         </label>
 
         <label class="field">
           <div class="field-label">Time</div>
-          <input id="boxTime" class="field-input" type="text" placeholder="12:00" />
+          <input id="boxTime" class="field-input" type="text" />
         </label>
 
         <label class="field">
@@ -87,20 +103,20 @@
 
         <label class="field">
           <div class="field-label">Extra Value</div>
-          <input id="boxExtraValue" class="field-input" type="text" placeholder="138" />
+          <input id="boxExtraValue" class="field-input" type="text" />
         </label>
       </div>
 
       <div class="modal-actions">
-        <button id="saveBox" class="btn btn-primary">Save</button>
-        <button id="cancelBox" class="btn">Cancel</button>
+        <button id="saveBox" class="btn btn-primary" type="button">Save</button>
+        <button id="cancelBox" class="btn" type="button">Cancel</button>
       </div>
 
       <div class="hint">Press <b>W</b> to create / <b>ESC</b> to close</div>
     </div>
-<body>
-  <div id="app"></div>
-  
-  <script src="app.js"></script>
+  </div>
+
+  <!-- app JS -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>

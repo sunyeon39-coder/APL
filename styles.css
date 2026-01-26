@@ -1,3 +1,6 @@
+/* =================================================
+   Box Board – unified UI (CLEAN FINAL)
+   ================================================= */
 
 :root{
   --bg1:#060a14;
@@ -13,30 +16,44 @@
   --radius:18px;
 }
 
-*{box-sizing:border-box}
-body{
+*{ box-sizing:border-box }
+
+/* =================================================
+   BASE
+   ================================================= */
+
+html,body{
   margin:0;
-  min-height:100vh;
-  background:radial-gradient(1200px 700px at 20% 0%, #0f1a34 0%, var(--bg1) 50%, var(--bg2) 100%);
+  height:100%;
+  background:radial-gradient(
+    1200px 700px at 20% 0%,
+    #0f1a34 0%,
+    var(--bg1) 50%,
+    var(--bg2) 100%
+  );
   color:var(--text);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
 }
-.app{
-  padding:22px 22px 28px;
-}
+
+/* =================================================
+   APP / HEADER
+   ================================================= */
+
+.app{ padding:22px 22px 28px; }
+
 .header{
   display:flex;
-  align-items:flex-start;
   justify-content:space-between;
   gap:16px;
   padding:4px 6px 18px;
 }
+
 .brand{
   font-size:22px;
   font-weight:700;
-  letter-spacing:.2px;
   opacity:.9;
 }
+
 .dateText{
   margin-top:6px;
   font-size:56px;
@@ -44,14 +61,12 @@ body{
   color:#f0c86a;
   line-height:1;
 }
-.header-right{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
+
+/* =================================================
+   BUTTONS
+   ================================================= */
 
 .btn{
-  appearance:none;
   border:1px solid rgba(255,255,255,.18);
   background:rgba(255,255,255,.08);
   color:var(--text);
@@ -59,264 +74,77 @@ body{
   border-radius:999px;
   cursor:pointer;
   font-weight:700;
-  letter-spacing:.2px;
 }
-.btn:hover{background:rgba(255,255,255,.12)}
-.btn:active{transform:translateY(1px)}
-.btn-primary{
-  border-color:rgba(59,108,183,.8);
-  background:rgba(59,108,183,.25);
-}
-/* Make Add Box always visible/clickable */
+.btn:hover{ background:rgba(255,255,255,.12); }
+
 #addBoxBtn{
   position:fixed;
   top:18px;
   right:18px;
-  z-index:2147483647;
-  pointer-events:auto;
+  z-index:10000;
 }
+
+/* =================================================
+   BOARD
+   ================================================= */
 
 .board{
   display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns:repeat(2,1fr);
   gap:18px;
-  margin-top:10px;
 }
+
+@media (max-width:900px){
+  .board{ grid-template-columns:1fr; }
+}
+
+/* =================================================
+   CARD
+   ================================================= */
+
 .card{
   position:relative;
+  padding:18px;
   border-radius:22px;
-  padding:18px 18px 16px;
-  background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  background:linear-gradient(
+    180deg,
+    rgba(255,255,255,.05),
+    rgba(255,255,255,.02)
+  );
   border:2px solid rgba(59,108,183,.75);
-  box-shadow: 0 14px 40px rgba(0,0,0,.35);
+  box-shadow:0 14px 40px rgba(0,0,0,.35);
   overflow:hidden;
+  cursor:pointer;
 }
-.card.running{ border-color: rgba(122,91,214,.8); }
+
+.card.running{ border-color:rgba(122,91,214,.8); }
 .card.closed{ opacity:.65; }
+
 .card-title{
   font-size:30px;
   font-weight:900;
-  margin:0 0 14px;
-  letter-spacing:.2px;
+  margin-bottom:14px;
   padding-right:140px;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
+
 .badge{
   position:absolute;
   top:14px;
   right:14px;
-  background:rgba(59,108,183,.28);
-  border:1px solid rgba(59,108,183,.7);
   padding:8px 14px;
   border-radius:999px;
   font-weight:900;
-}
-.card.running .badge{
-  background:rgba(122,91,214,.25);
-  border-color:rgba(122,91,214,.75);
-}
-.card.closed .badge{
-  background:rgba(255,255,255,.10);
-  border-color:rgba(255,255,255,.20);
-}
-.edit{
-  position:absolute;
-  top:16px;
-  right:100px;
-  width:34px;
-  height:34px;
-  display:grid;
-  place-items:center;
-  border-radius:10px;
-  background:rgba(0,0,0,.18);
-  border:1px solid rgba(255,255,255,.16);
-  cursor:pointer;
-  user-select:none;
-}
-.edit:hover{background:rgba(0,0,0,.28)}
-
-.meta{
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap:12px;
-}
-.pill{
-  border-radius:16px;
-  padding:14px 14px 12px;
-  background:rgba(0,0,0,.22);
-  border:1px solid rgba(255,255,255,.10);
-}
-.pill .k{
-  color:rgba(233,238,252,.62);
-  font-weight:800;
-  margin-bottom:6px;
-}
-.pill .v{
-  font-size:28px;
-  font-weight:1000;
-  letter-spacing:.2px;
+  background:rgba(59,108,183,.28);
+  border:1px solid rgba(59,108,183,.7);
 }
 
-/* Overlay + Modal */
-.overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.55);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:100000;
-}
-.hidden{display:none !important;}
-.modal{
-  width:min(680px, calc(100vw - 36px));
-  background:linear-gradient(180deg, rgba(14,26,56,.96), rgba(10,18,40,.96));
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:26px;
-  box-shadow:var(--shadow);
-  padding:26px 26px 20px;
-}
-.modal-wide{ width:min(760px, calc(100vw - 36px)); }
-.modal-title{
-  font-size:44px;
-  font-weight:1000;
-  margin-bottom:18px;
-  letter-spacing:.2px;
-}
-.field{display:block; margin:0 0 12px;}
-.field-label{font-size:20px; font-weight:900; color:rgba(233,238,252,.7); margin-bottom:6px;}
-.field-input{
-  width:100%;
-  padding:14px 16px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.25);
-  color:var(--text);
-  font-size:18px;
-  outline:none;
-}
-.field-input:focus{
-  border-color:rgba(59,108,183,.9);
-  box-shadow:0 0 0 3px rgba(59,108,183,.22);
-}
-.modal-actions{
-  display:flex;
-  justify-content:flex-end;
-  gap:12px;
-  margin-top:14px;
-}
-.hint{
-  margin-top:10px;
-  color:rgba(233,238,252,.45);
-  font-weight:700;
-  letter-spacing:.2px;
-}
-.grid{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap:12px 14px;
-}
-@media (max-width: 900px){
-  .board{grid-template-columns:1fr;}
-  .card-title{padding-right:120px;}
-  .grid{grid-template-columns:1fr;}
-}
+/* =================================================
+   CARD HOVER BAR
+   ================================================= */
 
-
-/* Layout view */
-.layout-wrap{
-  padding: 26px;
-}
-.layout-top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom: 18px;
-}
-.layout-title{
-  font-size: 34px;
-  font-weight: 800;
-  color: #e7efff;
-  max-width: calc(100% - 140px);
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.back-btn{
-  padding: 10px 16px;
-  border-radius: 12px;
-}
-.layout-grid{
-  display:grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 18px;
-}
-.layout-cell{
-  height: 74px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(0,0,0,0.20);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color: rgba(255,255,255,0.55);
-  font-weight: 700;
-}
-.layout-top,
-.layout-top *,
-.layout-grid,
-.layout-grid *,
-.wait-section,
-.wait-section *{
-  pointer-events: auto;
-}
-/* === FINAL STYLE: light, small, photo-2-like buttons === */
-.card .edit,
-.card .delete-btn{
-  position:absolute;
-  top:12px;
-  width:22px;
-  height:22px;
-
-  display:flex;
-  align-items:center;
-  justify-content:center;
-
-  border-radius:6px;
-  background:rgba(255,255,255,0.08);
-  border:1px solid rgba(255,255,255,0.22);
-
-  box-shadow:none;
-  padding:0;
-  cursor:pointer;
-  z-index:80;
-}
-
-.card .edit{
-  right:96px;
-  color:#ffffff;
-}
-
-.card .delete-btn{
-  right:122px;
-  color:rgba(255,255,255,0.9);
-}
-
-.card .edit:hover,
-.card .delete-btn:hover{
-  background:rgba(255,255,255,0.14);
-  border-color:rgba(255,255,255,0.35);
-}
-
-.card .edit svg,
-.card .delete-btn svg{
-  width:12px;
-  height:12px;
-}
-/* ===== Card Hover Bar (Safari-style) ===== */
 .card-hover-bar{
   position:absolute;
   top:10px;
@@ -331,7 +159,7 @@ body{
   padding:0 12px;
   border-radius:12px;
 
-  background:rgba(0,0,0,0.55);
+  background:rgba(0,0,0,.55);
   backdrop-filter: blur(6px);
 
   opacity:0;
@@ -339,13 +167,27 @@ body{
   pointer-events:none;
 
   transition: opacity .15s ease, transform .15s ease;
-  z-index:90;
+  z-index:200;
 }
 
+/* desktop hover */
 .card:hover .card-hover-bar{
   opacity:1;
   transform: translateY(0);
   pointer-events:auto;
+}
+
+/* mobile long-press */
+.card.show-hover .card-hover-bar{
+  opacity:1;
+  transform: translateY(0);
+  pointer-events:auto;
+}
+
+/* hover opened card highlight */
+.card.show-hover{
+  outline:2px solid rgba(120,180,255,.9);
+  outline-offset:2px;
 }
 
 .card-hover-title{
@@ -355,95 +197,129 @@ body{
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  max-width:calc(100% - 32px);
+  max-width:calc(100% - 72px);
 }
 
-.card-hover-close{
+.card-hover-actions{
+  display:flex;
+  gap:6px;
+}
+
+.hover-btn{
   width:22px;
   height:22px;
-  border-radius:50%;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.hover-btn:hover{
+  background:rgba(255,255,255,.22);
+}
+
+/* =================================================
+   META (BUY-IN / TIME / ETC)
+   ================================================= */
+
+.meta{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+}
+
+.pill{
+  border-radius:16px;
+  padding:14px 14px 12px;
+  background:rgba(0,0,0,.22);
+  border:1px solid rgba(255,255,255,.10);
+}
+
+.pill .k{
+  color:rgba(233,238,252,.62);
+  font-weight:800;
+  margin-bottom:6px;
+}
+.pill .v{
+  font-size:28px;
+  font-weight:1000;
+}
+
+/* =================================================
+   OVERLAY / MODAL
+   ================================================= */
+
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(5,8,16,.75);
+  backdrop-filter: blur(6px);
+
   display:flex;
   align-items:center;
   justify-content:center;
-  cursor:pointer;
 
-  color:#fff;
-  font-size:14px;
-  line-height:1;
-
-  background:rgba(255,255,255,0.12);
+  z-index:100000;
 }
 
-.card-hover-close:hover{
-  background:rgba(255,255,255,0.22);
-}
-.card-hover-bar,
-.card-hover-title {
-  pointer-events: none;
+.hidden{ display:none !important; }
+
+.modal{
+  width:min(680px, calc(100vw - 36px));
+  background:linear-gradient(
+    180deg,
+    rgba(14,26,56,.96),
+    rgba(10,18,40,.96)
+  );
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:26px;
+  box-shadow:var(--shadow);
+  padding:26px 26px 20px;
 }
 
-.card-hover-close {
-  pointer-events: auto; /* X 버튼만 클릭 가능 */
+.modal-wide{
+  width:min(760px, calc(100vw - 36px));
 }
+
+/* overlay 열리면 보드 비활성 */
+.overlay:not(.hidden) ~ .app{
+  pointer-events:none;
+}
+
+/* =================================================
+   LOADING
+   ================================================= */
+
 .layout-loading{
   position:fixed;
   inset:0;
   z-index:999999;
   background:rgba(5,8,16,.85);
   display:flex;
-  flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:14px;
-  font-weight:900;
-  letter-spacing:.3px;
 }
-.layout-loading.hidden{display:none}
+.layout-loading.hidden{ display:none; }
 
-.spinner{
-  width:48px;
-  height:48px;
-  border-radius:50%;
-  border:4px solid rgba(255,255,255,.15);
-  border-top-color:#4aa3ff;
-  animation:spin .8s linear infinite;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-/* 🔥 FORCE BOX PANEL VISIBLE */
-.panel {
-  display: block !important;
-}
-/* ===============================
-   🔥 REAL FINAL CLICK FIX
-   =============================== */
+/* =================================================
+   CLICK SAFETY
+   ================================================= */
 
-/* 화면을 덮는 시각용 레이어만 차단 */
+/* 시각 전용 레이어 차단 */
 .canvas,
 .canvasWrap,
-.canvasGrid,
-.grid,
 .background,
 #layoutBootLoading{
-  pointer-events: none !important;
+  pointer-events:none !important;
 }
 
-/* body 는 항상 클릭 허용 */
-body{
-  pointer-events: auto;
-}
-
-/* 실제 UI */
-.layout-wrap,
-.layout-top,
-.layout-grid,
-.wait-section{
-  pointer-events: auto;
-}
-
-/* 버튼 강제 보장 */
-#addSeatBtn,
-#addWaitingBtn{
-  position: relative;
-  z-index: 1000;
-  pointer-events: auto;
+/* 기본 UI */
+.app,
+.header,
+.board,
+.card,
+button{
+  pointer-events:auto;
 }
