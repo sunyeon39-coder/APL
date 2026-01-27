@@ -7,7 +7,8 @@ import { db } from "./firebase.js";
 import {
   doc,
   setDoc,
-  onSnapshot
+  onSnapshot,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* ===============================
@@ -35,9 +36,17 @@ const uid = () => Math.random().toString(36).slice(2) + Date.now();
 /* ===============================
    LOCAL (fallback only)
    =============================== */
-function saveLocal() {
-  localStorage.setItem(LS_KEY, JSON.stringify(state));
+async function saveLocal() {
+  await setDoc(
+    STATE_REF,
+    {
+      ...state,
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
 }
+
 
 function loadLocal() {
   const raw = localStorage.getItem(LS_KEY);
@@ -51,22 +60,24 @@ function loadLocal() {
     return false;
   }
 }
-
 /* ===============================
-   FIRESTORE SUBSCRIBE (🔥 핵심)
+   FIRESTORE REALTIME SYNC
    =============================== */
+
+let unsubscribe = null;
+
 function subscribeState() {
-  onSnapshot(STATE_REF, snap => {
+  unsubscribe = onSnapshot(STATE_REF, snap => {
     if (!snap.exists()) return;
 
     const data = snap.data();
 
-    hydrated = true;
+    console.log("🔥 Firestore update", data);
 
+    // 🔁 기존 state 객체에 덮어쓰기 (참조 유지!)
     state.dateText = data.dateText || "";
-    state.boxes = Array.isArray(data.boxes) ? data.boxes : [];
+    state.boxes = data.boxes || [];
 
-    saveLocal();
     render();
   });
 }

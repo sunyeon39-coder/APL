@@ -1,14 +1,15 @@
-console.log("🔥 layout_app.js FINAL SYNC LOADED");
+console.log("🔥 layout_app.js FINAL SYNC + DEBOUNCE + LOCK");
 
 /* =================================================
-   BoxBoard Layout App – FINAL SYNC VERSION
+   BoxBoard Layout App – FINAL SYNC + STABILITY
    ================================================= */
 
 import { db } from "./firebase.js";
 import {
   doc,
   setDoc,
-  onSnapshot
+  onSnapshot,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* ===============================
@@ -18,17 +19,28 @@ const STATE_REF = doc(db, "boxboard", "state");
 const LS_KEY = "boxboard_layout_state_v2";
 
 /* ===============================
+   CLIENT ID (기기 식별)
+   =============================== */
+const CLIENT_ID =
+  sessionStorage.getItem("clientId") ||
+  (() => {
+    const id = "c_" + Math.random().toString(36).slice(2, 10);
+    sessionStorage.setItem("clientId", id);
+    return id;
+  })();
+
+/* ===============================
    FLAGS
    =============================== */
-let hydrated = false;          // Firestore 최초 수신 여부
-let isRemoteApplying = false; // 무한 루프 방지
+let hydrated = false;
+let isRemoteApplying = false;
 
 /* ===============================
    STATE
    =============================== */
 const layout = {
-  seats: {},     // { [seatNumber]: { name, startedAt } | null }
-  waiting: []    // [{ id, name, startedAt }]
+  seats: {},
+  waiting: []
 };
 
 /* ===============================
@@ -53,8 +65,16 @@ function formatElapsed(ms) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+function debounce(fn, delay = 300) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+
 /* ===============================
-   LOCAL (fallback only)
+   LOCAL (fallback)
    =============================== */
 function saveLocal() {
   localStorage.setItem(LS_KEY, JSON.stringify(layout));
@@ -74,7 +94,7 @@ function loadLocal() {
 }
 
 /* ===============================
-   FIRESTORE SUBSCRIBE (🔥 핵심)
+   FIRESTORE SUBSCRIBE
    =============================== */
 function subscribeLayout() {
   const boxId = getBoxId();
@@ -101,9 +121,9 @@ function subscribeLayout() {
 }
 
 /* ===============================
-   WRITE TO FIRESTORE
+   WRITE TO FIRESTORE (DEBOUNCED)
    =============================== */
-async function writeLayout(next) {
+async function _writeLayout(next) {
   if (isRemoteApplying) return;
 
   const boxId = getBoxId();
@@ -118,19 +138,51 @@ async function writeLayout(next) {
 
   const boxes = (data.boxes || []).map(b =>
     b.id === boxId
-      ? { ...b, layout: { ...(b.layout || {}), ...next } }
+      ? {
+          ...b,
+          layout: {
+            ...(b.layout || {}),
+            ...next
+          }
+        }
       : b
   );
 
-  await setDoc(STATE_REF, { boxes }, { merge: true });
+  await setDoc(
+    STATE_REF,
+    {
+      boxes,
+      updatedAt: serverTimestamp(),
+      updatedBy: CLIENT_ID
+    },
+    { merge: true }
+  );
 
   Object.assign(layout, next);
   saveLocal();
 }
 
+const writeLayout = debounce(_writeLayout, 300);
+
+
 /* ===============================
-   RENDER – SEATS
+   LOCK UTIL
    =============================== */
+function lockSeat(seat) {
+  seat.lock = {
+    by: CLIENT_ID,
+    until: Date.now() + 1500
+  };
+}
+
+function isLockedByOther(seat) {
+  return (
+    seat?.lock &&
+    seat.lock.by !== CLIENT_ID &&
+    seat.lock.until > Date.now()
+  );
+}
+
 function renderLayout() {
   const grid = $("layoutGrid");
   grid.innerHTML = "";
@@ -144,48 +196,133 @@ function renderLayout() {
       const seat = document.createElement("section");
       seat.className = "card";
 
-      seat.innerHTML = `
-        <div class="badge">Seat ${i}</div>
-        <button class="seat-delete">×</button>
-        <h3>${d ? d.name : "비어있음"}</h3>
-        ${d ? `<div class="pill running">
-          <span class="time" data-start="${d.startedAt}">0:00</span>
-        </div>` : ""}
-      `;
+      if (isLockedByOther(d)) {
+        seat.classList.add("locked");
+      }
 
-      // 단일 클릭: 선택
+    seat.innerHTML = `
+  <div class="badge">Seat ${i}</div>
+  <button class="seat-delete">×</button>
+
+  <div class="seat-main">
+    <h3>${d ? d.name : "비어있음"}</h3>
+    ${
+      d
+        ? `<div class="pill running">
+             <span class="time" data-start="${d.startedAt}">0:00</span>
+           </div>`
+        : ""
+    }
+  </div>
+`;
+
+      /* ===============================
+         CLICK: waiting ↔ seat / seat ↔ seat
+         =============================== */
       seat.onclick = () => {
-        if (!selectedWaiting) return;
-        assignWaitingToSeat(i);
+        /* 1️⃣ waiting 선택 상태면 (기존 기능 유지) */
+        if (selectedWaiting) {
+          assignWaitingToSeat(i);
+          selectedSeatIndex = null;
+
+          document
+            .querySelectorAll(".card.seat-selected")
+            .forEach(el => el.classList.remove("seat-selected"));
+
+          return;
+        }
+
+        /* 2️⃣ seat ↔ seat 모드 */
+        if (selectedSeatIndex === null) {
+          if (!layout.seats[i]) return; // 빈 seat는 첫 선택 불가
+          selectedSeatIndex = i;
+
+          document
+            .querySelectorAll(".card.seat-selected")
+            .forEach(el => el.classList.remove("seat-selected"));
+
+          seat.classList.add("seat-selected");
+          return;
+        }
+
+        /* 3️⃣ 같은 seat 다시 클릭 → 취소 */
+        if (selectedSeatIndex === i) {
+          selectedSeatIndex = null;
+          seat.classList.remove("seat-selected");
+          return;
+        }
+
+        /* 4️⃣ seat ↔ seat 교체 */
+        const from = selectedSeatIndex;
+        const to = i;
+
+        const fromPerson = layout.seats[from];
+        const toPerson = layout.seats[to] || null;
+
+        const nextSeats = {
+          ...layout.seats,
+          [from]: toPerson,
+          [to]: fromPerson
+        };
+
+        writeLayout({ seats: nextSeats });
+
+        selectedSeatIndex = null;
+        document
+          .querySelectorAll(".card.seat-selected")
+          .forEach(el => el.classList.remove("seat-selected"));
       };
 
-      // 더블 클릭: Seat → Waiting
+      /* ===============================
+         DOUBLE CLICK: seat → waiting
+         =============================== */
       seat.ondblclick = e => {
         e.preventDefault();
         if (!layout.seats[i]) return;
 
         const p = layout.seats[i];
+
         writeLayout({
           seats: { ...layout.seats, [i]: null },
-          waiting: [...layout.waiting, { ...p, id: uid(), startedAt: Date.now() }]
+          waiting: [
+            ...layout.waiting,
+            { id: uid(), name: p.name, startedAt: Date.now() }
+          ]
         });
+
+        selectedSeatIndex = null;
+        document
+          .querySelectorAll(".card.seat-selected")
+          .forEach(el => el.classList.remove("seat-selected"));
       };
 
+      /* ===============================
+         SEAT DELETE
+         =============================== */
       seat.querySelector(".seat-delete").onclick = e => {
         e.stopPropagation();
+
         const next = { ...layout.seats };
         delete next[i];
+
         writeLayout({ seats: next });
+
+        selectedSeatIndex = null;
+        document
+          .querySelectorAll(".card.seat-selected")
+          .forEach(el => el.classList.remove("seat-selected"));
       };
 
       grid.appendChild(seat);
     });
 }
 
+
 /* ===============================
    RENDER – WAITING
    =============================== */
 let selectedWaiting = null;
+let selectedSeatIndex = null;
 
 function renderWaitList() {
   const list = $("waitingList");
@@ -193,12 +330,18 @@ function renderWaitList() {
 
   if (!layout.waiting.length) {
     list.innerHTML = `<div class="empty">대기자 없음</div>`;
+    selectedWaiting = null; // 🔒 대기자 없으면 선택도 초기화
     return;
   }
 
   layout.waiting.forEach(w => {
     const card = document.createElement("section");
     card.className = "waiting-card card";
+
+    // ✅ 선택 상태 복구 (Firestore snapshot 이후에도 유지)
+    if (selectedWaiting && selectedWaiting.id === w.id) {
+      card.classList.add("selected");
+    }
 
     card.innerHTML = `
       <h3>${w.name}</h3>
@@ -208,10 +351,26 @@ function renderWaitList() {
       <button class="wait-delete">×</button>
     `;
 
-    card.onclick = () => selectedWaiting = w;
+    // ✅ 클릭 시 선택 + 시각적 강조
+    card.onclick = () => {
+      selectedWaiting = w;
 
+      document
+        .querySelectorAll(".waiting-card.selected")
+        .forEach(el => el.classList.remove("selected"));
+
+      card.classList.add("selected");
+    };
+
+    // ❌ 삭제 버튼
     card.querySelector(".wait-delete").onclick = e => {
       e.stopPropagation();
+
+      // 삭제되는 대상이 선택된 대상이면 선택 해제
+      if (selectedWaiting && selectedWaiting.id === w.id) {
+        selectedWaiting = null;
+      }
+
       writeLayout({
         waiting: layout.waiting.filter(x => x.id !== w.id)
       });
@@ -221,43 +380,97 @@ function renderWaitList() {
   });
 }
 
+
 /* ===============================
    ACTIONS
    =============================== */
-function assignWaitingToSeat(seatIndex) {
-  if (!selectedWaiting) return;
-
-  writeLayout({
-    seats: {
-      ...layout.seats,
-      [seatIndex]: { name: selectedWaiting.name, startedAt: Date.now() }
-    },
-    waiting: layout.waiting.filter(w => w.id !== selectedWaiting.id)
-  });
-
-  selectedWaiting = null;
-}
-
-function addWaiting() {
+   function addWaiting() {
   const input = $("waitingNameInput");
+  if (!input) {
+    console.warn("❌ waitingNameInput not found");
+    return;
+  }
+
   const name = input.value.trim();
   if (!name) return;
 
   writeLayout({
-    waiting: [...layout.waiting, { id: uid(), name, startedAt: Date.now() }]
+    waiting: [
+      ...layout.waiting,
+      {
+        id: uid(),
+        name,
+        startedAt: Date.now()
+      }
+    ]
   });
 
   input.value = "";
 }
 
+function assignWaitingToSeat(seatIndex) {
+  if (!selectedWaiting) return;
+
+  const currentSeatPerson = layout.seats[seatIndex];
+
+  // 1️⃣ 새로 앉을 사람
+  const newSeatPerson = {
+    name: selectedWaiting.name,
+    startedAt: Date.now()
+  };
+
+  // 2️⃣ waiting 재구성
+  let nextWaiting = layout.waiting.filter(
+    w => w.id !== selectedWaiting.id
+  );
+
+  // 🔥 3️⃣ 기존 seat 사람이 있으면 waiting으로 내려보냄
+  if (currentSeatPerson) {
+    nextWaiting = [
+      ...nextWaiting,
+      {
+        id: uid(),
+        name: currentSeatPerson.name,
+        startedAt: Date.now()
+      }
+    ];
+  }
+
+  // 4️⃣ seat 교체
+  const nextSeats = {
+    ...layout.seats,
+    [seatIndex]: newSeatPerson
+  };
+
+  writeLayout({
+    seats: nextSeats,
+    waiting: nextWaiting
+  });
+
+  selectedWaiting = null;
+
+  // 선택 표시 제거 (UX 안정)
+  document
+    .querySelectorAll(".waiting-card.selected")
+    .forEach(el => el.classList.remove("selected"));
+}
+
+
 /* ===============================
    INIT
    =============================== */
 document.addEventListener("DOMContentLoaded", () => {
-  // 🔥 Firestore 우선
   subscribeLayout();
 
-  // fallback
+  const waitingInput = $("waitingNameInput");
+
+waitingInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    addWaiting();
+  }
+});
+
   setTimeout(() => {
     if (!hydrated) {
       loadLocal();
@@ -284,11 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveLocal();
     renderLayout();
 
-    try {
-      await writeLayout({ seats: layout.seats });
-    } catch (e) {
-      console.warn("Seat sync 실패", e);
-    }
+    await writeLayout({ seats: layout.seats });
   };
 
   $("addWaitingBtn").onclick = addWaiting;

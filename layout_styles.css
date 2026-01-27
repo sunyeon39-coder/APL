@@ -119,6 +119,14 @@ html, body{
 .card:hover{
   box-shadow:0 14px 36px rgba(0,0,0,.45);
 }
+.card.seat-selected {
+  border: 3px solid #4aa3ff;
+  box-shadow:
+    0 0 0 2px rgba(74,163,255,.9),
+    0 0 30px rgba(74,163,255,.6);
+  transform: scale(1.02);
+}
+
 
 /* =================================================
    SEAT DELETE BUTTON
@@ -187,8 +195,8 @@ html, body{
    ================================================= */
 
 .bottom-area{
-  flex:0 0 160px;
-  height:160px;
+  flex:0 0 300px;
+  height:300px;
   background:rgba(5,8,16,.95);
   border-top:1px solid rgba(255,255,255,.08);
   display:flex;
@@ -322,4 +330,42 @@ html, body{
 /* iOS에서 가끔 생기는 “투명한 레이어” 방어 */
 .layout-wrap{
   isolation: isolate;
+}
+/* ===============================
+   MOBILE: seat layout single column
+   =============================== */
+@media (max-width: 600px) {
+  .seat-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .seat-main h3 {
+    margin: 0;
+    white-space: nowrap;
+  }
+  
+  #layoutGrid {
+    display: grid;
+    grid-template-columns: 1fr; /* 🔥 한 줄 */
+    gap: 4px;
+  }
+
+  .card {
+    min-height: auto;          /* 🔥 고정 높이 제거 */
+    padding: 14px 16px;        /* 🔥 상하 패딩 축소 */
+    border-radius: 14px;
+  }
+
+  .badge {
+    padding: 6px 12px;
+    font-size: 14px;
+    border-radius: 999px;
+  }
+  .seat-delete {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
 }

@@ -1,21 +1,30 @@
 // firebase.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  getFirestore,
+  initializeFirestore
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 🔹 네 Firebase 프로젝트 설정 (기존 그대로 사용)
+// 🔹 네 Firebase 설정
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com", // 있어도 됨 (안 씀)
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDXZM15ex4GNFdf2xjVOW-xopMHf_AMYGc",
+  authDomain: "box-board.firebaseapp.com",
+  projectId: "box-board",
+  storageBucket: "box-board.firebasestorage.app",
+  messagingSenderId: "336632241536",
+  appId: "1:336632241536:web:d7b57b91d91596dbf3b565",
+  measurementId: "G-7B9W7N9X9B"
 };
 
-// Firebase App 초기화
+// 🔹 App 초기화
 const app = initializeApp(firebaseConfig);
 
-// 🔥 Firestore ONLY
-export const db = getFirestore(app);
+// 🔥 Firestore (Safari safe)
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  useFetchStreams: false
+});
 
-// ❌ Storage / Auth / Functions 아무것도 export 안 함
+console.log("🔥 Firestore initialized with long polling (Safari safe)");
+
+export { db };
