@@ -13,22 +13,13 @@ const firebaseConfig = {
   measurementId: "G-7B9W7N9X9B"
 };
 
-/* ===============================
-   App Init
-   =============================== */
 const app = initializeApp(firebaseConfig);
 
-/* ===============================
-   Firestore Init (ONE TIME ONLY)
-   =============================== */
 const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
   useFetchStreams: false
 });
 
-console.log("🔥 Firestore initialized (no duplicate export)");
+console.log("🔥 Firestore initialized");
 
-/* ===============================
-   EXPORT (🔥 딱 한 번)
-   =============================== */
-export { db };
+export { db }; // ✅ export는 이 줄 하나뿐
