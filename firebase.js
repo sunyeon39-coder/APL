@@ -1,10 +1,10 @@
-// firebase.js
+// firebase.js — FINAL / DUPLICATE EXPORT FIXED
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 🔹 네 Firebase 설정
 const firebaseConfig = {
-  apiKey: "AIzaSyDXZM15ex4GNFdf2xjVOW-xopMHf_AMYGc",
+ apiKey: "AIzaSyDXZM15ex4GNFdf2xjVOW-xopMHf_AMYGc",
   authDomain: "box-board.firebaseapp.com",
   projectId: "box-board",
   storageBucket: "box-board.firebasestorage.app",
@@ -15,11 +15,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+// 🔥 Firestore SINGLE INIT
 const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
   useFetchStreams: false
 });
 
-console.log("🔥 Firestore initialized");
+console.log("🔥 Firestore initialized (single export)");
 
-export { db }; // ✅ export는 이 줄 하나뿐
+// ✅ EXPORT ONLY ONCE
+export { db };
