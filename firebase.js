@@ -1,9 +1,6 @@
 // firebase.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-  getFirestore,
-  initializeFirestore
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // 🔹 네 Firebase 설정
 const firebaseConfig = {
@@ -16,15 +13,22 @@ const firebaseConfig = {
   measurementId: "G-7B9W7N9X9B"
 };
 
-// 🔹 App 초기화
+/* ===============================
+   App Init
+   =============================== */
 const app = initializeApp(firebaseConfig);
 
-// 🔥 Firestore (Safari safe)
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
+/* ===============================
+   Firestore Init (ONE TIME ONLY)
+   =============================== */
+const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
   useFetchStreams: false
 });
 
-console.log("🔥 Firestore initialized with long polling (Safari safe)");
+console.log("🔥 Firestore initialized (no duplicate export)");
 
+/* ===============================
+   EXPORT (🔥 딱 한 번)
+   =============================== */
 export { db };
