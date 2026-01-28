@@ -1,6 +1,10 @@
-// firebase.js
+// firebase.js (FINAL – AUTH PERSISTENCE FIXED)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  getAuth,
+  setPersistence,
+  browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -13,9 +17,16 @@ const firebaseConfig = {
   measurementId: "G-7B9W7N9X9B"
 };
 
+// 🔥 App은 단 1번만
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);   // 🔥 이 줄이 없어서 문제였음
+// 🔥 Auth도 단 1번
+export const auth = getAuth(app);
+
+// 🔥 persistence를 여기서 고정
+await setPersistence(auth, browserLocalPersistence);
+
+// Firestore
 export const db = getFirestore(app);
 
-console.log("🔥 Firebase Auth + Firestore initialized");
+console.log("🔥 Firebase Auth + Firestore initialized with persistence");

@@ -1,16 +1,19 @@
 /* =================================================
-   Box Board – FINAL SYNC VERSION
+   Box Board – FINAL SYNC VERSION (AUTH SAFE)
    Firestore = Source of Truth
    ================================================= */
 
-import { db } from "./firebase.js";
+import { db, auth } from "./firebase.js";
 import {
   doc,
   setDoc,
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
+import {
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 /* ===============================
    CONST
    =============================== */
@@ -25,7 +28,8 @@ const state = {
   boxes: []
 };
 
-let hydrated = false; // Firestore 최초 수신 여부
+let hydrated = false;
+let appStarted = false;
 
 /* ===============================
    UTIL
@@ -34,7 +38,45 @@ const $ = sel => document.querySelector(sel);
 const uid = () => Math.random().toString(36).slice(2) + Date.now();
 
 /* ===============================
-   LOCAL (fallback only)
+   AUTH GUARD (🔥 핵심)
+   =============================== */
+let authChecked = false;
+
+// 🔓 로그아웃 버튼
+document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+  try {
+    console.log("🚪 로그아웃 시도");
+    await signOut(auth);
+    console.log("✅ 로그아웃 완료");
+    location.replace("/login.html");
+  } catch (err) {
+    console.error("❌ 로그아웃 실패", err);
+  }
+});
+
+
+onAuthStateChanged(auth, (user) => {
+  // 🔥 첫 호출: "확인 완료" 표시
+  if (!authChecked) {
+    authChecked = true;
+  }
+
+  if (!user) {
+    console.log("❌ 로그인 안 됨 (확정) → login.html");
+    location.href = "/login.html";
+    return;
+  }
+
+  console.log("✅ 로그인 확인:", user.email);
+
+  if (!appStarted) {
+    appStarted = true;
+    startApp();
+  }
+});
+
+/* ===============================
+   LOCAL SAVE (fallback only)
    =============================== */
 async function saveLocal() {
   await setDoc(
@@ -46,7 +88,6 @@ async function saveLocal() {
     { merge: true }
   );
 }
-
 
 function loadLocal() {
   const raw = localStorage.getItem(LS_KEY);
@@ -60,10 +101,10 @@ function loadLocal() {
     return false;
   }
 }
+
 /* ===============================
    FIRESTORE REALTIME SYNC
    =============================== */
-
 let unsubscribe = null;
 
 function subscribeState() {
@@ -71,25 +112,29 @@ function subscribeState() {
     if (!snap.exists()) return;
 
     const data = snap.data();
-
     console.log("🔥 Firestore update", data);
 
-    // 🔁 기존 state 객체에 덮어쓰기 (참조 유지!)
     state.dateText = data.dateText || "";
     state.boxes = data.boxes || [];
 
+    hydrated = true;
     render();
   });
 }
 
 /* ===============================
-   WRITE (단방향)
+   WRITE STATE
    =============================== */
 async function writeState() {
-  await setDoc(STATE_REF, {
-    dateText: state.dateText,
-    boxes: state.boxes
-  }, { merge: true });
+  await setDoc(
+    STATE_REF,
+    {
+      dateText: state.dateText,
+      boxes: state.boxes,
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
 }
 
 /* ===============================
@@ -141,7 +186,6 @@ function render() {
       e.stopPropagation();
       if (!confirm("삭제할까요?")) return;
       state.boxes = state.boxes.filter(x => x.id !== b.id);
-      saveLocal();
       render();
       await writeState();
     };
@@ -174,14 +218,15 @@ function closeBoxModal() {
 }
 
 /* ===============================
-   INIT
+   APP START (🔥 Auth 이후 실행)
    =============================== */
-document.addEventListener("DOMContentLoaded", () => {
+function startApp() {
+  console.log("🚀 App Started");
 
-  // 🔥 Firestore 먼저
+  // Firestore 먼저
   subscribeState();
 
-  // 🔹 fallback only
+  // fallback (Firestore 안 올 경우)
   setTimeout(() => {
     if (!hydrated) {
       loadLocal();
@@ -210,7 +255,6 @@ document.addEventListener("DOMContentLoaded", () => {
       state.boxes.push(box);
     }
 
-    saveLocal();
     render();
     closeBoxModal();
     await writeState();
@@ -232,7 +276,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("#saveText").onclick = async () => {
     state.dateText = $("#inputDateText").value;
-    saveLocal();
     render();
     $("#overlayText").classList.add("hidden");
     await writeState();
@@ -241,4 +284,4 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#closeText").onclick = () => {
     $("#overlayText").classList.add("hidden");
   };
-});
+}
