@@ -1,38 +1,21 @@
-// firebase.js (GitHub Pages FINAL)
-
+// firebase.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-  initializeFirestore
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* ===============================
-   Firebase Config
-   =============================== */
 const firebaseConfig = {
-  apiKey: "AIzaSyDXZM15ex4GNFdf2xjV0W-xopMHf_AMYGc",
+  apiKey: "AIzaSyDXZM15ex4GNFdf2xjVOW-xopMHf_AMYGc",
   authDomain: "box-board.firebaseapp.com",
   projectId: "box-board",
-  storageBucket: "box-board.appspot.com",
+  storageBucket: "box-board.firebasestorage.app",
   messagingSenderId: "336632241536",
-  appId: "1:336632241536:web:d7b57b91d91596dbf3b565"
+  appId: "1:336632241536:web:d7b57b91d91596dbf3b565",
+  measurementId: "G-7B9W7N9X9B"
 };
 
-/* ===============================
-   App Init
-   =============================== */
 const app = initializeApp(firebaseConfig);
 
-/* ===============================
-   Firestore Init (Safari / iOS SAFE)
-   =============================== */
-const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
-  useFetchStreams: false
-});
+export const auth = getAuth(app);   // 🔥 이 줄이 없어서 문제였음
+export const db = getFirestore(app);
 
-/* ===============================
-   EXPORT (🔥 딱 한 번만)
-   =============================== */
-export { db };
-
-console.log("🔥 Firestore initialized (GitHub Pages SAFE)");
+console.log("🔥 Firebase Auth + Firestore initialized");
