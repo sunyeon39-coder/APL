@@ -1,27 +1,50 @@
-import { auth } from "./firebase.js";
+import { auth, db } from "./firebase.js";
 import {
   signInWithEmailAndPassword,
-  onAuthStateChanged
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* =================================================
+   DOM
+   ================================================= */
 const emailInput = document.getElementById("emailInput");
 const passwordInput = document.getElementById("passwordInput");
 const loginBtn = document.getElementById("loginBtn");
+const googleBtn = document.getElementById("googleLoginBtn");
 const errorMsg = document.getElementById("errorMsg");
 
-/* 이미 로그인 상태면 바로 메인으로 */
+/* =================================================
+   GOOGLE PROVIDER
+   ================================================= */
+const googleProvider = new GoogleAuthProvider();
+
+/* =================================================
+   AUTO REDIRECT (이미 로그인 상태)
+   ================================================= */
 onAuthStateChanged(auth, user => {
   if (user) {
     location.replace("index.html");
   }
 });
 
-loginBtn.addEventListener("click", login);
+/* =================================================
+   EMAIL / PASSWORD LOGIN
+   ================================================= */
+loginBtn.addEventListener("click", loginWithEmail);
 passwordInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") login();
+  if (e.key === "Enter") loginWithEmail();
 });
 
-async function login() {
+async function loginWithEmail() {
   const email = emailInput.value.trim();
   const password = passwordInput.value;
 
@@ -47,6 +70,47 @@ async function login() {
   }
 }
 
+/* =================================================
+   GOOGLE LOGIN
+   ================================================= */
+googleBtn.addEventListener("click", loginWithGoogle);
+
+async function loginWithGoogle() {
+  errorMsg.textContent = "";
+
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+
+    // 🔥 최초 Google 로그인 시 user 문서 생성
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        email: user.email,
+        role: "user",          // 기본 권한
+        provider: "google",
+        createdAt: serverTimestamp()
+      });
+    }
+
+    location.replace("index.html");
+
+  } catch (err) {
+    console.error(err);
+
+    if (err.code === "auth/popup-closed-by-user") {
+      return; // 사용자가 닫은 경우 무시
+    }
+
+    errorMsg.textContent = "Google 로그인에 실패했습니다.";
+  }
+}
+
+/* =================================================
+   ERROR MESSAGE
+   ================================================= */
 function getErrorMessage(code) {
   switch (code) {
     case "auth/user-not-found":

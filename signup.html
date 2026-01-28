@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Login</title>
+  <title>Sign Up</title>
 
   <style>
     body{
@@ -16,9 +16,9 @@
       color:#e9ecff;
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     }
-    .login-card{
+    .card{
       width:100%;
-      max-width:360px;
+      max-width:380px;
       padding:28px 26px 24px;
       border-radius:18px;
       background:linear-gradient(135deg,#182235,#111a2b);
@@ -29,7 +29,6 @@
       margin:0 0 18px;
       text-align:center;
       font-size:22px;
-      letter-spacing:.5px;
     }
     .field{
       margin-bottom:14px;
@@ -43,10 +42,6 @@
       color:#fff;
       font-size:14px;
     }
-    .field input:focus{
-      outline:none;
-      border-color:#4aa3ff;
-    }
     .btn{
       width:100%;
       padding:12px;
@@ -58,8 +53,9 @@
       font-weight:800;
       cursor:pointer;
     }
-    .btn:hover{
-      filter:brightness(1.1);
+    .btn:disabled{
+      opacity:.6;
+      cursor:default;
     }
     .error{
       min-height:18px;
@@ -83,42 +79,35 @@
 </head>
 <body>
 
-  <div class="login-card">
-    <h1>BoxBoard Login</h1>
+  <div class="card">
+    <h1>회원가입</h1>
 
     <div class="field">
-      <input
-        id="emailInput"
-        type="email"
-        placeholder="이메일"
-        autocomplete="username"
-      />
+      <input id="emailInput" type="email" placeholder="이메일" />
     </div>
 
     <div class="field">
-      <input
-        id="passwordInput"
-        type="password"
-        placeholder="비밀번호"
-        autocomplete="current-password"
-      />
+      <input id="passwordInput" type="password" placeholder="비밀번호 (6자 이상)" />
     </div>
 
-    <button id="loginBtn" class="btn">
-      로그인
-    </button>
-    <button id="googleLoginBtn" class="btn" style="margin-top:10px;">
-  Google 로그인
-</button>
+    <div class="field">
+      <input id="passwordConfirmInput" type="password" placeholder="비밀번호 확인" />
+    </div>
+
+    <div class="field">
+      <input id="adminCodeInput" type="text" placeholder="관리자 코드 (선택)" />
+    </div>
+
+    <button id="signupBtn" class="btn">회원가입</button>
 
     <div id="errorMsg" class="error"></div>
 
     <div class="footer">
-      계정이 없나요?
-      <a href="signup.html">회원가입</a>
+      이미 계정이 있나요?
+      <a href="login.html">로그인</a>
     </div>
   </div>
 
-  <script type="module" src="login.js"></script>
+  <script type="module" src="signup.js"></script>
 </body>
 </html>
