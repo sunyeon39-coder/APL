@@ -3,34 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Box Board</title>
+  <script>document.documentElement.classList.add('page-enter');</script>
+<title>Box Board</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:,">
 </head>
 
 <body>
   <div class="app">
+
+    <!-- ================= HEADER ================= -->
     <header class="header">
       <div class="header-left">
         <div class="brand">Box Board</div>
-        <div id="dateText" class="dateText">asd</div>
+        <div id="dateText" class="dateText"></div>
       </div>
-      <div class="header-right">
-        <button
-          id="addBoxBtn"
-          class="btn btn-primary"
-          type="button"
-        >
-          + Add Box
-        </button>
-      </div>
+
+      <div class="header-right admin-actions">
+  <!-- 🔒 admin 전용 (JS에서 숨김) -->
+  <button id="addBoxBtn" class="btn btn-primary" type="button">
+    + Add Box
+  </button>
+
+  <!-- 🔓 모든 사용자 -->
+  <button id="logoutBtn" class="btn" type="button">
+    Logout
+  </button>
+</div>
+
     </header>
 
+    <!-- ================= BOARD ================= -->
     <main id="board" class="board"></main>
   </div>
 
-  <!-- ===== Board Text Editor (E) ===== -->
+  <!-- ================= TEXT EDITOR (ADMIN ONLY) ================= -->
   <div id="overlayText" class="overlay hidden" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit Text">
+    <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-title">Edit Text</div>
 
       <label class="field">
@@ -38,34 +47,16 @@
         <input id="inputDateText" class="field-input" type="text" />
       </label>
 
-      <label class="field">
-        <div class="field-label">Title Text</div>
-        <input
-          id="inputTitleText"
-          class="field-input"
-          type="text"
-          value="Box Board"
-          disabled
-        />
-      </label>
-
       <div class="modal-actions">
         <button id="saveText" class="btn" type="button">Save</button>
         <button id="closeText" class="btn" type="button">Close</button>
       </div>
-
-      <div class="hint">Press <b>E</b> to open / <b>ESC</b> to close</div>
     </div>
   </div>
 
-  <!-- ===== Box Editor (W or + Add Box or ✏) ===== -->
+  <!-- ================= BOX EDITOR (ADMIN ONLY) ================= -->
   <div id="overlayBox" class="overlay hidden" aria-hidden="true">
-    <div
-      class="modal modal-wide"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Create / Edit Box"
-    >
+    <div class="modal modal-wide" role="dialog" aria-modal="true">
       <div class="modal-title">Create / Edit Box</div>
 
       <div class="grid">
@@ -111,13 +102,29 @@
         <button id="saveBox" class="btn btn-primary" type="button">Save</button>
         <button id="cancelBox" class="btn" type="button">Cancel</button>
       </div>
-
-      <div class="hint">Press <b>W</b> to create / <b>ESC</b> to close</div>
     </div>
   </div>
 
-  <!-- app JS -->
+  <!-- ================= APP SCRIPT ================= --><script>
+  // Page transition helper (prevents 1-frame overlap during navigation)
+  window.__go = function(url, replace){
+    try{
+      document.documentElement.classList.add('page-exit');
+      // kill any overlap instantly
+      document.body.style.visibility = 'hidden';
+    }catch(e){}
+    if(replace){
+      location.replace(url);
+    }else{
+      location.href = url;
+    }
+  };
+  window.addEventListener('DOMContentLoaded', function(){
+    document.documentElement.classList.remove('page-enter');
+    document.documentElement.classList.add('page-ready');
+  }, { once:true });
+</script>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>
-<link rel="icon" href="data:,">

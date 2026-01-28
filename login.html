@@ -6,18 +6,21 @@
 </head>
 <body>
 
-<div id="loginBox">
-  <input id="email" placeholder="이메일" />
-  <input id="password" type="password" placeholder="비밀번호" />
-  <button id="loginBtn">로그인</button>
-  <button id="googleLoginBtn">Google 로그인</button>
-</div>
+  <div id="loginBox">
+    <input id="email" placeholder="이메일" />
+    <input id="password" type="password" placeholder="비밀번호" />
+    <button id="loginBtn">로그인</button>
+    <button id="googleLoginBtn">Google 로그인</button>
+    
+  </div>
 
-<div id="app" style="display:none">
-  <!-- 로그인 후 앱 -->
-</div>
+  <div id="app" style="display:none">
+    <!-- 로그인 후 앱 -->
+     <button id="logoutBtn">로그아웃</button>
 
-<!-- ❗ 반드시 module -->
-<script type="module" src="./auth.js"></script>
+  </div>
+
+  <!-- 🔥 단 하나만, module로 -->
+  <script type="module" src="./auth.js"></script>
 </body>
 </html>

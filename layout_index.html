@@ -6,44 +6,81 @@
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
-  <title>Layout</title>
+  <script>document.documentElement.classList.add('page-enter');</script>
+<title>Layout</title>
 
+  <!-- 공통 / 레이아웃 스타일 -->
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="layout_styles.css">
 </head>
 <body>
 
-  <!-- Optional loading overlay -->
-  <div id="layoutBootLoading" class="layout-loading hidden">
+  <!-- =========================
+       Loading Overlay (선택)
+       ❗ 절대 header 위로 못 올라감
+  ========================== -->
+  <div
+    id="layoutBootLoading"
+    class="layout-loading hidden"
+    aria-hidden="true"
+  >
     <div class="spinner"></div>
     <div>Loading…</div>
   </div>
 
+  <!-- =========================
+       TOP BAR (🔥 최상단 고정)
+       Back 버튼 안전 영역
+  ========================== -->
+  <div class="layout-top">
+    <button
+      id="addSeatBtn"
+      class="btn"
+      type="button"
+    >
+      + Seat 추가
+    </button>
+
+    <a
+  id="layoutBackBtn"
+  class="btn back-btn"
+  href="index.html"
+ onclick="__go(this.href,true); return false;">
+  Back
+</a>
+  </div>
+
+  <!-- =========================
+       MAIN WRAP
+       header와 완전히 분리
+  ========================== -->
   <div class="layout-wrap">
 
     <!-- =========================
-         TOP BAR (고정)
-    ========================== -->
-    <div class="layout-top">
-      <button id="addSeatBtn" class="btn" type="button">+ Seat 추가</button>
-      <button id="layoutBackBtn" class="btn back-btn" type="button">Back</button>
-    </div>
-
-    <!-- =========================
          TOP AREA (좌석 / 스크롤)
+         ❗ header 영역 침범 금지
     ========================== -->
     <div class="top-area">
-      <div class="layout-grid" id="layoutGrid">
-        <!-- Seat 카드들 여기 생성 -->
+      <div
+        class="layout-grid"
+        id="layoutGrid"
+        aria-label="Seat Layout"
+      >
+        <!-- Seat 카드들 JS에서 생성 -->
       </div>
     </div>
 
     <!-- =========================
-         BOTTOM AREA (대기자 / 고정)
+         BOTTOM AREA (대기자)
     ========================== -->
     <div class="bottom-area">
 
-      <div class="waiting-header" role="group" aria-label="대기자 추가">
+      <!-- 대기자 입력 (user일 경우 JS에서 제거됨) -->
+      <div
+        class="waiting-header"
+        role="group"
+        aria-label="대기자 추가"
+      >
         <input
           id="waitingNameInput"
           type="text"
@@ -51,12 +88,21 @@
           autocomplete="off"
           placeholder="대기자 이름"
         />
-        <button id="addWaitingBtn" type="button">+ 대기자 추가</button>
+        <button
+          id="addWaitingBtn"
+          type="button"
+        >
+          + 대기자 추가
+        </button>
       </div>
 
       <div class="wait-scroll">
-        <section id="waitingList" class="waiting-grid">
-          <!-- 대기자 pill -->
+        <section
+          id="waitingList"
+          class="waiting-grid"
+          aria-label="대기자 목록"
+        >
+          <!-- 대기자 카드 -->
         </section>
       </div>
 
@@ -64,7 +110,28 @@
 
   </div>
 
-  <!-- layout JS -->
+  <!-- =========================
+       Layout App JS
+  ========================== --><script>
+  // Page transition helper (prevents 1-frame overlap during navigation)
+  window.__go = function(url, replace){
+    try{
+      document.documentElement.classList.add('page-exit');
+      // kill any overlap instantly
+      document.body.style.visibility = 'hidden';
+    }catch(e){}
+    if(replace){
+      location.replace(url);
+    }else{
+      location.href = url;
+    }
+  };
+  window.addEventListener('DOMContentLoaded', function(){
+    document.documentElement.classList.remove('page-enter');
+    document.documentElement.classList.add('page-ready');
+  }, { once:true });
+</script>
+
   <script type="module" src="layout_app.js"></script>
 
 </body>

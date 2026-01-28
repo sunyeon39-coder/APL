@@ -52,13 +52,31 @@ html, body{
   align-items:center;
   padding:8px 12px;
   position:relative;
-  z-index:1000;                 /* 항상 최상단 */
-  pointer-events:auto;
+  z-index:100000 !important;   /* 🔥 핵심 */
+  pointer-events:auto !important;
 }
+
+/* 🔥 layout-top 내부 버튼 클릭 보장 */
+.layout-top *{
+  pointer-events:auto !important;
+}
+
+/* ✅ read-only 모드에서도 네비게이션(Back)은 반드시 살아있어야 함
+   (styles.css에서 .read-only에 pointer-events:none 같은 규칙이 있어도 여기서 되살림) */
+body.read-only{ pointer-events:auto !important; }
+body.read-only .layout-top,
+body.read-only #layoutBackBtn{ pointer-events:auto !important; }
+
 
 .layout-top .btn,
 #layoutBackBtn{
   pointer-events:auto;
+}
+/* 🔥 Back 버튼은 무조건 클릭 가능 */
+#layoutBackBtn {
+  position:relative;
+  pointer-events: auto !important;
+  z-index: 1001 !important;
 }
 
 #layoutBackBtn{
@@ -240,6 +258,10 @@ html, body{
   background:linear-gradient(135deg,#182235,#111a2b);
   border:1px solid var(--stroke);
   pointer-events:auto;
+}
+.waiting-card.selected {
+  outline: 2px solid #4aa3ff;
+  box-shadow: 0 0 0 3px rgba(74,163,255,.25);
 }
 
 /* delete */

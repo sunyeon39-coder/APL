@@ -1,11 +1,11 @@
 /* =================================================
-   Box Board – FINAL SYNC VERSION (AUTH SAFE)
-   Firestore = Source of Truth
+   Box Board – FINAL SYNC (ADMIN / READ-ONLY USER)
    ================================================= */
 
 import { db, auth } from "./firebase.js";
 import {
   doc,
+  getDoc,
   setDoc,
   onSnapshot,
   serverTimestamp
@@ -14,21 +14,18 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-/* ===============================
-   CONST
-   =============================== */
-const STATE_REF = doc(db, "boxboard", "state");
-const LS_KEY = "boxboard_state_v2";
 
 /* ===============================
-   STATE
+   CONST / STATE
    =============================== */
+const STATE_REF = doc(db, "boxboard", "state");
+
 const state = {
   dateText: "",
   boxes: []
 };
 
-let hydrated = false;
+let currentUserRole = "user";
 let appStarted = false;
 
 /* ===============================
@@ -38,36 +35,38 @@ const $ = sel => document.querySelector(sel);
 const uid = () => Math.random().toString(36).slice(2) + Date.now();
 
 /* ===============================
-   AUTH GUARD (🔥 핵심)
+   LOGOUT
    =============================== */
-let authChecked = false;
-
-// 🔓 로그아웃 버튼
-document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-  try {
-    console.log("🚪 로그아웃 시도");
-    await signOut(auth);
-    console.log("✅ 로그아웃 완료");
-    location.replace("/login.html");
-  } catch (err) {
-    console.error("❌ 로그아웃 실패", err);
-  }
+$("#logoutBtn")?.addEventListener("click", async () => {
+  await signOut(auth);
+  (window.__go ? window.__go("login.html", true) : location.replace("/login.html"));
 });
 
-
-onAuthStateChanged(auth, (user) => {
-  // 🔥 첫 호출: "확인 완료" 표시
-  if (!authChecked) {
-    authChecked = true;
-  }
-
+/* ===============================
+   AUTH GUARD
+   =============================== */
+onAuthStateChanged(auth, async user => {
   if (!user) {
-    console.log("❌ 로그인 안 됨 (확정) → login.html");
-    location.href = "/login.html";
+    (window.__go ? window.__go("login.html", true) : location.replace("/login.html"));
     return;
   }
 
-  console.log("✅ 로그인 확인:", user.email);
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      email: user.email,
+      name: user.displayName || "",
+      role: "user",
+      createdAt: serverTimestamp()
+    });
+    currentUserRole = "user";
+  } else {
+    currentUserRole = snap.data().role || "user";
+  }
+
+  console.log("👤 ROLE =", currentUserRole);
 
   if (!appStarted) {
     appStarted = true;
@@ -76,54 +75,20 @@ onAuthStateChanged(auth, (user) => {
 });
 
 /* ===============================
-   LOCAL SAVE (fallback only)
+   FIRESTORE SUBSCRIBE
    =============================== */
-async function saveLocal() {
-  await setDoc(
-    STATE_REF,
-    {
-      ...state,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-}
-
-function loadLocal() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (!raw) return false;
-  try {
-    const parsed = JSON.parse(raw);
-    state.dateText = parsed.dateText || "";
-    state.boxes = parsed.boxes || [];
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/* ===============================
-   FIRESTORE REALTIME SYNC
-   =============================== */
-let unsubscribe = null;
-
 function subscribeState() {
-  unsubscribe = onSnapshot(STATE_REF, snap => {
+  onSnapshot(STATE_REF, snap => {
     if (!snap.exists()) return;
-
     const data = snap.data();
-    console.log("🔥 Firestore update", data);
-
     state.dateText = data.dateText || "";
     state.boxes = data.boxes || [];
-
-    hydrated = true;
     render();
   });
 }
 
 /* ===============================
-   WRITE STATE
+   WRITE (ADMIN ONLY)
    =============================== */
 async function writeState() {
   await setDoc(
@@ -150,16 +115,23 @@ function render() {
     const card = document.createElement("section");
     card.className = `card ${b.status?.toLowerCase() || ""}`;
 
+    // 🔥 user / admin에 따라 DOM 자체 분기
     card.innerHTML = `
       <div class="badge">${b.status || "Opened"}</div>
 
-      <div class="card-hover-bar">
-        <div class="card-hover-title">${b.title}</div>
-        <div class="card-hover-actions">
-          <button class="hover-btn edit">✏</button>
-          <button class="hover-btn del">✕</button>
+      ${
+        currentUserRole === "admin"
+          ? `
+        <div class="card-hover-bar">
+          <div class="card-hover-title">${b.title}</div>
+          <div class="card-hover-actions">
+            <button class="hover-btn edit">✏</button>
+            <button class="hover-btn del">✕</button>
+          </div>
         </div>
-      </div>
+        `
+          : ""
+      }
 
       <h2 class="card-title">${b.title}</h2>
 
@@ -170,45 +142,48 @@ function render() {
       </div>
     `;
 
-    // ▶ layout 이동
-    card.addEventListener("click", () => {
-      location.href = `layout_index.html?boxId=${b.id}`;
+    /* ▶ 카드 클릭: 전 유저 공통 */
+    card.addEventListener("click", e => {
+      if (e.target.closest(".hover-btn")) return;
+      const __url = `layout_index.html?boxId=${b.id}`;
+      (window.__go ? window.__go(__url, false) : (location.href = __url));
     });
 
-    // ✏ edit
-    card.querySelector(".edit").onclick = e => {
-      e.stopPropagation();
-      openBoxModal(b);
-    };
+    /* ===== ADMIN ONLY ACTIONS ===== */
+    if (currentUserRole === "admin") {
+      card.querySelector(".edit")?.addEventListener("click", e => {
+        e.stopPropagation();
+        openBoxModal(b);
+      });
 
-    // ❌ delete
-    card.querySelector(".del").onclick = async e => {
-      e.stopPropagation();
-      if (!confirm("삭제할까요?")) return;
-      state.boxes = state.boxes.filter(x => x.id !== b.id);
-      render();
-      await writeState();
-    };
+      card.querySelector(".del")?.addEventListener("click", async e => {
+        e.stopPropagation();
+        if (!confirm("삭제할까요?")) return;
+        state.boxes = state.boxes.filter(x => x.id !== b.id);
+        render();
+        await writeState();
+      });
+    }
 
     board.appendChild(card);
   });
 }
 
 /* ===============================
-   BOX MODAL
+   BOX MODAL (ADMIN ONLY)
    =============================== */
 let editingId = null;
 
 function openBoxModal(box = null) {
-  editingId = box?.id || null;
+  if (currentUserRole !== "admin") return;
 
+  editingId = box?.id || null;
   $("#boxTitle").value = box?.title || "";
   $("#boxStatus").value = box?.status || "Opened";
   $("#boxBuyin").value = box?.buyin || "";
   $("#boxTime").value = box?.time || "";
   $("#boxExtraLabel").value = box?.extraLabel || "Entries";
   $("#boxExtraValue").value = box?.extraValue || "";
-
   $("#overlayBox").classList.remove("hidden");
 }
 
@@ -218,70 +193,67 @@ function closeBoxModal() {
 }
 
 /* ===============================
-   APP START (🔥 Auth 이후 실행)
+   APP START
    =============================== */
 function startApp() {
-  console.log("🚀 App Started");
+  console.log("🚀 App Start");
 
-  // Firestore 먼저
+  const addBtn = $("#addBoxBtn");
+
+  // 🔒 USER = 완전 제거
+  if (currentUserRole !== "admin") {
+    addBtn?.remove();
+  } else {
+    addBtn.onclick = () => openBoxModal();
+  }
+
   subscribeState();
 
-  // fallback (Firestore 안 올 경우)
-  setTimeout(() => {
-    if (!hydrated) {
-      loadLocal();
+  /* ===== ADMIN ONLY BINDINGS ===== */
+  if (currentUserRole === "admin") {
+    $("#saveBox").onclick = async () => {
+      const box = {
+        id: editingId || uid(),
+        title: $("#boxTitle").value.trim() || "Untitled",
+        status: $("#boxStatus").value,
+        buyin: $("#boxBuyin").value,
+        time: $("#boxTime").value,
+        extraLabel: $("#boxExtraLabel").value,
+        extraValue: $("#boxExtraValue").value
+      };
+
+      editingId
+        ? state.boxes = state.boxes.map(b => b.id === editingId ? box : b)
+        : state.boxes.push(box);
+
+      closeBoxModal();
       render();
-    }
-  }, 500);
-
-  // Add Box
-  $("#addBoxBtn").onclick = () => openBoxModal();
-
-  // Save Box
-  $("#saveBox").onclick = async () => {
-    const box = {
-      id: editingId || uid(),
-      title: $("#boxTitle").value.trim() || "Untitled",
-      status: $("#boxStatus").value,
-      buyin: $("#boxBuyin").value,
-      time: $("#boxTime").value,
-      extraLabel: $("#boxExtraLabel").value,
-      extraValue: $("#boxExtraValue").value
+      await writeState();
     };
 
-    if (editingId) {
-      state.boxes = state.boxes.map(b => b.id === editingId ? box : b);
-    } else {
-      state.boxes.push(box);
-    }
+    $("#cancelBox").onclick = closeBoxModal;
 
-    render();
-    closeBoxModal();
-    await writeState();
-  };
+    document.addEventListener("keydown", e => {
+      if (e.key === "e") {
+        $("#inputDateText").value = state.dateText || "";
+        $("#overlayText").classList.remove("hidden");
+      }
+      if (e.key === "Escape") {
+        $("#overlayText").classList.add("hidden");
+        closeBoxModal();
+      }
+    });
 
-  $("#cancelBox").onclick = closeBoxModal;
-
-  // Text editor (E)
-  document.addEventListener("keydown", e => {
-    if (e.key === "e") {
-      $("#inputDateText").value = state.dateText || "";
-      $("#overlayText").classList.remove("hidden");
-    }
-    if (e.key === "Escape") {
+    $("#saveText").onclick = async () => {
+      state.dateText = $("#inputDateText").value;
+      render();
       $("#overlayText").classList.add("hidden");
-      closeBoxModal();
-    }
-  });
+      await writeState();
+    };
 
-  $("#saveText").onclick = async () => {
-    state.dateText = $("#inputDateText").value;
-    render();
-    $("#overlayText").classList.add("hidden");
-    await writeState();
-  };
-
-  $("#closeText").onclick = () => {
-    $("#overlayText").classList.add("hidden");
-  };
+    $("#closeText").onclick = () => {
+      $("#overlayText").classList.add("hidden");
+    };
+  }
 }
+
