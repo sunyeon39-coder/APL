@@ -145,3 +145,79 @@ input[type="text"] {
   min-width: 220px;
   cursor: pointer;
 }
+.section-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 20px;
+}
+
+/* 리스트형 */
+.tournament-list.vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 카드 한 줄 */
+.tournament-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.tournament-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0,0,0,.15);
+}
+
+/* 로고 */
+.t-logo {
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  background: #0b2545;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.t-logo.dark {
+  background: #000;
+}
+
+.t-logo.light {
+  background: #fff;
+  border: 1px solid #ddd;
+}
+
+.t-logo img {
+  max-width: 70%;
+  max-height: 70%;
+}
+
+/* 정보 */
+.t-info h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #000;
+}
+
+.t-info .location {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #555;
+}
+
+.t-info .date {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1aa31a;
+}

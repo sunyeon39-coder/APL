@@ -44,3 +44,13 @@ document.getElementById("saveProfileBtn").addEventListener("click", () => {
 
   console.log("SAVE PROFILE", { nickname, mode });
 });
+document.querySelectorAll(".tournament-row").forEach(card => {
+  card.addEventListener("click", () => {
+    const tournamentId = card.dataset.id;
+
+    // 👉 나중에 index.html?tournamentId=xxx 로 연결
+    console.log("ENTER TOURNAMENT:", tournamentId);
+
+    // location.href = `index.html?tournamentId=${tournamentId}`;
+  });
+});
