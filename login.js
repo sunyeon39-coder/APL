@@ -18,7 +18,7 @@ import {
    CONFIG
 ================================================= */
 
-const REDIRECT_URL = "index.html";
+const REDIRECT_URL = "hub.html";
 
 // admin 이메일 (필요 시)
 const ADMIN_EMAILS = [
