@@ -1,93 +1,46 @@
-// hub.js — USER PROFILE HUB (SKELETON)
+const menuBtn = document.getElementById("menuBtn");
+const sideMenu = document.getElementById("sideMenu");
+const overlay = document.getElementById("overlay");
 
-import { auth, db } from "./firebase.js";
-import {
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const views = {
+  profile: document.getElementById("view-profile"),
+  tournaments: document.getElementById("view-tournaments"),
+};
 
-/* ===============================
-   DOM
-=============================== */
-const nicknameInput = document.getElementById("nicknameInput");
-const saveBtn = document.getElementById("saveProfileBtn");
-const msg = document.getElementById("profileMsg");
-const radios = document.querySelectorAll("input[name='displayMode']");
-
-/* ===============================
-   STATE
-=============================== */
-let currentUser = null;
-let userRef = null;
-
-/* ===============================
-   AUTH
-=============================== */
-onAuthStateChanged(auth, async user => {
-  if (!user) {
-    location.replace("login.html");
-    return;
-  }
-
-  currentUser = user;
-  userRef = doc(db, "users", user.uid);
-
-  const snap = await getDoc(userRef);
-  if (!snap.exists()) return;
-
-  const data = snap.data();
-
-  nicknameInput.value = data.nickname || "";
-  const mode = data.displayMode || "nickname";
-
-  radios.forEach(r => {
-    r.checked = r.value === mode;
-  });
-});
-
-/* ===============================
-   SAVE PROFILE
-=============================== */
-saveBtn.addEventListener("click", async () => {
-  if (!userRef) return;
-
-  const nickname = nicknameInput.value.trim();
-  const displayMode =
-    document.querySelector("input[name='displayMode']:checked")?.value;
-
-  if (!nickname) {
-    showMsg("닉네임을 입력하세요.", true);
-    return;
-  }
-
-  await updateDoc(userRef, {
-    nickname,
-    displayMode
-  });
-
-  showMsg("저장되었습니다.");
-});
-
-function showMsg(text, isError=false){
-  msg.textContent = text;
-  msg.style.display = "block";
-  msg.style.color = isError ? "#ff5c7c" : "#4aa3ff";
+// 메뉴 열기/닫기
+function closeMenu() {
+  sideMenu.classList.remove("open");
+  overlay.classList.remove("show");
 }
 
-/* ===============================
-   TOURNAMENT CARD CLICK (TEMP)
-=============================== */
-document.querySelectorAll(".tournament-card").forEach(card => {
-  card.addEventListener("click", () => {
-    const id = card.dataset.id;
+menuBtn.addEventListener("click", () => {
+  sideMenu.classList.add("open");
+  overlay.classList.add("show");
+});
 
-    // 🔧 지금은 임시
-    localStorage.setItem("selectedTournamentId", id);
-    location.href = "index.html";
-  });
+overlay.addEventListener("click", closeMenu);
+
+// 메뉴 클릭 → 화면 전환
+sideMenu.addEventListener("click", e => {
+  const item = e.target.closest("li[data-view]");
+  if (!item) return;
+
+  const view = item.dataset.view;
+
+  Object.values(views).forEach(v => v.classList.add("hidden"));
+  views[view].classList.remove("hidden");
+
+  closeMenu();
+});
+
+// 기본 화면 = 대회 목록
+Object.values(views).forEach(v => v.classList.add("hidden"));
+views.tournaments.classList.remove("hidden");
+
+// (임시) 프로필 저장
+document.getElementById("saveProfileBtn").addEventListener("click", () => {
+  const nickname = document.getElementById("nicknameInput").value;
+  const mode = document.querySelector("input[name='displayMode']:checked").value;
+
+  console.log("SAVE PROFILE", { nickname, mode });
 });

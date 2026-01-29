@@ -2,63 +2,69 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hub</title>
   <link rel="stylesheet" href="hub.css" />
 </head>
 <body>
 
-  <div class="hub-wrap">
+  <!-- Top Bar -->
+  <header class="topbar">
+    <button id="menuBtn" class="menu-btn">☰</button>
+    <h1 class="logo">BOX BOARD</h1>
+  </header>
 
-    <!-- =====================
-         PROFILE / SETTINGS
-    ====================== -->
-    <section class="profile-card">
+  <!-- Side Menu -->
+  <aside id="sideMenu" class="side-menu">
+    <nav>
+      <ul>
+        <li data-view="profile">내 프로필</li>
+        <li data-view="tournaments">대회 목록</li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Overlay -->
+  <div id="overlay" class="overlay"></div>
+
+  <!-- Main Content -->
+  <main id="mainView" class="main">
+
+    <!-- Profile View -->
+    <section id="view-profile" class="view hidden">
       <h2>내 프로필</h2>
 
-      <div class="field">
+      <div class="card">
         <label>닉네임</label>
-        <input id="nicknameInput" type="text" placeholder="닉네임" />
-      </div>
+        <input id="nicknameInput" type="text" placeholder="닉네임 입력" />
 
-      <div class="field">
-        <label>표시 이름 방식</label>
         <div class="radio-group">
           <label>
-            <input type="radio" name="displayMode" value="nickname" />
+            <input type="radio" name="displayMode" value="nickname" checked />
             닉네임 사용
           </label>
           <label>
-            <input type="radio" name="displayMode" value="email" />
+            <input type="radio" name="displayMode" value="realname" />
             가입 이름 사용
           </label>
         </div>
+
+        <button id="saveProfileBtn" class="primary">저장</button>
       </div>
-
-      <button id="saveProfileBtn">저장</button>
-
-      <div id="profileMsg" class="msg"></div>
     </section>
 
-    <!-- =====================
-         TOURNAMENT LIST (SKELETON)
-    ====================== -->
-    <section class="tournament-section">
+    <!-- Tournament List View -->
+    <section id="view-tournaments" class="view">
       <h2>대회 / 회사</h2>
 
-      <div class="tournament-grid">
-        <!-- 🔧 지금은 더미 카드 -->
-        <div class="tournament-card" data-id="demo-1">
-          Demo Tournament A
-        </div>
-        <div class="tournament-card" data-id="demo-2">
-          Demo Tournament B
-        </div>
+      <div class="tournament-list">
+        <div class="tournament-card">Demo Tournament A</div>
+        <div class="tournament-card">Demo Tournament B</div>
       </div>
     </section>
 
-  </div>
+  </main>
 
-  <script type="module" src="hub.js"></script>
+  <script src="hub.js"></script>
 </body>
 </html>
