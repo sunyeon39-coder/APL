@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hub</title>
+  <link rel="stylesheet" href="hub.css" />
+</head>
+<body>
+
+  <div class="hub-wrap">
+
+    <!-- =====================
+         PROFILE / SETTINGS
+    ====================== -->
+    <section class="profile-card">
+      <h2>내 프로필</h2>
+
+      <div class="field">
+        <label>닉네임</label>
+        <input id="nicknameInput" type="text" placeholder="닉네임" />
+      </div>
+
+      <div class="field">
+        <label>표시 이름 방식</label>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="displayMode" value="nickname" />
+            닉네임 사용
+          </label>
+          <label>
+            <input type="radio" name="displayMode" value="email" />
+            가입 이름 사용
+          </label>
+        </div>
+      </div>
+
+      <button id="saveProfileBtn">저장</button>
+
+      <div id="profileMsg" class="msg"></div>
+    </section>
+
+    <!-- =====================
+         TOURNAMENT LIST (SKELETON)
+    ====================== -->
+    <section class="tournament-section">
+      <h2>대회 / 회사</h2>
+
+      <div class="tournament-grid">
+        <!-- 🔧 지금은 더미 카드 -->
+        <div class="tournament-card" data-id="demo-1">
+          Demo Tournament A
+        </div>
+        <div class="tournament-card" data-id="demo-2">
+          Demo Tournament B
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script type="module" src="hub.js"></script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+:root{
+  --bg:#0f1220;
+  --panel:#171a2b;
+  --text:#e9ecff;
+  --muted:#a9b0d6;
+  --accent:#4aa3ff;
+  --danger:#ff5c7c;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  min-height:100vh;
+  background:radial-gradient(1200px 600px at 50% -200px,#1a2340,#0b1020);
+  color:var(--text);
+  font-family:system-ui, -apple-system, BlinkMacSystemFont;
+}
+
+.hub-wrap{
+  max-width:960px;
+  margin:0 auto;
+  padding:32px 16px;
+}
+
+section{
+  background:linear-gradient(180deg,#1a2340,#0e1628);
+  border-radius:20px;
+  padding:24px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);
+  margin-bottom:28px;
+}
+
+h2{
+  margin-top:0;
+}
+
+.field{
+  margin-bottom:16px;
+}
+
+.field label{
+  display:block;
+  margin-bottom:6px;
+  color:var(--muted);
+  font-size:14px;
+}
+
+.field input{
+  width:100%;
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+}
+
+.radio-group{
+  display:flex;
+  gap:20px;
+  font-size:14px;
+}
+
+button{
+  padding:12px 18px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(135deg,#4aa3ff,#6f8bff);
+  color:#081018;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.msg{
+  margin-top:10px;
+  font-size:14px;
+  color:var(--accent);
+  display:none;
+}
+
+/* tournament */
+.tournament-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:14px;
+}
+
+.tournament-card{
+  padding:20px;
+  border-radius:16px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.2);
+  cursor:pointer;
+  text-align:center;
+  font-weight:700;
+}
+
+.tournament-card:hover{
+  background:rgba(255,255,255,.12);
+}
