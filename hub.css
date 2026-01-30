@@ -196,3 +196,57 @@ body{
 }
 
 .hidden{ display:none; }
+
+/* Join Modal */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+.modal.hidden{ display:none; }
+
+.modal-box{
+  width:90%;
+  max-width:360px;
+  background:#fff;
+  color:#000;
+  border-radius:16px;
+  padding:20px;
+}
+
+.modal-box h3{
+  margin:0 0 14px;
+}
+
+.modal-box input{
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  margin-bottom:12px;
+}
+
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+}
+
+.modal-actions button{
+  padding:8px 14px;
+}
+
+.modal-actions .primary{
+  background:#4aa3ff;
+  border:none;
+  font-weight:800;
+}
+
+.error{
+  margin-top:10px;
+  color:#d60000;
+}
+.error.hidden{ display:none; }
