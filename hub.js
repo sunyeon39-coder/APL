@@ -18,11 +18,11 @@ function renderTournaments(){
   tournamentListEl.innerHTML = "";
 
   if(tournaments.length === 0){
-    tournamentEmptyEl.classList.remove("hidden");
+    tournamentEmptyEl.style.display = "block";
     return;
   }
 
-  tournamentEmptyEl.classList.add("hidden");
+  tournamentEmptyEl.style.display = "none";
 
   tournaments.forEach(t => {
     const row = document.createElement("div");
@@ -37,16 +37,20 @@ function renderTournaments(){
 }
 
 /* CREATE EVENT */
-createEventBtn.onclick = () => {
+createEventBtn.addEventListener("click", () => {
+  console.log("CREATE EVENT CLICK"); // ← 눌림 확인용
   eventModal.classList.remove("hidden");
-};
+});
 
 eventCancelBtn.onclick = () => {
   eventModal.classList.add("hidden");
 };
 
 eventSaveBtn.onclick = () => {
-  if(!eventName.value) return alert("대회명을 입력하세요");
+  if(!eventName.value){
+    alert("대회명을 입력하세요");
+    return;
+  }
 
   tournaments.push({
     name: eventName.value,
@@ -55,12 +59,12 @@ eventSaveBtn.onclick = () => {
     end: eventEnd.value
   });
 
-  eventModal.classList.add("hidden");
   eventName.value = "";
   eventLocation.value = "";
   eventStart.value = "";
   eventEnd.value = "";
 
+  eventModal.classList.add("hidden");
   renderTournaments();
 };
 

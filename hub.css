@@ -29,6 +29,13 @@ body{
   z-index:5000;
 }
 
+.menu-btn{
+  font-size:22px;
+  background:none;
+  border:none;
+  color:var(--text);
+}
+
 /* SIDE MENU */
 .side-menu{
   position:fixed;
@@ -44,20 +51,48 @@ body{
 }
 .side-menu.open{ left:0; }
 
-/* OVERLAY */
+/* OVERLAY – 기본은 클릭 안 막음 */
 .overlay{
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.4);
   display:none;
-  z-index:4000;
+  pointer-events:none;
 }
-.overlay.show{ display:block; }
+.overlay.show{
+  display:block;
+  pointer-events:auto;
+}
 
 /* MAIN */
-.main{ padding:24px; }
+.main{
+  padding:28px;
+}
 
-/* TOURNAMENT LIST */
+/* SECTION HEAD */
+.section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:32px;
+}
+
+.section-title{
+  font-size:24px;
+  margin:0;
+}
+
+.create-btn{
+  background:#fff;
+  color:#000;
+  border:none;
+  padding:8px 14px;
+  border-radius:8px;
+  font-size:14px;
+  cursor:pointer;
+}
+
+/* LIST */
 .tournament-list{
   display:flex;
   flex-direction:column;
@@ -70,8 +105,8 @@ body{
 }
 
 .tournament-row h3{
-  font-size:26px;
   margin:0;
+  font-size:28px;
 }
 
 .tournament-row .location{
@@ -85,19 +120,10 @@ body{
   font-weight:600;
 }
 
-/* FAB */
-.fab{
-  position:fixed;
-  right:24px;
-  bottom:24px;
-  padding:16px 22px;
-  border-radius:999px;
-  background:var(--accent);
-  color:#fff;
-  border:none;
-  font-size:14px;
-  cursor:pointer;
-  z-index:6000;
+/* EMPTY */
+.empty{
+  margin-top:40px;
+  color:var(--muted);
 }
 
 /* MODAL */
@@ -110,7 +136,10 @@ body{
   justify-content:center;
   z-index:5200;
 }
-.modal.hidden{ display:none; }
+.modal.hidden{
+  display:none;
+  pointer-events:none;
+}
 
 .modal-box{
   background:#fff;
@@ -123,8 +152,8 @@ body{
 
 .modal-box input{
   width:100%;
-  padding:10px;
   margin-top:10px;
+  padding:10px;
 }
 
 .modal-actions{
@@ -133,5 +162,3 @@ body{
   justify-content:flex-end;
   gap:12px;
 }
-
-.hidden{ display:none; }
