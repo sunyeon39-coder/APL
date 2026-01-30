@@ -1,4 +1,5 @@
-// auth.js (LOGIN PAGE – FINAL + ROLE INIT)
+// auth.js (Google 로그인 전용)
+
 import { auth } from "./firebase.js";
 import {
   GoogleAuthProvider,
@@ -18,23 +19,25 @@ const db = getFirestore();
 
 /* ===============================
    Google Provider
-   =============================== */
+=============================== */
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 
 /* ===============================
-   Google 로그인 버튼
-   =============================== */
-document
-  .getElementById("googleLoginBtn")
-  .addEventListener("click", async () => {
-    console.log("➡️ Google Login Start");
+   Google Login Button
+=============================== */
+const googleBtn = document.getElementById("googleLoginBtn");
+
+if (googleBtn) {
+  googleBtn.addEventListener("click", async () => {
+    console.log("➡️ Google 로그인 시작");
     await signInWithPopup(auth, provider);
   });
+}
 
 /* ===============================
-   로그인 상태 감시 + 사용자 생성
-   =============================== */
+   Auth State
+=============================== */
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     console.log("ℹ 로그인 대기 중");
@@ -46,17 +49,17 @@ onAuthStateChanged(auth, async (user) => {
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
-  // 🔥 최초 로그인 시에만 생성
+  // 🔥 최초 로그인 시에만 문서 생성
   if (!snap.exists()) {
     await setDoc(userRef, {
       email: user.email,
       name: user.displayName || "",
-      role: "user", // 기본 권한
+      role: "user",
       createdAt: serverTimestamp()
     });
-    console.log("👤 신규 사용자 문서 생성");
+    console.log("👤 새 사용자 문서 생성");
   }
 
-  // 🔁 단 한 번만 이동
+  // 이동
   location.replace("/index.html");
 });

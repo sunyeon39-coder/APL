@@ -82,11 +82,22 @@ function applyRoleUI() {
    ================================================= */
 function subscribeLayout() {
   const boxId = getBoxId();
-  if (!boxId) return;
+
+  // 🔒 boxId 없으면 절대 초기화 / 구독 안 함
+  if (!boxId) {
+    console.warn("⚠️ boxId 없음 → layout subscribe 중단");
+    return;
+  }
 
   onSnapshot(STATE_REF, snap => {
-    if (!snap.exists()) return;
-    if (isSaving) return;
+  if (!snap.exists()) return;
+  if (isSaving) return;
+
+  // 🔒 최초 hydration 전에는 덮어쓰기 금지
+  if (!hasHydrated && !snap.data()?.boxes?.length) {
+    console.warn("⚠️ 서버 boxes 비어있음 → 초기 hydration 스킵");
+    return;
+  }
 
     const box = snap.data().boxes?.find(b => b.id === boxId);
     if (!box) return;
