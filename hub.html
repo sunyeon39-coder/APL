@@ -67,5 +67,24 @@
   </main>
 
   <script type="module" src="hub.js"></script>
+
+  <!-- Join Code Modal -->
+<div id="joinModal" class="modal hidden">
+  <div class="modal-box">
+    <h3>입장 코드 입력</h3>
+    <input
+      id="joinCodeInput"
+      type="text"
+      placeholder="입장 코드"
+      autocomplete="off"
+    />
+    <div class="modal-actions">
+      <button id="joinCancelBtn">취소</button>
+      <button id="joinConfirmBtn" class="primary">입장</button>
+    </div>
+    <p id="joinError" class="error hidden"></p>
+  </div>
+</div>
+
 </body>
 </html>
