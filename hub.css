@@ -1,223 +1,198 @@
-:root {
-  --bg: #0f1220;
-  --panel: #171a2b;
-  --text: #e9ecff;
-  --muted: #a9b0d6;
-  --blue: #4aa3ff;
-  --radius: 16px;
+:root{
+  --bg:#0f1220;
+  --panel:#171a2b;
+  --text:#e9ecff;
+  --muted:#a9b0d6;
+  --accent:#4aa3ff;
 }
 
-* {
-  box-sizing: border-box;
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
+  background:var(--bg);
+  color:var(--text);
 }
 
-html, body {
-  margin: 0;
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: system-ui, sans-serif;
+/* Top */
+.topbar{
+  height:56px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 14px;
+  background:#0b1325;
 }
 
-/* Topbar */
-.topbar {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  background: var(--panel);
+.menu-btn{
+  font-size:22px;
+  background:none;
+  border:none;
+  color:var(--text);
+  cursor:pointer;
 }
 
-.menu-btn {
-  font-size: 22px;
-  background: none;
-  border: none;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.logo {
-  margin-left: 12px;
-  font-size: 16px;
+.top-title{
+  font-size:18px;
+  font-weight:800;
 }
 
 /* Side Menu */
-.side-menu {
-  position: fixed;
-  top: 0;
-  left: -260px;
-  width: 240px;
-  height: 100%;
-  background: #fff;
-  color: #000;
-  padding: 24px;
-  transition: left 0.25s ease;
-  z-index: 1000;
+.side-menu{
+  position:fixed;
+  top:0; left:-240px;
+  width:240px;
+  height:100%;
+  background:#fff;
+  color:#000;
+  padding:20px;
+  transition:.25s;
+  z-index:1000;
 }
 
-.side-menu.open {
-  left: 0;
+.side-menu.open{ left:0; }
+
+.side-menu ul{
+  list-style:none;
+  padding:0;
+  margin:0;
 }
 
-.side-menu ul {
-  list-style: none;
-  padding: 0;
+.side-menu li{
+  padding:12px 6px;
+  font-size:18px;
+  cursor:pointer;
 }
 
-.side-menu li {
-  padding: 12px 0;
-  cursor: pointer;
-  font-size: 16px;
+.side-menu li:hover{
+  color:var(--accent);
 }
 
 /* Overlay */
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.4);
+  display:none;
+  z-index:999;
 }
-
-.overlay.show {
-  opacity: 1;
-  pointer-events: auto;
-}
+.overlay.show{ display:block; }
 
 /* Main */
-.main {
-  padding: 20px;
+.main{
+  padding:18px;
 }
 
-.view {
-  max-width: 900px;
-  margin: 0 auto;
+.section-title{
+  font-size:22px;
+  margin-bottom:18px;
 }
 
-.hidden {
-  display: none;
+/* Profile */
+.card{
+  background:var(--panel);
+  border-radius:16px;
+  padding:18px;
+  max-width:520px;
 }
 
-/* Card */
-.card {
-  background: var(--panel);
-  border-radius: var(--radius);
-  padding: 20px;
-  max-width: 480px;
+.label{
+  display:block;
+  margin-bottom:6px;
+  font-weight:700;
 }
 
-input[type="text"] {
-  width: 100%;
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
-  margin: 8px 0 16px;
+.input{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.15);
+  background:#0e1630;
+  color:#fff;
+  margin-bottom:14px;
 }
 
-.radio-group {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+.radio-group{
+  display:flex;
+  gap:16px;
+  margin-bottom:18px;
 }
 
-.primary {
-  background: var(--blue);
-  color: #000;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 700;
+.primary-btn{
+  padding:12px 18px;
+  border:none;
+  border-radius:14px;
+  background:var(--accent);
+  color:#000;
+  font-weight:800;
+  cursor:pointer;
 }
 
-/* Tournament */
-.tournament-list {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+/* Tournament List */
+.tournament-list{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
 }
 
-.tournament-card {
-  background: var(--panel);
-  padding: 20px;
-  border-radius: var(--radius);
-  min-width: 220px;
-  cursor: pointer;
-}
-.section-title {
-  font-size: 22px;
-  font-weight: 800;
-  margin-bottom: 20px;
-}
-
-/* 리스트형 */
-.tournament-list.vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.tournament-row{
+  display:flex;
+  align-items:center;
+  gap:20px;
+  background:#fff;
+  color:#000;
+  padding:16px;
+  border-radius:16px;
+  cursor:pointer;
+  transition:.15s;
 }
 
-/* 카드 한 줄 */
-.tournament-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 16px 20px;
-  cursor: pointer;
-  transition: transform .15s ease, box-shadow .15s ease;
+.tournament-row:hover{
+  transform:translateY(-2px);
+  box-shadow:0 12px 30px rgba(0,0,0,.15);
 }
 
-.tournament-row:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(0,0,0,.15);
+.t-logo{
+  width:88px;
+  height:88px;
+  border-radius:12px;
+  background:#0b2545;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
-/* 로고 */
-.t-logo {
-  width: 88px;
-  height: 88px;
-  border-radius: 12px;
-  background: #0b2545;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.t-logo.dark{ background:#000; }
+.t-logo.light{ background:#fff; border:1px solid #ccc; }
+
+.t-logo img{
+  max-width:70%;
+  max-height:70%;
 }
 
-.t-logo.dark {
-  background: #000;
+.t-info h3{
+  margin:0 0 6px;
+  font-size:20px;
+  font-weight:800;
 }
 
-.t-logo.light {
-  background: #fff;
-  border: 1px solid #ddd;
+.location{
+  font-size:14px;
+  color:#555;
 }
 
-.t-logo img {
-  max-width: 70%;
-  max-height: 70%;
+.date{
+  font-size:16px;
+  font-weight:800;
+  color:#1aa31a;
 }
 
-/* 정보 */
-.t-info h3 {
-  margin: 0 0 6px;
-  font-size: 20px;
-  font-weight: 800;
-  color: #000;
+.empty{
+  padding:14px;
+  background:rgba(255,255,255,.08);
+  border-radius:12px;
+  color:var(--muted);
 }
 
-.t-info .location {
-  margin: 0 0 6px;
-  font-size: 14px;
-  color: #555;
-}
-
-.t-info .date {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-  color: #1aa31a;
-}
+.hidden{ display:none; }

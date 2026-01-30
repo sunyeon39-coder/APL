@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hub</title>
+
   <link rel="stylesheet" href="hub.css" />
 </head>
 <body>
@@ -11,33 +12,32 @@
   <!-- Top Bar -->
   <header class="topbar">
     <button id="menuBtn" class="menu-btn">☰</button>
-    <h1 class="logo">BOX BOARD</h1>
+    <h1 class="top-title">Tournament Hub</h1>
   </header>
-
-  <!-- Side Menu -->
-  <aside id="sideMenu" class="side-menu">
-    <nav>
-      <ul>
-        <li data-view="profile">내 프로필</li>
-        <li data-view="tournaments">대회 목록</li>
-      </ul>
-    </nav>
-  </aside>
 
   <!-- Overlay -->
   <div id="overlay" class="overlay"></div>
 
-  <!-- Main Content -->
-  <main id="mainView" class="main">
+  <!-- Side Menu -->
+  <aside id="sideMenu" class="side-menu">
+    <ul>
+      <li data-view="profile">내 프로필</li>
+      <li data-view="tournaments">대회 목록</li>
+    </ul>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
 
     <!-- Profile View -->
     <section id="view-profile" class="view hidden">
-      <h2>내 프로필</h2>
+      <h2 class="section-title">내 프로필</h2>
 
       <div class="card">
-        <label>닉네임</label>
-        <input id="nicknameInput" type="text" placeholder="닉네임 입력" />
+        <label class="label">닉네임</label>
+        <input id="nicknameInput" class="input" placeholder="닉네임" />
 
+        <label class="label">표시 이름 방식</label>
         <div class="radio-group">
           <label>
             <input type="radio" name="displayMode" value="nickname" checked />
@@ -49,54 +49,23 @@
           </label>
         </div>
 
-        <button id="saveProfileBtn" class="primary">저장</button>
+        <button id="saveProfileBtn" class="primary-btn">저장</button>
       </div>
     </section>
 
-    <!-- Tournament List View -->
-<section id="view-tournaments" class="view">
-  <h2 class="section-title">대회 / 회사</h2>
+    <!-- Tournament View -->
+    <section id="view-tournaments" class="view">
+      <h2 class="section-title">대회 / 회사</h2>
 
-  <div class="tournament-list vertical">
+      <div id="tournamentList" class="tournament-list"></div>
 
-    <article class="tournament-row" data-id="tmt">
-      <div class="t-logo">
-        <img src="assets/tmt.png" alt="TMT">
+      <div id="tournamentEmpty" class="empty hidden">
+        등록된 대회가 없습니다.
       </div>
-      <div class="t-info">
-        <h3>19th Taiwan Millions Tournament</h3>
-        <p class="location">Taipei, Taiwan</p>
-        <p class="date">26.01.22 ~ 26.02.09</p>
-      </div>
-    </article>
-
-    <article class="tournament-row" data-id="mss">
-      <div class="t-logo dark">
-        <img src="assets/pokerstars.png" alt="PokerStars">
-      </div>
-      <div class="t-info">
-        <h3>Manila Super Series 23</h3>
-        <p class="location">Manila, Philippines</p>
-        <p class="date">26.01.23 ~ 26.02.01</p>
-      </div>
-    </article>
-
-    <article class="tournament-row" data-id="pd">
-      <div class="t-logo light">
-        <img src="assets/pokerdream.png" alt="Poker Dream">
-      </div>
-      <div class="t-info">
-        <h3>Poker Dream 20 Malaysia</h3>
-        <p class="location">Pahang, Malaysia</p>
-        <p class="date">26.01.29 ~ 26.02.09</p>
-      </div>
-    </article>
-
-  </div>
-</section>
+    </section>
 
   </main>
 
-  <script src="hub.js"></script>
+  <script type="module" src="hub.js"></script>
 </body>
 </html>
