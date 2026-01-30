@@ -28,47 +28,35 @@
   <!-- MAIN -->
   <main class="main">
 
-    <!-- PROFILE -->
-    <section id="profileSection" class="card hidden">
-      <h2>내 프로필</h2>
-
-      <label class="label">닉네임</label>
-      <input id="nicknameInput" class="input" placeholder="닉네임 입력" />
-
-      <div class="radio-group">
-        <label>
-          <input type="radio" name="displayMode" value="nickname" checked />
-          닉네임 사용
-        </label>
-        <label>
-          <input type="radio" name="displayMode" value="name" />
-          가입 이름 사용
-        </label>
-      </div>
-
-      <button id="saveProfileBtn" class="primary-btn">저장</button>
-    </section>
-
     <!-- TOURNAMENT LIST -->
     <section id="tournamentSection">
       <h2 class="section-title">대회 / 회사</h2>
 
       <div id="tournamentList" class="tournament-list"></div>
-      <div id="tournamentEmpty" class="empty hidden">등록된 대회가 없습니다.</div>
+      <div id="tournamentEmpty" class="empty hidden">
+        등록된 대회가 없습니다.
+      </div>
     </section>
 
   </main>
 
-  <!-- JOIN MODAL -->
-  <div id="joinModal" class="modal hidden">
+  <!-- CREATE BUTTON -->
+  <button id="createEventBtn" class="fab">+ Create Event</button>
+
+  <!-- CREATE MODAL -->
+  <div id="eventModal" class="modal hidden">
     <div class="modal-box">
-      <h3>입장 코드 입력</h3>
-      <input id="joinCodeInput" placeholder="입장 코드" />
+      <h3>대회 생성</h3>
+
+      <input id="eventName" placeholder="대회명" />
+      <input id="eventLocation" placeholder="장소" />
+      <input id="eventStart" type="date" />
+      <input id="eventEnd" type="date" />
+
       <div class="modal-actions">
-        <button id="joinCancelBtn">취소</button>
-        <button id="joinConfirmBtn" class="primary">입장</button>
+        <button id="eventCancelBtn">취소</button>
+        <button id="eventSaveBtn" class="primary">생성</button>
       </div>
-      <div id="joinError" class="error hidden"></div>
     </div>
   </div>
 

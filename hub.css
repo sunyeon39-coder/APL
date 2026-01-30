@@ -4,6 +4,7 @@
   --text:#e9ecff;
   --muted:#a9b0d6;
   --accent:#4aa3ff;
+  --green:#1faa00;
 }
 
 *{ box-sizing:border-box; }
@@ -28,19 +29,6 @@ body{
   z-index:5000;
 }
 
-.menu-btn{
-  font-size:22px;
-  background:none;
-  border:none;
-  color:var(--text);
-  cursor:pointer;
-}
-
-.top-title{
-  font-size:18px;
-  font-weight:800;
-}
-
 /* SIDE MENU */
 .side-menu{
   position:fixed;
@@ -56,55 +44,60 @@ body{
 }
 .side-menu.open{ left:0; }
 
-.side-menu li{
-  padding:12px 6px;
-  font-size:18px;
-  cursor:pointer;
-}
-.side-menu li:hover{ color:var(--accent); }
-
 /* OVERLAY */
 .overlay{
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.4);
   display:none;
-  pointer-events:none;
   z-index:4000;
 }
-.overlay.show{
-  display:block;
-  pointer-events:auto;
-}
+.overlay.show{ display:block; }
 
 /* MAIN */
-.main{ padding:18px; }
+.main{ padding:24px; }
 
-.card{
-  background:var(--panel);
-  border-radius:16px;
-  padding:18px;
-  max-width:520px;
-}
-
-/* TOURNAMENT */
+/* TOURNAMENT LIST */
 .tournament-list{
   display:flex;
   flex-direction:column;
-  gap:16px;
 }
 
 .tournament-row{
-  display:flex;
-  gap:20px;
-  background:#fff;
-  color:#000;
-  padding:16px;
-  border-radius:16px;
+  padding:32px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
   cursor:pointer;
 }
-.tournament-row:hover{
-  transform:translateY(-2px);
+
+.tournament-row h3{
+  font-size:26px;
+  margin:0;
+}
+
+.tournament-row .location{
+  margin-top:6px;
+  color:var(--muted);
+}
+
+.tournament-row .date{
+  margin-top:12px;
+  color:var(--green);
+  font-weight:600;
+}
+
+/* FAB */
+.fab{
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  padding:16px 22px;
+  border-radius:999px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  font-size:14px;
+  cursor:pointer;
+  z-index:6000;
 }
 
 /* MODAL */
@@ -117,10 +110,7 @@ body{
   justify-content:center;
   z-index:5200;
 }
-.modal.hidden{
-  display:none;
-  pointer-events:none;
-}
+.modal.hidden{ display:none; }
 
 .modal-box{
   background:#fff;
@@ -129,6 +119,19 @@ body{
   border-radius:16px;
   width:90%;
   max-width:360px;
+}
+
+.modal-box input{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+}
+
+.modal-actions{
+  margin-top:18px;
+  display:flex;
+  justify-content:flex-end;
+  gap:12px;
 }
 
 .hidden{ display:none; }
