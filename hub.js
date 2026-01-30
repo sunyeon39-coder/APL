@@ -3,7 +3,11 @@ import {
   collection,
   onSnapshot,
   query,
-  orderBy
+  orderBy,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import {
   onAuthStateChanged
@@ -21,6 +25,9 @@ const views = {
 
 const listEl = document.getElementById("tournamentList");
 const emptyEl = document.getElementById("tournamentEmpty");
+
+const nicknameInput = document.getElementById("nicknameInput");
+const saveProfileBtn = document.getElementById("saveProfileBtn");
 
 /* Menu */
 menuBtn.onclick = () => {
@@ -47,7 +54,56 @@ sideMenu.onclick = (e) => {
 Object.values(views).forEach(v => v.classList.add("hidden"));
 views.tournaments.classList.remove("hidden");
 
-/* Render */
+/* ===============================
+   USER PROFILE
+   =============================== */
+let currentUser = null;
+let userRef = null;
+
+async function loadUserProfile(user){
+  userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if(!snap.exists()){
+    // 최초 생성
+    await setDoc(userRef, {
+      email: user.email || "",
+      nickname: "",
+      displayMode: "nickname",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    nicknameInput.value = "";
+    document.querySelector('input[value="nickname"]').checked = true;
+    return;
+  }
+
+  const data = snap.data();
+  nicknameInput.value = data.nickname || "";
+  document.querySelector(
+    `input[value="${data.displayMode || "nickname"}"]`
+  ).checked = true;
+}
+
+saveProfileBtn.onclick = async () => {
+  if(!currentUser) return;
+
+  const nickname = nicknameInput.value.trim();
+  const displayMode =
+    document.querySelector("input[name=displayMode]:checked").value;
+
+  await setDoc(userRef, {
+    nickname,
+    displayMode,
+    updatedAt: serverTimestamp()
+  }, { merge:true });
+
+  alert("프로필이 저장되었습니다");
+};
+
+/* ===============================
+   TOURNAMENTS
+   =============================== */
 function render(list){
   listEl.innerHTML = "";
   if(!list.length){
@@ -76,7 +132,6 @@ function render(list){
   });
 }
 
-/* Firestore */
 function subscribeTournaments(){
   const q = query(collection(db,"tournaments"), orderBy("title"));
   onSnapshot(q, snap => {
@@ -86,18 +141,15 @@ function subscribeTournaments(){
   });
 }
 
-/* Auth guard */
-onAuthStateChanged(auth, user => {
+/* ===============================
+   AUTH GUARD
+   =============================== */
+onAuthStateChanged(auth, async user => {
   if(!user){
     location.replace("login.html");
     return;
   }
+  currentUser = user;
+  await loadUserProfile(user);
   subscribeTournaments();
-});
-
-/* Profile save (stub) */
-document.getElementById("saveProfileBtn")?.addEventListener("click",()=>{
-  const nickname = document.getElementById("nicknameInput").value.trim();
-  const mode = document.querySelector("input[name=displayMode]:checked").value;
-  console.log("SAVE PROFILE:", { nickname, mode });
 });
