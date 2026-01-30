@@ -3,89 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hub</title>
-
+  <title>Tournament Hub</title>
   <link rel="stylesheet" href="hub.css" />
 </head>
-<!-- Join Code Modal -->
-<div id="joinModal" class="modal hidden">
-  <div class="modal-box">
-    <h3>입장 코드 입력</h3>
-    <input
-      id="joinCodeInput"
-      type="text"
-      placeholder="입장 코드"
-      autocomplete="off"
-    />
-    <div class="modal-actions">
-      <button id="joinCancelBtn">취소</button>
-      <button id="joinConfirmBtn" class="primary">입장</button>
-    </div>
-    <p id="joinError" class="error hidden"></p>
-  </div>
-</div>
-
 <body>
 
-  <!-- Top Bar -->
+  <!-- TOP BAR -->
   <header class="topbar">
     <button id="menuBtn" class="menu-btn">☰</button>
-    <h1 class="top-title">Tournament Hub</h1>
+    <div class="top-title">Tournament Hub</div>
   </header>
 
-  <!-- Overlay -->
-  <div id="overlay" class="overlay"></div>
-
-  <!-- Side Menu -->
+  <!-- SIDE MENU -->
   <aside id="sideMenu" class="side-menu">
     <ul>
-      <li data-view="profile">내 프로필</li>
-      <li data-view="tournaments">대회 목록</li>
+      <li id="menuProfile">내 프로필</li>
+      <li id="menuTournaments">대회 목록</li>
     </ul>
   </aside>
 
-  <!-- Main -->
+  <!-- OVERLAY -->
+  <div id="overlay" class="overlay"></div>
+
+  <!-- MAIN -->
   <main class="main">
 
-    <!-- Profile View -->
-    <section id="view-profile" class="view hidden">
-      <h2 class="section-title">내 프로필</h2>
+    <!-- PROFILE -->
+    <section id="profileSection" class="card hidden">
+      <h2>내 프로필</h2>
 
-      <div class="card">
-        <label class="label">닉네임</label>
-        <input id="nicknameInput" class="input" placeholder="닉네임" />
+      <label class="label">닉네임</label>
+      <input id="nicknameInput" class="input" placeholder="닉네임 입력" />
 
-        <label class="label">표시 이름 방식</label>
-        <div class="radio-group">
-          <label>
-            <input type="radio" name="displayMode" value="nickname" checked />
-            닉네임 사용
-          </label>
-          <label>
-            <input type="radio" name="displayMode" value="realname" />
-            가입 이름 사용
-          </label>
-        </div>
-
-        <button id="saveProfileBtn" class="primary-btn">저장</button>
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="displayMode" value="nickname" checked />
+          닉네임 사용
+        </label>
+        <label>
+          <input type="radio" name="displayMode" value="name" />
+          가입 이름 사용
+        </label>
       </div>
+
+      <button id="saveProfileBtn" class="primary-btn">저장</button>
     </section>
 
-    <!-- Tournament View -->
-    <section id="view-tournaments" class="view">
+    <!-- TOURNAMENT LIST -->
+    <section id="tournamentSection">
       <h2 class="section-title">대회 / 회사</h2>
 
       <div id="tournamentList" class="tournament-list"></div>
-
-      <div id="tournamentEmpty" class="empty hidden">
-        등록된 대회가 없습니다.
-      </div>
+      <div id="tournamentEmpty" class="empty hidden">등록된 대회가 없습니다.</div>
     </section>
 
   </main>
 
-  <script type="module" src="hub.js"></script>
+  <!-- JOIN MODAL -->
+  <div id="joinModal" class="modal hidden">
+    <div class="modal-box">
+      <h3>입장 코드 입력</h3>
+      <input id="joinCodeInput" placeholder="입장 코드" />
+      <div class="modal-actions">
+        <button id="joinCancelBtn">취소</button>
+        <button id="joinConfirmBtn" class="primary">입장</button>
+      </div>
+      <div id="joinError" class="error hidden"></div>
+    </div>
+  </div>
 
-  
+  <script type="module" src="hub.js"></script>
 </body>
 </html>
