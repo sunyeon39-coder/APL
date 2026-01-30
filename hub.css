@@ -15,7 +15,9 @@ body{
   color:var(--text);
 }
 
-/* Top */
+/* =================================================
+   Top (🔥 클릭 보장)
+   ================================================= */
 .topbar{
   height:56px;
   display:flex;
@@ -23,6 +25,17 @@ body{
   gap:12px;
   padding:0 14px;
   background:#0b1325;
+
+  /* ✅ overlay/modal 위로 올려서 햄버거 클릭 보호 */
+  position:sticky;
+  top:0;
+  z-index:3000;
+  pointer-events:auto;
+}
+
+/* ✅ topbar 안쪽 요소들 클릭 보장 (iOS/Safari 방어) */
+.topbar *{
+  pointer-events:auto;
 }
 
 .menu-btn{
@@ -31,6 +44,7 @@ body{
   border:none;
   color:var(--text);
   cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .top-title{
@@ -38,7 +52,9 @@ body{
   font-weight:800;
 }
 
-/* Side Menu */
+/* =================================================
+   Side Menu
+   ================================================= */
 .side-menu{
   position:fixed;
   top:0; left:-240px;
@@ -48,7 +64,7 @@ body{
   color:#000;
   padding:20px;
   transition:.25s;
-  z-index:1000;
+  z-index:3100; /* ✅ topbar보다도 위로 (열릴 때 확실히) */
 }
 
 .side-menu.open{ left:0; }
@@ -69,17 +85,29 @@ body{
   color:var(--accent);
 }
 
-/* Overlay */
+/* =================================================
+   Overlay (🔥 기본은 클릭 무시)
+   ================================================= */
 .overlay{
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.4);
-  display:none;
-  z-index:999;
-}
-.overlay.show{ display:block; }
 
-/* Main */
+  /* ✅ 기본은 클릭 이벤트 차단(=아무것도 덮지 않게) */
+  display:none;
+  pointer-events:none;
+
+  z-index:2000; /* topbar(3000) 아래 */
+}
+
+.overlay.show{
+  display:block;
+  pointer-events:auto; /* ✅ 열릴 때만 클릭 받음 */
+}
+
+/* =================================================
+   Main
+   ================================================= */
 .main{
   padding:18px;
 }
@@ -89,7 +117,9 @@ body{
   margin-bottom:18px;
 }
 
-/* Profile */
+/* =================================================
+   Profile
+   ================================================= */
 .card{
   background:var(--panel);
   border-radius:16px;
@@ -129,7 +159,9 @@ body{
   cursor:pointer;
 }
 
-/* Tournament List */
+/* =================================================
+   Tournament List
+   ================================================= */
 .tournament-list{
   display:flex;
   flex-direction:column;
@@ -197,7 +229,9 @@ body{
 
 .hidden{ display:none; }
 
-/* Join Modal */
+/* =================================================
+   Join Modal (🔥 hidden일 때 클릭 완전 차단)
+   ================================================= */
 .modal{
   position:fixed;
   inset:0;
@@ -205,9 +239,15 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  z-index:2000;
+
+  z-index:3200; /* side-menu보다 위 */
+  pointer-events:auto;
 }
-.modal.hidden{ display:none; }
+
+.modal.hidden{
+  display:none;
+  pointer-events:none; /* ✅ 숨김 상태에서 클릭 가로채기 방지 */
+}
 
 .modal-box{
   width:90%;
@@ -249,4 +289,5 @@ body{
   margin-top:10px;
   color:#d60000;
 }
+
 .error.hidden{ display:none; }
