@@ -16,9 +16,27 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 /* ===============================
+   EVENT CONTEXT (MINIMAL PATCH)
+=============================== */
+const params = new URLSearchParams(location.search);
+let eventId = params.get("eventId");
+
+// 새로고침 대비
+if (!eventId) {
+  eventId = sessionStorage.getItem("eventId");
+}
+if (eventId) {
+  sessionStorage.setItem("eventId", eventId);
+} else {
+  console.warn("⚠ eventId 없음: 단일 보드 모드");
+}
+
+/* ===============================
    CONST / STATE
    =============================== */
-const STATE_REF = doc(db, "boxboard", "state");
+const STATE_REF = eventId
+  ? doc(db, "boxboard", eventId)
+  : doc(db, "boxboard", "state");
 
 const state = {
   dateText: "",
