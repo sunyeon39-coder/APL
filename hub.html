@@ -14,34 +14,21 @@
     <div class="top-title">Tournament Hub</div>
   </header>
 
-  <!-- SIDE MENU -->
-  <aside id="sideMenu" class="side-menu">
-    <ul>
-      <li id="menuProfile">내 프로필</li>
-      <li id="menuTournaments">대회 / 회사</li>
-    </ul>
-  </aside>
-
-  <!-- OVERLAY (기본은 클릭 안 막음) -->
-  <div id="overlay" class="overlay"></div>
-
   <!-- MAIN -->
   <main class="main">
 
     <section id="tournamentSection">
 
-      <!-- 제목 + 생성 버튼 -->
       <div class="section-head">
         <h2 class="section-title">대회 / 회사</h2>
-        <button id="createEventBtn" class="create-btn">
+        <!-- admin만 보이게 JS에서 제어 -->
+        <button id="createEventBtn" class="create-btn hidden">
           + Create Event
         </button>
       </div>
 
-      <!-- 리스트 -->
       <div id="tournamentList" class="tournament-list"></div>
 
-      <!-- empty -->
       <div id="tournamentEmpty" class="empty">
         등록된 대회가 없습니다.
       </div>
