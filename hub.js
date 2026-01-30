@@ -12,9 +12,7 @@ import { onAuthStateChanged } from
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  /* ===============================
-     DOM
-  =============================== */
+  /* DOM */
   const tournamentListEl = document.getElementById("tournamentList");
   const tournamentEmptyEl = document.getElementById("tournamentEmpty");
   const createEventBtn = document.getElementById("createEventBtn");
@@ -31,41 +29,43 @@ document.addEventListener("DOMContentLoaded", () => {
   const sideMenu = document.getElementById("sideMenu");
   const overlay = document.getElementById("overlay");
 
-  /* ===============================
-     STATE
-  =============================== */
   let currentUser = null;
-  let currentUserRole = "admin"; // 🔥 일단 강제 admin (기존 기능 확인용)
   let tournaments = [];
 
-  /* ===============================
-     MENU (≡)
-  =============================== */
-  if (menuBtn && sideMenu && overlay) {
-    menuBtn.onclick = () => {
-      sideMenu.classList.add("open");
-      overlay.classList.add("show");
-    };
+  /* MENU */
+  menuBtn.onclick = () => {
+    sideMenu.classList.add("open");
+    overlay.classList.add("show");
+  };
 
-    overlay.onclick = () => {
-      sideMenu.classList.remove("open");
-      overlay.classList.remove("show");
-    };
-  }
-
+  overlay.onclick = () => {
+    sideMenu.classList.remove("open");
+    overlay.classList.remove("show");
+  };
   /* ===============================
-     AUTH
-  =============================== */
+   PROFILE
+=============================== */
+const profileBtn = document.getElementById("profileBtn");
+
+if (profileBtn) {
+  profileBtn.addEventListener("click", () => {
+    // 1안: 프로필 페이지로 이동
+    location.href = "profile.html";
+
+    // 2안 (원하면): 모달 열기
+    // openProfileModal();
+  });
+}
+
+
+  /* AUTH */
   onAuthStateChanged(auth, user => {
     if (!user) return;
     currentUser = user;
-    createEventBtn.classList.remove("hidden");
   });
 
-  /* ===============================
-     RENDER
-  =============================== */
-  function renderTournaments() {
+  /* RENDER */
+  function render() {
     tournamentListEl.innerHTML = "";
 
     if (tournaments.length === 0) {
@@ -80,79 +80,55 @@ document.addEventListener("DOMContentLoaded", () => {
       row.className = "tournament-row";
       row.innerHTML = `
         <h3>${t.name}</h3>
-        <div class="location">${t.location}</div>
-        <div class="date">${t.start} ~ ${t.end}</div>
+        <div class="location">${t.location || ""}</div>
+        <div class="date">${t.start || ""} ~ ${t.end || ""}</div>
       `;
-
       row.onclick = () => {
         location.href = `index.html?eventId=${t.id}`;
       };
-
       tournamentListEl.appendChild(row);
     });
   }
 
-  /* ===============================
-     FIRESTORE (에러 가드 포함)
-  =============================== */
-  try {
-    const eventsRef = collection(db, "events");
+  /* FIRESTORE */
+  const eventsRef = collection(db, "events");
+  onSnapshot(
+    query(eventsRef, orderBy("createdAt", "desc")),
+    snap => {
+      tournaments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    }
+  );
 
-    onSnapshot(
-      query(eventsRef, orderBy("createdAt", "desc")),
-      snap => {
-        tournaments = snap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        renderTournaments();
-      },
-      err => {
-        console.error("🔥 snapshot error", err);
-      }
-    );
-  } catch (e) {
-    console.error("🔥 firestore init error", e);
-  }
+  /* MODAL */
+  createEventBtn.onclick = () => {
+    eventModal.classList.remove("hidden");
+  };
 
-  /* ===============================
-     EVENT MODAL
-  =============================== */
-  if (createEventBtn) {
-    createEventBtn.onclick = () => {
-      eventModal.classList.remove("hidden");
-    };
-  }
+  eventCancelBtn.onclick = () => {
+    eventModal.classList.add("hidden");
+  };
 
-  if (eventCancelBtn) {
-    eventCancelBtn.onclick = () => {
-      eventModal.classList.add("hidden");
-    };
-  }
+  eventSaveBtn.onclick = async () => {
+    if (!eventName.value) {
+      alert("대회명을 입력하세요");
+      return;
+    }
 
-  if (eventSaveBtn) {
-    eventSaveBtn.onclick = async () => {
-      if (!eventName.value) {
-        alert("대회명을 입력하세요");
-        return;
-      }
+    await addDoc(eventsRef, {
+      name: eventName.value,
+      location: eventLocation.value,
+      start: eventStart.value,
+      end: eventEnd.value,
+      createdAt: serverTimestamp(),
+      createdBy: currentUser?.uid || "temp"
+    });
 
-      await addDoc(collection(db, "events"), {
-        name: eventName.value,
-        location: eventLocation.value,
-        start: eventStart.value,
-        end: eventEnd.value,
-        createdAt: serverTimestamp(),
-        createdBy: currentUser?.uid || "test"
-      });
-
-      eventName.value = "";
-      eventLocation.value = "";
-      eventStart.value = "";
-      eventEnd.value = "";
-
-      eventModal.classList.add("hidden");
-    };
-  }
+    eventName.value = "";
+    eventLocation.value = "";
+    eventStart.value = "";
+    eventEnd.value = "";
+    eventModal.classList.add("hidden");
+  };
 
 });

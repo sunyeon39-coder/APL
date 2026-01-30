@@ -29,6 +29,7 @@ body{
   border:none;
   color:#fff;
   font-size:22px;
+  cursor:pointer;
 }
 
 .main{
@@ -87,6 +88,7 @@ body{
   color:var(--muted);
 }
 
+/* MODAL */
 .modal{
   position:fixed;
   inset:0;
@@ -123,9 +125,6 @@ body{
   gap:12px;
 }
 
-.hidden{
-  display:none;
-}
 /* SIDE MENU */
 .side-menu{
   position:fixed;
