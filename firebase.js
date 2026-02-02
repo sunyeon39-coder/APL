@@ -60,3 +60,12 @@ getRedirectResult(auth)
   .catch(() => {
     // 모바일에서는 절대 실패 alert 띄우지 않음
   });
+import { onAuthStateChanged } 
+  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+// 🔥 로그인 상태 감지 → hub 이동 (최종 관문)
+onAuthStateChanged(auth, user => {
+  if (user) {
+    location.replace("hub.html");
+  }
+});
