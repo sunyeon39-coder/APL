@@ -63,3 +63,26 @@ button {
   background: #ff5c5c;
   color: #000;
 }
+
+.toolbar{
+  display:flex;
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.toolbar input{
+  flex:1;
+  padding:10px 12px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.12);
+  background:#0e1224;
+  color:#fff;
+}
+
+.toolbar select{
+  padding:10px;
+  border-radius:8px;
+  background:#0e1224;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.12);
+}
