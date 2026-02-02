@@ -1,3 +1,5 @@
+// hub.js — FINAL (AUTH GATE FIXED)
+
 import { auth, db } from "./firebase.js";
 import {
   collection,
@@ -37,7 +39,7 @@ const userManageBtn = document.getElementById("userManageBtn");
 
 /* profile */
 const profileArea = document.getElementById("profileArea");
-const profileBtn = document.getElementById("profileBtn"); // 🔥 사이드 메뉴
+const profileBtn = document.getElementById("profileBtn");
 const profileImg = document.getElementById("profileImg");
 const profileName = document.getElementById("profileName");
 
@@ -80,24 +82,25 @@ userManageBtn?.addEventListener("click", () => {
 });
 
 /* ===============================
-   PROFILE (🔥 핵심 추가)
+   PROFILE
 =============================== */
 function openProfile() {
   closeMenu();
   nicknameModal.classList.remove("hidden");
 }
 
-/* 상단 프로필 */
 profileArea?.addEventListener("click", openProfile);
-
-/* 사이드 메뉴 프로필 */
 profileBtn?.addEventListener("click", openProfile);
 
 /* ===============================
-   AUTH
+   🔥 AUTH GATE (핵심 수정)
 =============================== */
 onAuthStateChanged(auth, async user => {
-  if (!user) return;
+  if (!user) {
+    // ❌ 로그인 안 된 상태로 hub 접근 → 즉시 차단
+    location.replace("login.html");
+    return;
+  }
 
   currentUser = user;
 
@@ -106,6 +109,7 @@ onAuthStateChanged(auth, async user => {
 
   if (!snap.exists()) {
     console.warn("❌ users 문서 없음");
+    location.replace("login.html");
     return;
   }
 
@@ -114,8 +118,16 @@ onAuthStateChanged(auth, async user => {
   document.body.classList.toggle("admin", currentUserRole === "admin");
 
   /* 프로필 표시 */
-  profileImg.src = u.photoURL || user.photoURL || "https://via.placeholder.com/40";
-  profileName.textContent = u.nickname || u.name || u.email;
+  profileImg.src =
+    u.photoURL ||
+    user.photoURL ||
+    "https://via.placeholder.com/40";
+
+  profileName.textContent =
+    u.nickname ||
+    u.name ||
+    u.email;
+
   profileArea?.classList.remove("hidden");
 
   /* 닉네임 없으면 강제 설정 */
@@ -153,7 +165,10 @@ function startEventsListener() {
 =============================== */
 nicknameSaveBtn?.addEventListener("click", async () => {
   const val = nicknameInput.value.trim();
-  if (!val) return alert("닉네임을 입력하세요");
+  if (!val) {
+    alert("닉네임을 입력하세요");
+    return;
+  }
 
   await updateDoc(doc(db, "users", currentUser.uid), {
     nickname: val
@@ -213,7 +228,8 @@ function renderTournaments() {
 
       moreBtn.addEventListener("click", e => {
         e.stopPropagation();
-        document.querySelectorAll(".action-menu")
+        document
+          .querySelectorAll(".action-menu")
           .forEach(m => m.classList.add("hidden"));
         menu.classList.toggle("hidden");
       });
@@ -228,11 +244,11 @@ function renderTournaments() {
     tournamentListEl.appendChild(row);
   });
 
-  /* 메뉴 외부 클릭 시 액션 메뉴 닫기 */
   document.addEventListener("click", () => {
-    document.querySelectorAll(".action-menu")
+    document
+      .querySelectorAll(".action-menu")
       .forEach(m => m.classList.add("hidden"));
-  }, { once:true });
+  }, { once: true });
 }
 
 /* ===============================
