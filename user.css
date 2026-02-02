@@ -1,0 +1,65 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system;
+  background: #0f1220;
+  color: #e9ecff;
+}
+
+.topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #0b1325;
+}
+
+.container {
+  padding: 24px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 14px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  text-align: left;
+}
+
+th {
+  color: #a9b0d6;
+  font-weight: 600;
+}
+
+.role {
+  font-weight: 700;
+}
+
+.admin {
+  color: #4aa3ff;
+}
+
+.user {
+  color: #a9b0d6;
+}
+
+button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.promote {
+  background: #4aa3ff;
+  color: #000;
+}
+
+.demote {
+  background: #ff5c5c;
+  color: #000;
+}
