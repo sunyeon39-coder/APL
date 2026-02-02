@@ -80,6 +80,37 @@
   </div>
 </div>
 
+<!-- 🔥 HUB LOGIC -->
+<script type="module">
+  import { auth } from "./firebase.js";
+  import {
+    onAuthStateChanged,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  /* ===============================
+     AUTH GATE (🔥 핵심)
+  =============================== */
+
+  onAuthStateChanged(auth, user => {
+    if (!user) {
+      // 로그인 안 된 상태면 hub 접근 불가
+      location.replace("login.html");
+    }
+  });
+
+  /* ===============================
+     LOGOUT
+  =============================== */
+
+  const logoutBtn = document.getElementById("logoutBtn");
+  logoutBtn?.addEventListener("click", async () => {
+    await signOut(auth);
+    location.replace("login.html");
+  });
+</script>
+
+<!-- 기존 허브 로직 -->
 <script type="module" src="./hub.js"></script>
 </body>
 </html>
