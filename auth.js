@@ -1,11 +1,14 @@
-// auth.js
-// Google 로그인 전용 + users/{uid} 자동 관리 (FINAL)
+// auth.js — FINAL (Single Redirect Authority)
 
 import { auth, db } from "./firebase.js";
 
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  setPersistence,
+  browserLocalPersistence,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -17,77 +20,114 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* ===============================
+   CONFIG
+=============================== */
+
+const REDIRECT_URL = "hub.html";
+
+/* ===============================
+   UTIL
+=============================== */
+
+function isMobile() {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+/* ===============================
    GOOGLE PROVIDER
 =============================== */
+
 const provider = new GoogleAuthProvider();
-provider.setCustomParameters({
-  prompt: "select_account"
-});
+provider.setCustomParameters({ prompt: "select_account" });
 
 /* ===============================
    STATE
 =============================== */
+
 let redirecting = false;
+
+/* ===============================
+   FIRESTORE USER DOC
+=============================== */
+
+async function ensureUserDoc(user) {
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return;
+
+  await setDoc(ref, {
+    email: user.email,
+    nickname: user.displayName || user.email.split("@")[0],
+    photoURL: user.photoURL || "",
+    role: "user",
+    createdAt: serverTimestamp(),
+    lastLoginAt: serverTimestamp()
+  });
+}
 
 /* ===============================
    LOGIN BUTTON
 =============================== */
-const googleBtn = document.getElementById("googleLoginBtn");
 
-googleBtn?.addEventListener("click", async () => {
+const googleLoginBtn = document.getElementById("googleLoginBtn");
+
+googleLoginBtn?.addEventListener("click", async () => {
+  googleLoginBtn.disabled = true;
+
+  // 🔥 persistence는 await 없이 (iOS Safari SAFE)
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+
   try {
-    googleBtn.disabled = true;
+    if (isMobile()) {
+      // 📱 모바일 → redirect
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+
+    // 🖥 PC → popup
     await signInWithPopup(auth, provider);
-    // ❗ redirect는 onAuthStateChanged에서 처리
+    // ❗ 이동은 onAuthStateChanged가 담당
+
   } catch (err) {
-    console.error("🔥 Google 로그인 실패", err);
-    alert("Google 로그인에 실패했습니다.");
-    googleBtn.disabled = false;
+    console.error("🔥 Google 로그인 에러", err);
+
+    if (!isMobile()) {
+      alert("Google 로그인에 실패했습니다.");
+    }
+
+    googleLoginBtn.disabled = false;
   }
 });
 
 /* ===============================
-   AUTH STATE
+   REDIRECT RESULT (모바일 복귀)
 =============================== */
+
+// ⚠️ 결과 판정 / 이동 ❌
+// auth 상태 갱신 트리거용으로만 사용
+getRedirectResult(auth).catch(() => {});
+
+/* ===============================
+   AUTH STATE (🔥 유일한 이동 관문)
+=============================== */
+
 onAuthStateChanged(auth, async (user) => {
   if (!user || redirecting) return;
 
   redirecting = true;
 
   try {
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
-
-    if (!snap.exists()) {
-      // 🔥 최초 로그인 → 문서 생성
-      await setDoc(userRef, {
-        email: user.email,
-        name: user.displayName || "",
-        nickname: user.displayName || "",
-        photoURL: user.photoURL || "",
-        role: "user",              // ⚠️ 기본값만
-        provider: "google",
-        createdAt: serverTimestamp(),
-        lastLoginAt: serverTimestamp()
-      });
-    } else {
-      // 🔁 재로그인 → lastLogin만 갱신
-      await setDoc(
-        userRef,
-        {
-          lastLoginAt: serverTimestamp()
-        },
-        { merge: true }
-      );
-    }
-
-    // ✅ 로그인 완료 → hub로 이동
-    location.replace("/hub.html");
+    await ensureUserDoc(user);
+    location.replace(REDIRECT_URL);
 
   } catch (err) {
     console.error("🔥 사용자 문서 처리 실패", err);
-    alert("로그인 처리 중 오류가 발생했습니다.");
+
+    if (!isMobile()) {
+      alert("로그인 처리 중 오류가 발생했습니다.");
+    }
+
     redirecting = false;
-    googleBtn && (googleBtn.disabled = false);
+    googleLoginBtn && (googleLoginBtn.disabled = false);
   }
 });
