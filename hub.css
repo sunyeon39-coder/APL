@@ -27,6 +27,11 @@ body{
   gap:12px;
   padding:0 14px;
   background:#0b1325;
+
+  /* 🔥 클릭 레이어 최상단 고정 */
+  position:relative;
+  z-index:20000;
+  pointer-events:auto;
 }
 
 .topbar .title{
@@ -35,11 +40,42 @@ body{
   font-weight:700;
 }
 
+/* 🔥 오른쪽 영역 */
 .topbar-right{
-  margin-left:auto;   /* 🔥 오른쪽으로 밀기 */
+  margin-left:auto;
   display:flex;
   align-items:center;
   gap:10px;
+
+  /* 🔥 반드시 클릭 가능 */
+  pointer-events:auto;
+}
+
+/* 🔥 프로필 영역(네 HTML에서 id="profileArea") */
+#profileArea{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  cursor:pointer;
+
+  /* 🔥 클릭 막힘 방지 */
+  pointer-events:auto;
+  position:relative;
+  z-index:20001;
+
+  /* Safari 터치 안정성 */
+  -webkit-tap-highlight-color: transparent;
+  user-select:none;
+}
+
+/* 프로필이 너무 작아서 안 눌리는 느낌 방지 (클릭 영역 확대) */
+#profileArea{
+  padding:6px 8px;
+  border-radius:12px;
+}
+#profileArea:hover{
+  background:rgba(255,255,255,.06);
 }
 
 .menu-btn{
@@ -48,6 +84,13 @@ body{
   color:#fff;
   font-size:22px;
   cursor:pointer;
+
+  /* 🔥 메뉴 버튼도 항상 클릭 가능 */
+  pointer-events:auto;
+  position:relative;
+  z-index:20002;
+
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ================= MAIN ================= */
@@ -91,20 +134,13 @@ body{
   padding:26px 28px;
   margin-bottom:18px;
 
-  background:linear-gradient(
-    180deg,
-    var(--panel),
-    var(--panel2)
-  );
-
+  background:linear-gradient(180deg, var(--panel), var(--panel2));
   border-radius:18px;
   border:1px solid rgba(255,255,255,.06);
 
   cursor:pointer;
 
-  transition:
-    transform .15s ease,
-    box-shadow .15s ease;
+  transition: transform .15s ease, box-shadow .15s ease;
 }
 
 .tournament-row:hover{
@@ -134,7 +170,6 @@ body{
 
 /* ================= ADMIN DELETE ================= */
 
-/* 기본: 숨김 (user) */
 .delete-btn{
   position:absolute;
   top:14px;
@@ -160,19 +195,16 @@ body{
   transition:.15s;
 }
 
-/* desktop hover UX */
 .tournament-row:hover .delete-btn{
   opacity:1;
   pointer-events:auto;
 }
 
-/* 🔥 핵심: admin이면 항상 표시 (mobile 포함) */
 body.admin .delete-btn{
   opacity:1;
   pointer-events:auto;
 }
 
-/* hover 피드백 */
 .delete-btn:hover{
   background:var(--danger);
   color:#fff;
@@ -195,7 +227,9 @@ body.admin .delete-btn{
   display:flex;
   align-items:center;
   justify-content:center;
-  z-index:9999;
+
+  /* 🔥 모달은 topbar 위에 떠야 하므로 더 높게 */
+  z-index:50000;
 }
 
 .modal.hidden{
@@ -239,7 +273,10 @@ body.admin .delete-btn{
   background:#fff;
   color:#000;
   padding:20px;
-  z-index:10000;
+
+  /* 🔥 overlay보다 위, topbar보다는 아래/위 상관없지만 안정적으로 */
+  z-index:30000;
+
   transition:.25s;
 }
 
@@ -264,12 +301,15 @@ body.admin .delete-btn{
   inset:0;
   background:rgba(0,0,0,.4);
   display:none;
-  z-index:9000;
+
+  /* 🔥 side-menu 아래 */
+  z-index:25000;
 }
 
 .overlay.show{
   display:block;
 }
+
 /* ================= ADMIN MENU ================= */
 
 .more-btn{
@@ -298,7 +338,6 @@ body.admin .delete-btn{
   background:rgba(255,255,255,.18);
 }
 
-/* 액션 메뉴 */
 .action-menu{
   position:absolute;
   top:48px;
@@ -336,47 +375,32 @@ body.admin .delete-btn{
 .action-menu .danger{
   color:#ff5c5c;
 }
+
 /* ================= ADMIN ONLY ================= */
-.admin-only {
-  display: none;
-}
+.admin-only { display:none; }
+body.admin .admin-only { display:block; }
 
-body.admin .admin-only {
-  display: block;
-}
-
-.profile-area{
-  margin-left:auto;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  cursor:pointer;
-}
+/* ================= PROFILE ================= */
 
 .profile-area.hidden{
   display:none;
 }
 
-.profile-area img{
+.profile-area img,
+#profileImg{
   width:32px;
   height:32px;
   border-radius:50%;
   object-fit:cover;
 }
 
-.profile-area span{
+.profile-area span,
+#profileName{
   font-size:14px;
   font-weight:700;
   color:var(--text);
 }
 
-#profileImg{
-  width:32px;
-  height:32px;
-  border-radius:50%;
-}
-
 #profileName{
   font-weight:600;
-  font-size:14px;
 }

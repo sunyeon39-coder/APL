@@ -37,6 +37,7 @@ const userManageBtn = document.getElementById("userManageBtn");
 
 /* profile */
 const profileArea = document.getElementById("profileArea");
+const profileBtn = document.getElementById("profileBtn"); // 🔥 사이드 메뉴
 const profileImg = document.getElementById("profileImg");
 const profileName = document.getElementById("profileName");
 
@@ -55,26 +56,45 @@ let authReady = false;
 let unsubscribeEvents = null;
 
 /* ===============================
-   MENU
+   UTIL (MENU)
 =============================== */
-menuBtn?.addEventListener("click", () => {
+function openMenu() {
   sideMenu.classList.add("open");
   overlay.classList.add("show");
-});
+}
 
-overlay?.addEventListener("click", () => {
+function closeMenu() {
   sideMenu.classList.remove("open");
   overlay.classList.remove("show");
-});
+}
+
+/* ===============================
+   MENU
+=============================== */
+menuBtn?.addEventListener("click", openMenu);
+overlay?.addEventListener("click", closeMenu);
 
 userManageBtn?.addEventListener("click", () => {
-  sideMenu.classList.remove("open");
-  overlay.classList.remove("show");
+  closeMenu();
   location.href = "/admin/users.html";
 });
 
 /* ===============================
-   AUTH (🔥 핵심)
+   PROFILE (🔥 핵심 추가)
+=============================== */
+function openProfile() {
+  closeMenu();
+  nicknameModal.classList.remove("hidden");
+}
+
+/* 상단 프로필 */
+profileArea?.addEventListener("click", openProfile);
+
+/* 사이드 메뉴 프로필 */
+profileBtn?.addEventListener("click", openProfile);
+
+/* ===============================
+   AUTH
 =============================== */
 onAuthStateChanged(auth, async user => {
   if (!user) return;
@@ -98,18 +118,17 @@ onAuthStateChanged(auth, async user => {
   profileName.textContent = u.nickname || u.name || u.email;
   profileArea?.classList.remove("hidden");
 
-  /* 닉네임 없으면 모달 */
+  /* 닉네임 없으면 강제 설정 */
   if (!u.nickname) {
-    nicknameModal?.classList.remove("hidden");
+    nicknameModal.classList.remove("hidden");
   }
 
   authReady = true;
-
   startEventsListener();
 });
 
 /* ===============================
-   EVENTS LISTENER (Auth 이후)
+   EVENTS LISTENER
 =============================== */
 function startEventsListener() {
   if (unsubscribeEvents) return;
@@ -209,11 +228,11 @@ function renderTournaments() {
     tournamentListEl.appendChild(row);
   });
 
-  // 메뉴 외부 클릭 시 닫기
+  /* 메뉴 외부 클릭 시 액션 메뉴 닫기 */
   document.addEventListener("click", () => {
     document.querySelectorAll(".action-menu")
       .forEach(m => m.classList.add("hidden"));
-  }, { once: true });
+  }, { once:true });
 }
 
 /* ===============================
