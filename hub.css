@@ -52,12 +52,23 @@ body{
 }
 
 /* 🔥 프로필 영역(네 HTML에서 id="profileArea") */
+/* 프로필 영역 - 항상 2번 이미지 상태 */
 #profileArea{
   display:flex;
   align-items:center;
   gap:10px;
 
+  padding:8px 14px;
+  border-radius:999px;
+
+  background:rgba(255,255,255,.08);   /* ✅ 2번 느낌 */
+  border:2px solid rgba(255,255,255,.35);
+
   cursor:pointer;
+
+  /* 불필요한 hover 의존 제거 */
+  pointer-events:auto;
+  user-select:none;
 
   /* 🔥 클릭 막힘 방지 */
   pointer-events:auto;
@@ -73,9 +84,6 @@ body{
 #profileArea{
   padding:6px 8px;
   border-radius:12px;
-}
-#profileArea:hover{
-  background:rgba(255,255,255,.06);
 }
 
 .menu-btn{
