@@ -42,9 +42,9 @@ overlay?.classList.remove("show");
    STATE
 =============================== */
 let currentUser = null;
-let currentUserRole = "user";
+let currentUserRole = "user";   // user | admin
 let tournaments = [];
-let authReady = false;   // 🔥 핵심 플래그
+let authReady = false;
 
 /* ===============================
    MENU
@@ -67,19 +67,21 @@ profileBtn?.addEventListener("click", () => {
 });
 
 /* ===============================
-   AUTH
+   AUTH (🔥 핵심)
 =============================== */
 onAuthStateChanged(auth, user => {
   if (!user) return;
 
   currentUser = user;
-  currentUserRole = user.email?.includes("admin") ? "admin" : "user";
 
-  document.body.classList.toggle("admin", currentUserRole === "admin");
+  // ✅ 지금 단계에서는 "무조건 admin" (UI/기능 안정화용)
+  // 🔥 나중에 users 컬렉션으로 교체
+  currentUserRole = "admin";
+
+  document.body.classList.add("admin");
 
   authReady = true;
 
-  // 🔥 AUTH 확정 후 재렌더
   renderTournaments();
 });
 
@@ -95,7 +97,7 @@ function formatDateRange(start, end) {
    RENDER
 =============================== */
 function renderTournaments() {
-  if (!authReady) return; // 🔥 AUTH 전엔 렌더 금지
+  if (!authReady) return;
   if (!tournamentListEl || !tournamentEmptyEl) return;
 
   tournamentListEl.innerHTML = "";
@@ -112,34 +114,31 @@ function renderTournaments() {
     row.className = "tournament-row";
 
     row.innerHTML = `
-      ${currentUserRole === "admin"
-        ? `<button class="delete-btn">✕</button>`
-        : ""
-      }
+      <button class="delete-btn">✕</button>
       <h3>${t.name}</h3>
       <div class="location">${t.location || ""}</div>
       <div class="date">${formatDateRange(t.start, t.end)}</div>
     `;
 
+    // 카드 클릭 → 상세 페이지
     row.addEventListener("click", () => {
       location.href = `index.html?eventId=${t.id}`;
     });
 
-    if (currentUserRole === "admin") {
-      const delBtn = row.querySelector(".delete-btn");
-      delBtn.addEventListener("click", async e => {
-        e.stopPropagation();
+    // 🔥 삭제
+    const delBtn = row.querySelector(".delete-btn");
+    delBtn.addEventListener("click", async e => {
+      e.stopPropagation();
 
-        if (!confirm("이 대회를 삭제할까요?")) return;
+      if (!confirm("이 대회를 삭제할까요?")) return;
 
-        try {
-          await deleteDoc(doc(db, "events", t.id));
-        } catch (err) {
-          console.error("🔥 delete error", err);
-          alert("삭제 실패");
-        }
-      });
-    }
+      try {
+        await deleteDoc(doc(db, "events", t.id));
+      } catch (err) {
+        console.error("🔥 delete error", err);
+        alert("삭제 실패");
+      }
+    });
 
     tournamentListEl.appendChild(row);
   });
@@ -159,7 +158,7 @@ try {
         ...d.data()
       }));
 
-      renderTournaments(); // 🔥 authReady 체크 포함
+      renderTournaments();
     },
     err => console.error("🔥 snapshot error", err)
   );

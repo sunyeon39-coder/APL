@@ -121,6 +121,7 @@ body{
 
 /* ================= ADMIN DELETE ================= */
 
+/* 기본: 숨김 (user) */
 .delete-btn{
   position:absolute;
   top:14px;
@@ -146,11 +147,19 @@ body{
   transition:.15s;
 }
 
+/* desktop hover UX */
 .tournament-row:hover .delete-btn{
   opacity:1;
   pointer-events:auto;
 }
 
+/* 🔥 핵심: admin이면 항상 표시 (mobile 포함) */
+body.admin .delete-btn{
+  opacity:1;
+  pointer-events:auto;
+}
+
+/* hover 피드백 */
 .delete-btn:hover{
   background:var(--danger);
   color:#fff;
