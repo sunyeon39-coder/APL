@@ -1,5 +1,5 @@
 // auth.js
-// Google 로그인 전용 + users/{uid} 자동 관리
+// Google 로그인 전용 + users/{uid} 자동 관리 (FINAL)
 
 import { auth, db } from "./firebase.js";
 
@@ -25,62 +25,69 @@ provider.setCustomParameters({
 });
 
 /* ===============================
+   STATE
+=============================== */
+let redirecting = false;
+
+/* ===============================
    LOGIN BUTTON
 =============================== */
 const googleBtn = document.getElementById("googleLoginBtn");
 
-if (googleBtn) {
-  googleBtn.addEventListener("click", async () => {
-    try {
-      googleBtn.disabled = true;
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      console.error("🔥 Google 로그인 실패", err);
-      alert("Google 로그인에 실패했습니다.");
-      googleBtn.disabled = false;
-    }
-  });
-}
+googleBtn?.addEventListener("click", async () => {
+  try {
+    googleBtn.disabled = true;
+    await signInWithPopup(auth, provider);
+    // ❗ redirect는 onAuthStateChanged에서 처리
+  } catch (err) {
+    console.error("🔥 Google 로그인 실패", err);
+    alert("Google 로그인에 실패했습니다.");
+    googleBtn.disabled = false;
+  }
+});
 
 /* ===============================
    AUTH STATE
 =============================== */
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    // 로그인 전 상태
-    return;
-  }
+  if (!user || redirecting) return;
+
+  redirecting = true;
 
   try {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
-    // 🔥 최초 로그인 → users 문서 생성
     if (!snap.exists()) {
+      // 🔥 최초 로그인 → 문서 생성
       await setDoc(userRef, {
         email: user.email,
         name: user.displayName || "",
         nickname: user.displayName || "",
         photoURL: user.photoURL || "",
-        role: "user",
+        role: "user",              // ⚠️ 기본값만
         provider: "google",
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp()
       });
     } else {
-      // 🔁 재로그인 → lastLogin 갱신
+      // 🔁 재로그인 → lastLogin만 갱신
       await setDoc(
         userRef,
-        { lastLoginAt: serverTimestamp() },
+        {
+          lastLoginAt: serverTimestamp()
+        },
         { merge: true }
       );
     }
 
-    // 로그인 완료 후 이동
+    // ✅ 로그인 완료 → hub로 이동
     location.replace("/index.html");
 
   } catch (err) {
     console.error("🔥 사용자 문서 처리 실패", err);
     alert("로그인 처리 중 오류가 발생했습니다.");
+    redirecting = false;
+    googleBtn && (googleBtn.disabled = false);
   }
 });

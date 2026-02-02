@@ -52,6 +52,7 @@ let currentUser = null;
 let currentUserRole = "user";
 let tournaments = [];
 let authReady = false;
+let unsubscribeEvents = null;
 
 /* ===============================
    MENU
@@ -73,34 +74,60 @@ userManageBtn?.addEventListener("click", () => {
 });
 
 /* ===============================
-   AUTH
+   AUTH (🔥 핵심)
 =============================== */
 onAuthStateChanged(auth, async user => {
   if (!user) return;
 
   currentUser = user;
 
-  const ref = doc(db, "users", user.uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return;
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    console.warn("❌ users 문서 없음");
+    return;
+  }
 
   const u = snap.data();
   currentUserRole = u.role || "user";
   document.body.classList.toggle("admin", currentUserRole === "admin");
 
-  /* 🔥 프로필 표시 */
-  profileImg.src = u.photoURL || "https://via.placeholder.com/40";
+  /* 프로필 표시 */
+  profileImg.src = u.photoURL || user.photoURL || "https://via.placeholder.com/40";
   profileName.textContent = u.nickname || u.name || u.email;
   profileArea?.classList.remove("hidden");
 
-  /* 🔥 닉네임 없으면 모달 */
+  /* 닉네임 없으면 모달 */
   if (!u.nickname) {
     nicknameModal?.classList.remove("hidden");
   }
 
   authReady = true;
-  renderTournaments();
+
+  startEventsListener();
 });
+
+/* ===============================
+   EVENTS LISTENER (Auth 이후)
+=============================== */
+function startEventsListener() {
+  if (unsubscribeEvents) return;
+
+  unsubscribeEvents = onSnapshot(
+    query(collection(db, "events"), orderBy("createdAt", "desc")),
+    snap => {
+      tournaments = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+      renderTournaments();
+    },
+    err => {
+      console.error("🔥 events snapshot error", err);
+    }
+  );
+}
 
 /* ===============================
    NICKNAME SAVE
@@ -137,6 +164,7 @@ function renderTournaments() {
     tournamentEmptyEl.style.display = "block";
     return;
   }
+
   tournamentEmptyEl.style.display = "none";
 
   tournaments.forEach(t => {
@@ -180,21 +208,16 @@ function renderTournaments() {
 
     tournamentListEl.appendChild(row);
   });
+
+  // 메뉴 외부 클릭 시 닫기
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".action-menu")
+      .forEach(m => m.classList.add("hidden"));
+  }, { once: true });
 }
 
 /* ===============================
-   FIRESTORE
-=============================== */
-onSnapshot(
-  query(collection(db, "events"), orderBy("createdAt", "desc")),
-  snap => {
-    tournaments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderTournaments();
-  }
-);
-
-/* ===============================
-   MODAL
+   EVENT CREATE MODAL
 =============================== */
 createEventBtn?.addEventListener("click", () => {
   eventModal.classList.remove("hidden");
@@ -205,7 +228,10 @@ eventCancelBtn?.addEventListener("click", () => {
 });
 
 eventSaveBtn?.addEventListener("click", async () => {
-  if (!eventName.value.trim()) return alert("대회명을 입력하세요");
+  if (!eventName.value.trim()) {
+    alert("대회명을 입력하세요");
+    return;
+  }
 
   await addDoc(collection(db, "events"), {
     name: eventName.value,
