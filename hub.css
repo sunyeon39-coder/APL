@@ -323,3 +323,11 @@ body.admin .delete-btn{
 .action-menu .danger{
   color:#ff5c5c;
 }
+/* ================= ADMIN ONLY ================= */
+.admin-only {
+  display: none;
+}
+
+body.admin .admin-only {
+  display: block;
+}

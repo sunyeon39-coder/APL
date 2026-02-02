@@ -34,6 +34,7 @@ const menuBtn = document.getElementById("menuBtn");
 const sideMenu = document.getElementById("sideMenu");
 const overlay = document.getElementById("overlay");
 const profileBtn = document.getElementById("profileBtn");
+const userManageBtn = document.getElementById("userManageBtn");
 
 /* ===============================
    SAFE INIT
@@ -60,6 +61,15 @@ menuBtn?.addEventListener("click", () => {
 overlay?.addEventListener("click", () => {
   sideMenu.classList.remove("open");
   overlay.classList.remove("show");
+});
+
+userManageBtn?.addEventListener("click", () => {
+  // 필요하면 메뉴 닫기
+  sideMenu?.classList.remove("open");
+  overlay?.classList.remove("show");
+
+  // 관리자 페이지로 이동
+  location.href = "/admin/users.html";
 });
 
 /* ===============================
