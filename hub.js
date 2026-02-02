@@ -42,23 +42,22 @@ overlay?.classList.remove("show");
    STATE
 =============================== */
 let currentUser = null;
-let currentUserRole = "user"; // 기본 user
+let currentUserRole = "user";
 let tournaments = [];
+let authReady = false;   // 🔥 핵심 플래그
 
 /* ===============================
    MENU
 =============================== */
-if (menuBtn && sideMenu && overlay) {
-  menuBtn.onclick = () => {
-    sideMenu.classList.add("open");
-    overlay.classList.add("show");
-  };
+menuBtn?.addEventListener("click", () => {
+  sideMenu.classList.add("open");
+  overlay.classList.add("show");
+});
 
-  overlay.onclick = () => {
-    sideMenu.classList.remove("open");
-    overlay.classList.remove("show");
-  };
-}
+overlay?.addEventListener("click", () => {
+  sideMenu.classList.remove("open");
+  overlay.classList.remove("show");
+});
 
 /* ===============================
    PROFILE
@@ -72,13 +71,16 @@ profileBtn?.addEventListener("click", () => {
 =============================== */
 onAuthStateChanged(auth, user => {
   if (!user) return;
-  currentUser = user;
 
-  // 🔥 임시: email 기준 admin 판별 (나중에 Firestore role로 교체)
-  if (user.email?.includes("admin")) {
-    currentUserRole = "admin";
-    document.body.classList.add("admin");
-  }
+  currentUser = user;
+  currentUserRole = user.email?.includes("admin") ? "admin" : "user";
+
+  document.body.classList.toggle("admin", currentUserRole === "admin");
+
+  authReady = true;
+
+  // 🔥 AUTH 확정 후 재렌더
+  renderTournaments();
 });
 
 /* ===============================
@@ -93,6 +95,7 @@ function formatDateRange(start, end) {
    RENDER
 =============================== */
 function renderTournaments() {
+  if (!authReady) return; // 🔥 AUTH 전엔 렌더 금지
   if (!tournamentListEl || !tournamentEmptyEl) return;
 
   tournamentListEl.innerHTML = "";
@@ -118,12 +121,10 @@ function renderTournaments() {
       <div class="date">${formatDateRange(t.start, t.end)}</div>
     `;
 
-    // 카드 클릭 → 상세 페이지
     row.addEventListener("click", () => {
       location.href = `index.html?eventId=${t.id}`;
     });
 
-    // admin 삭제
     if (currentUserRole === "admin") {
       const delBtn = row.querySelector(".delete-btn");
       delBtn.addEventListener("click", async e => {
@@ -157,7 +158,8 @@ try {
         id: d.id,
         ...d.data()
       }));
-      renderTournaments();
+
+      renderTournaments(); // 🔥 authReady 체크 포함
     },
     err => console.error("🔥 snapshot error", err)
   );
