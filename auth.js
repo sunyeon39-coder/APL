@@ -1,4 +1,4 @@
-// auth.js — FINAL (Single Redirect Authority)
+// auth.js — FINAL (Single Redirect Authority + Mobile SAFE)
 
 import { auth, db } from "./firebase.js";
 
@@ -53,8 +53,18 @@ let redirecting = false;
 async function ensureUserDoc(user) {
   const ref = doc(db, "users", user.uid);
   const snap = await getDoc(ref);
-  if (snap.exists()) return;
 
+  if (snap.exists()) {
+    // 재로그인 시 마지막 로그인만 갱신
+    await setDoc(
+      ref,
+      { lastLoginAt: serverTimestamp() },
+      { merge: true }
+    );
+    return;
+  }
+
+  // 최초 로그인
   await setDoc(ref, {
     email: user.email,
     nickname: user.displayName || user.email.split("@")[0],
@@ -66,49 +76,7 @@ async function ensureUserDoc(user) {
 }
 
 /* ===============================
-   LOGIN BUTTON
-=============================== */
-
-const googleLoginBtn = document.getElementById("googleLoginBtn");
-
-googleLoginBtn?.addEventListener("click", async () => {
-  googleLoginBtn.disabled = true;
-
-  // 🔥 persistence는 await 없이 (iOS Safari SAFE)
-  setPersistence(auth, browserLocalPersistence).catch(() => {});
-
-  try {
-    if (isMobile()) {
-      // 📱 모바일 → redirect
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-
-    // 🖥 PC → popup
-    await signInWithPopup(auth, provider);
-    // ❗ 이동은 onAuthStateChanged가 담당
-
-  } catch (err) {
-    console.error("🔥 Google 로그인 에러", err);
-
-    if (!isMobile()) {
-      alert("Google 로그인에 실패했습니다.");
-    }
-
-    googleLoginBtn.disabled = false;
-  }
-});
-
-/* ===============================
-   REDIRECT RESULT (모바일 복귀)
-=============================== */
-
-// ⚠️ 결과 판정 / 이동 ❌
-// auth 상태 갱신 트리거용으로만 사용
-getRedirectResult(auth).catch(() => {});
-
-/* ===============================
-   AUTH STATE (🔥 유일한 이동 관문)
+   🔥 1. 페이지 로드 즉시 로그인 상태 확인 (모바일 핵심)
 =============================== */
 
 onAuthStateChanged(auth, async (user) => {
@@ -119,15 +87,49 @@ onAuthStateChanged(auth, async (user) => {
   try {
     await ensureUserDoc(user);
     location.replace(REDIRECT_URL);
-
   } catch (err) {
     console.error("🔥 사용자 문서 처리 실패", err);
+    redirecting = false;
+  }
+});
 
-    if (!isMobile()) {
-      alert("로그인 처리 중 오류가 발생했습니다.");
+/* ===============================
+   🔥 2. redirect 결과 처리 (모바일 복귀 보조)
+=============================== */
+
+// ⚠️ 이동은 여기서 하지 않음 (중복 방지)
+getRedirectResult(auth).catch(() => {});
+
+/* ===============================
+   🔥 3. LOGIN BUTTON
+=============================== */
+
+const googleLoginBtn = document.getElementById("googleLoginBtn");
+
+googleLoginBtn?.addEventListener("click", async () => {
+  googleLoginBtn.disabled = true;
+
+  // persistence는 먼저 (iOS Safari 필수)
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+  try {
+    if (isMobile()) {
+      // 📱 모바일: redirect ONLY (가장 안정적)
+      await signInWithRedirect(auth, provider);
+      return;
     }
 
-    redirecting = false;
-    googleLoginBtn && (googleLoginBtn.disabled = false);
+    // 🖥 데스크톱: popup
+    await signInWithPopup(auth, provider);
+    // 이동은 onAuthStateChanged가 담당
+
+  } catch (err) {
+    console.error("🔥 Google 로그인 에러", err);
+
+    if (!isMobile()) {
+      alert("Google 로그인에 실패했습니다.");
+    }
+
+    googleLoginBtn.disabled = false;
   }
 });
