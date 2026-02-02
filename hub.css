@@ -29,6 +29,19 @@ body{
   background:#0b1325;
 }
 
+.topbar .title{
+  margin-left:12px;
+  font-size:18px;
+  font-weight:700;
+}
+
+.topbar-right{
+  margin-left:auto;   /* 🔥 오른쪽으로 밀기 */
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
 .menu-btn{
   background:none;
   border:none;
