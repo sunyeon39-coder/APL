@@ -1,22 +1,54 @@
+// auth.js — FINAL (Single Redirect Authority)
+
+import { auth, db } from "./firebase.js";
+
 import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-import { auth, db } from "./firebase.js";
-import { doc, getDoc, setDoc, serverTimestamp } from
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ===============================
+   CONFIG
+=============================== */
 
 const REDIRECT_URL = "hub.html";
-const googleLoginBtn = document.getElementById("googleLoginBtn");
+
+/* ===============================
+   UTIL
+=============================== */
 
 function isMobile() {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
+
+/* ===============================
+   GOOGLE PROVIDER
+=============================== */
+
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
+
+/* ===============================
+   STATE
+=============================== */
+
+let redirecting = false;
+
+/* ===============================
+   FIRESTORE USER DOC
+=============================== */
 
 async function ensureUserDoc(user) {
   const ref = doc(db, "users", user.uid);
@@ -29,43 +61,73 @@ async function ensureUserDoc(user) {
     photoURL: user.photoURL || "",
     role: "user",
     createdAt: serverTimestamp(),
+    lastLoginAt: serverTimestamp()
   });
 }
 
-/* 🔥 로그인 버튼 */
-googleLoginBtn.addEventListener("click", async () => {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
+/* ===============================
+   LOGIN BUTTON
+=============================== */
 
-  // 🔥 persistence는 await 없이
+const googleLoginBtn = document.getElementById("googleLoginBtn");
+
+googleLoginBtn?.addEventListener("click", async () => {
+  googleLoginBtn.disabled = true;
+
+  // 🔥 persistence는 await 없이 (iOS Safari SAFE)
   setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-  if (isMobile()) {
-    signInWithRedirect(auth, provider);
-    return;
-  }
+  try {
+    if (isMobile()) {
+      // 📱 모바일 → redirect
+      await signInWithRedirect(auth, provider);
+      return;
+    }
 
-  const cred = await signInWithPopup(auth, provider);
-  await ensureUserDoc(cred.user);
-  location.replace(REDIRECT_URL);
+    // 🖥 PC → popup
+    await signInWithPopup(auth, provider);
+    // ❗ 이동은 onAuthStateChanged가 담당
+
+  } catch (err) {
+    console.error("🔥 Google 로그인 에러", err);
+
+    if (!isMobile()) {
+      alert("Google 로그인에 실패했습니다.");
+    }
+
+    googleLoginBtn.disabled = false;
+  }
 });
 
-/* 🔥 redirect 결과 처리 (유일한 판정자) */
-getRedirectResult(auth)
-  .then(async result => {
-    if (!result?.user) return;
-    await ensureUserDoc(result.user);
-    location.replace(REDIRECT_URL);
-  })
-  .catch(() => {
-    // 모바일에서는 절대 실패 alert 띄우지 않음
-  });
-import { onAuthStateChanged } 
-  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+/* ===============================
+   REDIRECT RESULT (모바일 복귀)
+=============================== */
 
-// 🔥 로그인 상태 감지 → hub 이동 (최종 관문)
-onAuthStateChanged(auth, user => {
-  if (user) {
-    location.replace("hub.html");
+// ⚠️ 결과 판정 / 이동 ❌
+// auth 상태 갱신 트리거용으로만 사용
+getRedirectResult(auth).catch(() => {});
+
+/* ===============================
+   AUTH STATE (🔥 유일한 이동 관문)
+=============================== */
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user || redirecting) return;
+
+  redirecting = true;
+
+  try {
+    await ensureUserDoc(user);
+    location.replace(REDIRECT_URL);
+
+  } catch (err) {
+    console.error("🔥 사용자 문서 처리 실패", err);
+
+    if (!isMobile()) {
+      alert("로그인 처리 중 오류가 발생했습니다.");
+    }
+
+    redirecting = false;
+    googleLoginBtn && (googleLoginBtn.disabled = false);
   }
 });
