@@ -5,14 +5,14 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  setDoc,
   onSnapshot,
   query,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import {
-  onAuthStateChanged   // ✅ 반드시 있어야 함
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 /* ===============================
@@ -33,20 +33,23 @@ const eventCancelBtn = document.getElementById("eventCancelBtn");
 const menuBtn = document.getElementById("menuBtn");
 const sideMenu = document.getElementById("sideMenu");
 const overlay = document.getElementById("overlay");
-const profileBtn = document.getElementById("profileBtn");
 const userManageBtn = document.getElementById("userManageBtn");
 
-/* ===============================
-   SAFE INIT
-=============================== */
-sideMenu?.classList.remove("open");
-overlay?.classList.remove("show");
+/* profile */
+const profileArea = document.getElementById("profileArea");
+const profileImg = document.getElementById("profileImg");
+const profileName = document.getElementById("profileName");
+
+/* nickname modal */
+const nicknameModal = document.getElementById("nicknameModal");
+const nicknameInput = document.getElementById("nicknameInput");
+const nicknameSaveBtn = document.getElementById("nicknameSaveBtn");
 
 /* ===============================
    STATE
 =============================== */
 let currentUser = null;
-let currentUserRole = "user";   // user | admin
+let currentUserRole = "user";
 let tournaments = [];
 let authReady = false;
 
@@ -64,50 +67,54 @@ overlay?.addEventListener("click", () => {
 });
 
 userManageBtn?.addEventListener("click", () => {
-  // 필요하면 메뉴 닫기
-  sideMenu?.classList.remove("open");
-  overlay?.classList.remove("show");
-
-  // 관리자 페이지로 이동
+  sideMenu.classList.remove("open");
+  overlay.classList.remove("show");
   location.href = "/admin/users.html";
 });
 
 /* ===============================
-   PROFILE
-=============================== */
-profileBtn?.addEventListener("click", () => {
-  location.href = "profile.html";
-});
-
-/* ===============================
-   AUTH (🔥 핵심)
+   AUTH
 =============================== */
 onAuthStateChanged(auth, async user => {
   if (!user) return;
 
   currentUser = user;
 
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
 
-  // 🔥 users 문서가 없으면 자동 생성
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      email: user.email,
-      role: "user",          // 기본 권한
-      createdAt: serverTimestamp()
-    });
+  const u = snap.data();
+  currentUserRole = u.role || "user";
+  document.body.classList.toggle("admin", currentUserRole === "admin");
+
+  /* 🔥 프로필 표시 */
+  profileImg.src = u.photoURL || "https://via.placeholder.com/40";
+  profileName.textContent = u.nickname || u.name || u.email;
+  profileArea?.classList.remove("hidden");
+
+  /* 🔥 닉네임 없으면 모달 */
+  if (!u.nickname) {
+    nicknameModal?.classList.remove("hidden");
   }
-
-  const role = snap.exists()
-    ? snap.data().role
-    : "user";
-
-  currentUserRole = role;
-  document.body.classList.toggle("admin", role === "admin");
 
   authReady = true;
   renderTournaments();
+});
+
+/* ===============================
+   NICKNAME SAVE
+=============================== */
+nicknameSaveBtn?.addEventListener("click", async () => {
+  const val = nicknameInput.value.trim();
+  if (!val) return alert("닉네임을 입력하세요");
+
+  await updateDoc(doc(db, "users", currentUser.uid), {
+    nickname: val
+  });
+
+  profileName.textContent = val;
+  nicknameModal.classList.add("hidden");
 });
 
 /* ===============================
@@ -143,13 +150,11 @@ function renderTournaments() {
           <button class="delete-action danger">삭제</button>
         </div>
       ` : ""}
-
       <h3>${t.name}</h3>
       <div class="location">${t.location || ""}</div>
       <div class="date">${formatDateRange(t.start, t.end)}</div>
     `;
 
-    // 카드 클릭 → 상세 이동
     row.addEventListener("click", () => {
       location.href = `index.html?eventId=${t.id}`;
     });
@@ -161,7 +166,8 @@ function renderTournaments() {
 
       moreBtn.addEventListener("click", e => {
         e.stopPropagation();
-        document.querySelectorAll(".action-menu").forEach(m => m.classList.add("hidden"));
+        document.querySelectorAll(".action-menu")
+          .forEach(m => m.classList.add("hidden"));
         menu.classList.toggle("hidden");
       });
 
@@ -174,71 +180,45 @@ function renderTournaments() {
 
     tournamentListEl.appendChild(row);
   });
-
-  // 메뉴 외부 클릭 시 닫기
-  document.addEventListener("click", () => {
-    document.querySelectorAll(".action-menu").forEach(m => m.classList.add("hidden"));
-  }, { once:true });
 }
-
 
 /* ===============================
    FIRESTORE
 =============================== */
-try {
-  const eventsRef = collection(db, "events");
-
-  onSnapshot(
-    query(eventsRef, orderBy("createdAt", "desc")),
-    snap => {
-      tournaments = snap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }));
-
-      renderTournaments();
-    },
-    err => console.error("🔥 snapshot error", err)
-  );
-} catch (e) {
-  console.error("🔥 firestore init error", e);
-}
+onSnapshot(
+  query(collection(db, "events"), orderBy("createdAt", "desc")),
+  snap => {
+    tournaments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTournaments();
+  }
+);
 
 /* ===============================
    MODAL
 =============================== */
 createEventBtn?.addEventListener("click", () => {
-  eventModal?.classList.remove("hidden");
+  eventModal.classList.remove("hidden");
 });
 
 eventCancelBtn?.addEventListener("click", () => {
-  eventModal?.classList.add("hidden");
+  eventModal.classList.add("hidden");
 });
 
 eventSaveBtn?.addEventListener("click", async () => {
-  if (!eventName.value.trim()) {
-    alert("대회명을 입력하세요");
-    return;
-  }
+  if (!eventName.value.trim()) return alert("대회명을 입력하세요");
 
-  try {
-    await addDoc(collection(db, "events"), {
-      name: eventName.value,
-      location: eventLocation.value,
-      start: eventStart.value,
-      end: eventEnd.value,
-      createdAt: serverTimestamp(),
-      createdBy: currentUser?.uid || "temp"
-    });
+  await addDoc(collection(db, "events"), {
+    name: eventName.value,
+    location: eventLocation.value,
+    start: eventStart.value,
+    end: eventEnd.value,
+    createdAt: serverTimestamp(),
+    createdBy: currentUser.uid
+  });
 
-    eventName.value = "";
-    eventLocation.value = "";
-    eventStart.value = "";
-    eventEnd.value = "";
-
-    eventModal.classList.add("hidden");
-  } catch (e) {
-    console.error("🔥 add event error", e);
-    alert("대회 생성 실패");
-  }
+  eventName.value = "";
+  eventLocation.value = "";
+  eventStart.value = "";
+  eventEnd.value = "";
+  eventModal.classList.add("hidden");
 });

@@ -12,6 +12,18 @@
     <button id="menuBtn" class="menu-btn">☰</button>
     <div class="title">Tournament Hub</div>
   </div>
+  <div class="topbar">
+  <button id="menuBtn" class="menu-btn">☰</button>
+
+  <div class="title">Tournament Hub</div>
+
+  <!-- 🔥 프로필 -->
+  <div id="profileArea" class="profile-area hidden">
+    <img id="profileImg" />
+    <span id="profileName"></span>
+  </div>
+</div>
+
 
   <!-- SIDE MENU -->
   <div id="sideMenu" class="side-menu">
@@ -53,6 +65,24 @@
       </div>
     </div>
   </div>
+
+  <div id="nicknameModal" class="modal hidden">
+  <div class="modal-box">
+    <h3>닉네임 설정</h3>
+    <p>다른 사용자에게 표시될 이름입니다.</p>
+
+    <input
+      id="nicknameInput"
+      placeholder="닉네임"
+      maxlength="20"
+    />
+
+    <div class="modal-actions">
+      <button id="nicknameSaveBtn">저장</button>
+    </div>
+  </div>
+</div>
+
 
   <script type="module" src="./hub.js"></script>
 </body>

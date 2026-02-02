@@ -1,6 +1,8 @@
-// auth.js (Google 로그인 전용)
+// auth.js
+// Google 로그인 전용 + users/{uid} 자동 관리
 
-import { auth } from "./firebase.js";
+import { auth, db } from "./firebase.js";
+
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -8,58 +10,77 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
-  getFirestore,
   doc,
   getDoc,
   setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const db = getFirestore();
-
 /* ===============================
-   Google Provider
+   GOOGLE PROVIDER
 =============================== */
 const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ prompt: "select_account" });
+provider.setCustomParameters({
+  prompt: "select_account"
+});
 
 /* ===============================
-   Google Login Button
+   LOGIN BUTTON
 =============================== */
 const googleBtn = document.getElementById("googleLoginBtn");
 
 if (googleBtn) {
   googleBtn.addEventListener("click", async () => {
-    console.log("➡️ Google 로그인 시작");
-    await signInWithPopup(auth, provider);
+    try {
+      googleBtn.disabled = true;
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.error("🔥 Google 로그인 실패", err);
+      alert("Google 로그인에 실패했습니다.");
+      googleBtn.disabled = false;
+    }
   });
 }
 
 /* ===============================
-   Auth State
+   AUTH STATE
 =============================== */
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    console.log("ℹ 로그인 대기 중");
+    // 로그인 전 상태
     return;
   }
 
-  console.log("✅ 로그인 성공:", user.email);
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
 
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
+    // 🔥 최초 로그인 → users 문서 생성
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        email: user.email,
+        name: user.displayName || "",
+        nickname: user.displayName || "",
+        photoURL: user.photoURL || "",
+        role: "user",
+        provider: "google",
+        createdAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp()
+      });
+    } else {
+      // 🔁 재로그인 → lastLogin 갱신
+      await setDoc(
+        userRef,
+        { lastLoginAt: serverTimestamp() },
+        { merge: true }
+      );
+    }
 
-  // 🔥 최초 로그인 시에만 문서 생성
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      email: user.email,
-      name: user.displayName || "",
-      role: "user",
-      createdAt: serverTimestamp()
-    });
-    console.log("👤 새 사용자 문서 생성");
+    // 로그인 완료 후 이동
+    location.replace("/index.html");
+
+  } catch (err) {
+    console.error("🔥 사용자 문서 처리 실패", err);
+    alert("로그인 처리 중 오류가 발생했습니다.");
   }
-
-  // 이동
-  location.replace("/index.html");
 });

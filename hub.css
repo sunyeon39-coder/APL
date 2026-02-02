@@ -331,3 +331,28 @@ body.admin .delete-btn{
 body.admin .admin-only {
   display: block;
 }
+
+.profile-area{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+}
+
+.profile-area.hidden{
+  display:none;
+}
+
+.profile-area img{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.profile-area span{
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+}
