@@ -5,6 +5,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  setDoc,
   onSnapshot,
   query,
   orderBy,
@@ -76,24 +77,27 @@ onAuthStateChanged(auth, async user => {
 
   currentUser = user;
 
-  try {
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
 
-    if (snap.exists() && snap.data().role === "admin") {
-      currentUserRole = "admin";
-      document.body.classList.add("admin");
-    } else {
-      currentUserRole = "user";
-      document.body.classList.remove("admin");
-    }
-
-    authReady = true;
-    renderTournaments();
-
-  } catch (e) {
-    console.error("🔥 role fetch error", e);
+  // 🔥 users 문서가 없으면 자동 생성
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      email: user.email,
+      role: "user",          // 기본 권한
+      createdAt: serverTimestamp()
+    });
   }
+
+  const role = snap.exists()
+    ? snap.data().role
+    : "user";
+
+  currentUserRole = role;
+  document.body.classList.toggle("admin", role === "admin");
+
+  authReady = true;
+  renderTournaments();
 });
 
 /* ===============================
