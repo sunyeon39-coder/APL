@@ -82,7 +82,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     // ✅ 로그인 완료 → hub로 이동
-    location.replace("/index.html");
+    location.replace("/hub.html");
 
   } catch (err) {
     console.error("🔥 사용자 문서 처리 실패", err);
