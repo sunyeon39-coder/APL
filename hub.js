@@ -4,13 +4,15 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   query,
   orderBy,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getDoc } from
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  onAuthStateChanged   // ✅ 반드시 있어야 함
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 /* ===============================
    DOM
