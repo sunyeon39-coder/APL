@@ -369,3 +369,14 @@ body.admin .admin-only {
   font-weight:700;
   color:var(--text);
 }
+
+#profileImg{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+}
+
+#profileName{
+  font-weight:600;
+  font-size:14px;
+}
