@@ -9,8 +9,8 @@ import {
   orderBy,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { onAuthStateChanged } from
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDoc } from
+  "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* ===============================
    DOM
@@ -69,20 +69,29 @@ profileBtn?.addEventListener("click", () => {
 /* ===============================
    AUTH (🔥 핵심)
 =============================== */
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
   if (!user) return;
 
   currentUser = user;
 
-  // ✅ 지금 단계에서는 "무조건 admin" (UI/기능 안정화용)
-  // 🔥 나중에 users 컬렉션으로 교체
-  currentUserRole = "admin";
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
 
-  document.body.classList.add("admin");
+    if (snap.exists() && snap.data().role === "admin") {
+      currentUserRole = "admin";
+      document.body.classList.add("admin");
+    } else {
+      currentUserRole = "user";
+      document.body.classList.remove("admin");
+    }
 
-  authReady = true;
+    authReady = true;
+    renderTournaments();
 
-  renderTournaments();
+  } catch (e) {
+    console.error("🔥 role fetch error", e);
+  }
 });
 
 /* ===============================
@@ -98,7 +107,6 @@ function formatDateRange(start, end) {
 =============================== */
 function renderTournaments() {
   if (!authReady) return;
-  if (!tournamentListEl || !tournamentEmptyEl) return;
 
   tournamentListEl.innerHTML = "";
 
@@ -106,7 +114,6 @@ function renderTournaments() {
     tournamentEmptyEl.style.display = "block";
     return;
   }
-
   tournamentEmptyEl.style.display = "none";
 
   tournaments.forEach(t => {
@@ -114,35 +121,50 @@ function renderTournaments() {
     row.className = "tournament-row";
 
     row.innerHTML = `
-      <button class="delete-btn">✕</button>
+      ${currentUserRole === "admin" ? `
+        <button class="more-btn">⋮</button>
+        <div class="action-menu hidden">
+          <button class="delete-action danger">삭제</button>
+        </div>
+      ` : ""}
+
       <h3>${t.name}</h3>
       <div class="location">${t.location || ""}</div>
       <div class="date">${formatDateRange(t.start, t.end)}</div>
     `;
 
-    // 카드 클릭 → 상세 페이지
+    // 카드 클릭 → 상세 이동
     row.addEventListener("click", () => {
       location.href = `index.html?eventId=${t.id}`;
     });
 
-    // 🔥 삭제
-    const delBtn = row.querySelector(".delete-btn");
-    delBtn.addEventListener("click", async e => {
-      e.stopPropagation();
+    if (currentUserRole === "admin") {
+      const moreBtn = row.querySelector(".more-btn");
+      const menu = row.querySelector(".action-menu");
+      const deleteBtn = row.querySelector(".delete-action");
 
-      if (!confirm("이 대회를 삭제할까요?")) return;
+      moreBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        document.querySelectorAll(".action-menu").forEach(m => m.classList.add("hidden"));
+        menu.classList.toggle("hidden");
+      });
 
-      try {
+      deleteBtn.addEventListener("click", async e => {
+        e.stopPropagation();
+        if (!confirm("이 대회를 삭제할까요?")) return;
         await deleteDoc(doc(db, "events", t.id));
-      } catch (err) {
-        console.error("🔥 delete error", err);
-        alert("삭제 실패");
-      }
-    });
+      });
+    }
 
     tournamentListEl.appendChild(row);
   });
+
+  // 메뉴 외부 클릭 시 닫기
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".action-menu").forEach(m => m.classList.add("hidden"));
+  }, { once:true });
 }
+
 
 /* ===============================
    FIRESTORE

@@ -257,3 +257,69 @@ body.admin .delete-btn{
 .overlay.show{
   display:block;
 }
+/* ================= ADMIN MENU ================= */
+
+.more-btn{
+  position:absolute;
+  top:14px;
+  right:14px;
+
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  border:none;
+
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:20px;
+  line-height:1;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  cursor:pointer;
+}
+
+.more-btn:hover{
+  background:rgba(255,255,255,.18);
+}
+
+/* 액션 메뉴 */
+.action-menu{
+  position:absolute;
+  top:48px;
+  right:14px;
+
+  background:#10162c;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;
+  min-width:120px;
+
+  box-shadow:0 10px 30px rgba(0,0,0,.45);
+  z-index:10;
+
+  overflow:hidden;
+}
+
+.action-menu.hidden{
+  display:none;
+}
+
+.action-menu button{
+  width:100%;
+  padding:10px 14px;
+  background:none;
+  border:none;
+  color:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+
+.action-menu button:hover{
+  background:rgba(255,255,255,.08);
+}
+
+.action-menu .danger{
+  color:#ff5c5c;
+}
