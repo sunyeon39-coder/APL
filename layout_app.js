@@ -3,7 +3,7 @@ console.log("🔥 layout_app.js FINAL – UI FIRST / FIRESTORE SYNC");
 /* =================================================
    IMPORT
    ================================================= */
-import { db, auth } from "./firebase.js";
+import { db, auth } from "./public/firebase.js";
 import {
   doc,
   getDoc,

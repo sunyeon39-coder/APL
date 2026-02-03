@@ -2,7 +2,7 @@
    Box Board – FINAL SYNC (ADMIN / READ-ONLY USER)
    ================================================= */
 
-import { db, auth } from "./firebase.js";
+import { db, auth } from "./public/firebase.js";
 import {
   doc,
   getDoc,

@@ -1,6 +1,6 @@
 // hub.js — FINAL (AUTH GATE FIXED)
 
-import { auth, db } from "./firebase.js";
+import { auth, db } from "./public/firebase.js";
 import {
   collection,
   addDoc,

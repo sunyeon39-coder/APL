@@ -124,38 +124,7 @@
     }, { once:true });
   </script>
 
-  <!-- ================= AUTH GATE + LOGOUT ================= -->
-  <script type="module">
-    import { auth } from "./firebase.js";
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    const params = new URLSearchParams(location.search);
-    const eventId = params.get("eventId");
-
-    // 🔐 로그인 + eventId 필수
-    onAuthStateChanged(auth, user => {
-      if (!user) {
-        location.replace("login.html");
-        return;
-      }
-
-      if (!eventId) {
-        location.replace("hub.html");
-        return;
-      }
-    });
-
-    // 🚪 로그아웃
-    document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-      await signOut(auth);
-      location.replace("login.html");
-    });
-  </script>
-
   <!-- ================= APP LOGIC ================= -->
-  <script type="module" src="app.js"></script>
+ <script type="module" src="./auth.js"></script>
 </body>
 </html>

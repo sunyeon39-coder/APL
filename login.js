@@ -1,6 +1,6 @@
 // login.js — FINAL (Google Only / Mobile Safe / No False Error)
 
-import { auth, db } from "./firebase.js";
+import { auth, db } from "./public/firebase.js";
 import {
   GoogleAuthProvider,
   signInWithPopup,
