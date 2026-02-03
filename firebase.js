@@ -6,12 +6,13 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase
 
 /* 🔥 Firebase Config */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+ apiKey: "AIzaSyDXZM15ex4GNFdf2xjVOW-xopMHf_AMYGc",
   authDomain: "box-board.firebaseapp.com",
   projectId: "box-board",
-  storageBucket: "box-board.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  storageBucket: "box-board.firebasestorage.app",
+  messagingSenderId: "336632241536",
+  appId: "1:336632241536:web:d7b57b91d91596dbf3b565",
+  measurementId: "G-7B9W7N9X9B"
 };
 
 /* 🔥 Init */
