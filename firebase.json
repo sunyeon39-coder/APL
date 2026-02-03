@@ -8,26 +8,6 @@
     ],
     "rewrites": [
       {
-        "source": "**/*.js",
-        "destination": "/$1"
-      },
-      {
-        "source": "**/*.css",
-        "destination": "/$1"
-      },
-      {
-        "source": "/login",
-        "destination": "/login.html"
-      },
-      {
-        "source": "/hub",
-        "destination": "/hub.html"
-      },
-      {
-        "source": "/admin/**",
-        "destination": "/admin/users.html"
-      },
-      {
         "source": "**",
         "destination": "/login.html"
       }
