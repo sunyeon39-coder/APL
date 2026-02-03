@@ -16,8 +16,12 @@
         "destination": "/hub.html"
       },
       {
+        "source": "/admin/**",
+        "destination": "/admin/users.html"
+      },
+      {
         "source": "**",
-        "destination": "/login.html"
+        "destination": "/index.html"
       }
     ]
   }
