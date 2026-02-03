@@ -82,7 +82,7 @@ onAuthStateChanged(auth, (user) => {
    NAV
 =============================== */
 function goAfterLogin() {
-  console.log("✅ login success → index.html");
+  console.log("✅ login success → hub.html");
   // replace로 뒤로가기 시 로그인 페이지로 안 돌아가게
-  location.replace("index.html");
+  location.replace("hub.html");
 }
