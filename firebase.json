@@ -8,6 +8,14 @@
     ],
     "rewrites": [
       {
+        "source": "**/*.js",
+        "destination": "/$1"
+      },
+      {
+        "source": "**/*.css",
+        "destination": "/$1"
+      },
+      {
         "source": "/login",
         "destination": "/login.html"
       },
@@ -20,7 +28,7 @@
         "destination": "/admin/users.html"
       },
       {
-        "source": "/",
+        "source": "**",
         "destination": "/login.html"
       }
     ]
