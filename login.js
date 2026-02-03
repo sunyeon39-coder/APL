@@ -1,11 +1,17 @@
-// login.js — FINAL (Google Only / Mobile Safe / No False Error)
+// login.js — FINAL STABLE
+// - Firebase Hosting ONLY
+// - PC: popup / Mobile: redirect
+// - Single authority for login
+// - Firestore user doc ensured
+// - No false mobile errors
 
-import { auth, db } from "./public/firebase.js";
+import { auth, db } from "./firebase.js";
 import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   doc,
@@ -14,39 +20,41 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* =================================================
+/* ===============================
    CONFIG
-================================================= */
+=============================== */
 
 const REDIRECT_URL = "hub.html";
-
-/* admin 이메일 (선택) */
 const ADMIN_EMAILS = [
   // "admin@example.com",
 ];
 
-/* =================================================
-   DOM
-================================================= */
+/* ===============================
+   STATE
+=============================== */
 
-const googleLoginBtn = document.getElementById("googleLoginBtn");
+let handled = false; // 🔥 중복 처리 방지
+
+/* ===============================
+   DOM
+=============================== */
+
+const loginBtn = document.getElementById("googleLoginBtn");
 const errorBox = document.getElementById("errorBox");
 
-/* =================================================
+/* ===============================
    UTIL
-================================================= */
+=============================== */
 
 function isMobile() {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
 function showError(msg) {
-  // 🔥 모바일에서는 절대 alert/에러 강제 표시 안 함
   if (isMobile()) {
     console.warn("모바일 로그인 에러 무시:", msg);
     return;
   }
-
   if (!errorBox) return;
   errorBox.textContent = msg;
   errorBox.style.display = "block";
@@ -58,9 +66,9 @@ function clearError() {
   errorBox.style.display = "none";
 }
 
-/* =================================================
+/* ===============================
    FIRESTORE USER DOC
-================================================= */
+=============================== */
 
 async function ensureUserDoc(user) {
   const ref = doc(db, "users", user.uid);
@@ -78,63 +86,62 @@ async function ensureUserDoc(user) {
   });
 }
 
-/* =================================================
-   GOOGLE LOGIN (BUTTON)
-================================================= */
+/* ===============================
+   LOGIN BUTTON
+=============================== */
 
-googleLoginBtn?.addEventListener("click", async () => {
+loginBtn?.addEventListener("click", async () => {
   clearError();
+  loginBtn.disabled = true;
 
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
 
   try {
     if (isMobile()) {
-      /*
-        📱 모바일:
-        - redirect는 정상 동작 중에도 에러를 던질 수 있음
-        - 여기서는 절대 실패 판단하지 않음
-      */
+      console.log("📱 mobile → redirect login");
       await signInWithRedirect(auth, provider);
-      return; // 🔥 여기서 종료 (성공/실패 판단 금지)
+      return; // 🔥 판정은 redirect 결과에서만
     }
 
-    /*
-      🖥 PC:
-      - popup은 즉시 결과를 받으므로 여기서 처리
-    */
+    console.log("🖥 PC → popup login");
     const cred = await signInWithPopup(auth, provider);
+    handled = true;
     await ensureUserDoc(cred.user);
     location.replace(REDIRECT_URL);
 
   } catch (err) {
-    console.error("Google 로그인 에러", err);
-
-    /*
-      🔥 모바일 redirect 관련 에러는 전부 무시
-      (auth/redirect-cancelled, auth/popup-closed-by-user 등)
-    */
-    if (isMobile()) return;
-
-    showError("로그인에 실패했습니다.");
+    console.error("로그인 에러", err);
+    loginBtn.disabled = false;
+    if (!isMobile()) showError("로그인에 실패했습니다.");
   }
 });
 
-/* =================================================
-   MOBILE REDIRECT RESULT (🔥 유일한 판정자)
-================================================= */
+/* ===============================
+   REDIRECT RESULT (MOBILE)
+=============================== */
 
 getRedirectResult(auth)
   .then(async (result) => {
-    if (!result || !result.user) return;
+    if (!result?.user || handled) return;
 
+    console.log("🔁 redirect result user:", result.user.email);
+    handled = true;
     await ensureUserDoc(result.user);
     location.replace(REDIRECT_URL);
   })
   .catch((err) => {
-    /*
-      🔥 여기서도 모바일은 절대 alert 안 띄움
-      (Safari / Chrome에서 false error 빈번)
-    */
     console.warn("redirect 결과 에러 (무시)", err);
   });
+
+/* ===============================
+   ALREADY LOGGED IN
+=============================== */
+
+onAuthStateChanged(auth, (user) => {
+  if (!user || handled) return;
+
+  console.log("✅ already logged in:", user.email);
+  handled = true;
+  location.replace(REDIRECT_URL);
+});

@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tournament Hub</title>
   <link rel="stylesheet" href="./hub.css" />
 </head>
@@ -13,7 +14,6 @@
 
   <div class="title">Tournament Hub</div>
 
-  <!-- 🔥 클릭 가능한 프로필 버튼 -->
   <button class="topbar-right profile-area" id="profileArea">
     <img id="profileImg" src="https://via.placeholder.com/32" />
     <span id="profileName">내 프로필</span>
@@ -80,7 +80,7 @@
   </div>
 </div>
 
-<!-- 🔥 HUB LOGIC -->
+<!-- ================= AUTH GUARD (STABLE) ================= -->
 <script type="module">
   import { auth } from "./firebase.js";
   import {
@@ -88,29 +88,33 @@
     signOut
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-  /* ===============================
-     AUTH GATE (🔥 핵심)
-  =============================== */
+  console.log("🔥 hub auth guard loaded");
+
+  let checked = false;
 
   onAuthStateChanged(auth, user => {
+    // 최초 1회만 판단 (🔥 핵심)
+    if (checked) return;
+    checked = true;
+
     if (!user) {
-      // 로그인 안 된 상태면 hub 접근 불가
+      console.log("⛔ hub: not logged in");
       location.replace("login.html");
+      return;
     }
+
+    console.log("✅ hub: logged in", user.email);
   });
 
-  /* ===============================
-     LOGOUT
-  =============================== */
-
-  const logoutBtn = document.getElementById("logoutBtn");
-  logoutBtn?.addEventListener("click", async () => {
+  // 로그아웃
+  document.getElementById("logoutBtn")?.addEventListener("click", async () => {
     await signOut(auth);
     location.replace("login.html");
   });
 </script>
 
-<!-- 기존 허브 로직 -->
+<!-- ================= HUB APP LOGIC ================= -->
 <script type="module" src="./hub.js"></script>
+
 </body>
 </html>
