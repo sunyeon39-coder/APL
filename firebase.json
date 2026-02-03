@@ -8,6 +8,14 @@
     ],
     "rewrites": [
       {
+        "source": "/login",
+        "destination": "/login.html"
+      },
+      {
+        "source": "/hub",
+        "destination": "/hub.html"
+      },
+      {
         "source": "**",
         "destination": "/login.html"
       }
