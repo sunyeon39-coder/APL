@@ -1,12 +1,32 @@
 {
   "hosting": {
     "public": ".",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "rewrites": [
-      { "source": "/login", "destination": "/login.html" },
-      { "source": "/hub", "destination": "/hub.html" },
-      { "source": "/admin/**", "destination": "/admin/users.html" },
-      { "source": "/", "destination": "/login.html" }
+      {
+        "source": "/login",
+        "destination": "/login.html"
+      },
+      {
+        "source": "/hub",
+        "destination": "/hub.html"
+      },
+      {
+        "source": "/index",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/admin/**",
+        "destination": "/admin/users.html"
+      },
+      {
+        "source": "/",
+        "destination": "/login.html"
+      }
     ]
   }
 }
