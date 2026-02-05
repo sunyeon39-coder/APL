@@ -133,7 +133,6 @@ function render() {
     const card = document.createElement("section");
     card.className = `card ${b.status?.toLowerCase() || ""}`;
 
-    // 🔥 user / admin에 따라 DOM 자체 분기
     card.innerHTML = `
       <div class="badge">${b.status || "Opened"}</div>
 
@@ -163,7 +162,12 @@ function render() {
     /* ▶ 카드 클릭: 전 유저 공통 */
     card.addEventListener("click", e => {
       if (e.target.closest(".hover-btn")) return;
-      const __url = `layout_index.html?boxId=${b.id}`;
+
+      // 🔧 PATCH: eventId 유지해서 layout 이동
+      const __url = eventId
+        ? `layout_index.html?eventId=${eventId}&boxId=${b.id}`
+        : `layout_index.html?boxId=${b.id}`;
+
       (window.__go ? window.__go(__url, false) : (location.href = __url));
     });
 
@@ -274,4 +278,3 @@ function startApp() {
     };
   }
 }
-
