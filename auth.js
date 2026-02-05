@@ -1,30 +1,89 @@
-// auth.js — SAFE COMPAT LAYER
-// 목적:
-// - 과거에 auth.js를 로드하던 페이지(예: signup.html)에서도 로그인 동작 유지
-// - 하지만 login 버튼이 없는 페이지(index/hub 등)에서는 절대 리다이렉트/부작용 발생 금지
-//
-// ✅ 기존 UI/레이아웃/기능은 건드리지 않고,
-//    "로그인 페이지에서만" 로그인 처리하도록 범위를 제한함.
+// auth.js — FINAL STABLE v2
+// - Redirect ONLY (mobile / Safari safe)
+// - Login page ONLY
+// - No side effects on hub / index
 
-const path = (location.pathname || "").toLowerCase();
+import { auth } from "./firebase.js";
+import {
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// 로그인 버튼이 있는 페이지에서만 동작
-const hasLoginBtn = !!document.getElementById("googleLoginBtn");
+/* ===============================
+   LOG
+=============================== */
+console.log("🔥 auth.js loaded");
 
-// login.html / signup.html 이거나, 버튼이 있을 때만 login.js를 실행
-const isAuthPage =
-  hasLoginBtn ||
-  path.endsWith("/login.html") ||
-  path.endsWith("/signup.html") ||
-  path.endsWith("/login") ||
-  path.endsWith("/signup");
+/* ===============================
+   DOM (login page only)
+=============================== */
+const loginBtn = document.getElementById("googleLoginBtn");
 
-if (isAuthPage) {
-  // login.js가 단일 권위(Single Authority)로 로그인 처리
-  import("./login.js").catch((e) => {
-    console.error("❌ auth.js → login.js import failed:", e);
+/* ===============================
+   PROVIDER
+=============================== */
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({
+  prompt: "select_account"
+});
+
+/* ===============================
+   STATE
+=============================== */
+let handled = false; // 중복 처리 방지
+
+/* ===============================
+   LOGIN CLICK
+=============================== */
+if (loginBtn) {
+  loginBtn.addEventListener("click", () => {
+    loginBtn.disabled = true;
+    console.log("👉 signInWithRedirect");
+    signInWithRedirect(auth, provider);
   });
-} else {
-  // 다른 페이지에서는 아무것도 하지 않음 (🔥 핵심)
-  console.log("ℹ️ auth.js: not an auth page, skipping.");
+}
+
+/* ===============================
+   REDIRECT RESULT (PRIORITY)
+=============================== */
+getRedirectResult(auth)
+  .then((result) => {
+    console.log("🔁 getRedirectResult:", result);
+
+    if (result?.user && !handled) {
+      handled = true;
+      goAfterLogin();
+    }
+  })
+  .catch((err) => {
+    console.error("❌ getRedirectResult error:", err);
+    if (loginBtn) loginBtn.disabled = false;
+  });
+
+/* ===============================
+   AUTH STATE (FALLBACK)
+   - 이미 로그인된 상태로 login.html에 들어온 경우
+=============================== */
+onAuthStateChanged(auth, (user) => {
+  console.log("👤 onAuthStateChanged:", user?.email || "null");
+
+  if (handled) return;
+
+  // 🔥 login.html에서만 동작
+  if (user) {
+    handled = true;
+    goAfterLogin();
+  }
+});
+
+/* ===============================
+   NAV
+=============================== */
+function goAfterLogin() {
+  console.log("✅ login success → hub.html");
+
+  // login.html 기록 제거 (뒤로가기 방지)
+  location.replace("hub.html");
 }

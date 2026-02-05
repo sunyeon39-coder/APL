@@ -1,8 +1,4 @@
-// hub.js — FINAL (LOOP FIXED / FUNCTIONS SAFE)
-// ✅ 변경 포인트(기능/UX/UI 유지, 오류만 수정):
-// 1) 모바일 redirect 로그인 후 users/{uid} 문서가 아직 없을 때
-//    hub에서 다시 login으로 튕기며 무한 루프가 발생할 수 있음 → hub에서 자동 생성(merge)로 해결
-// 2) Firestore 권한/네트워크 에러가 나도 전체 기능이 "멈춘 것처럼" 보이지 않도록 콘솔 로그 + 최소 방어
+// hub.js — FINAL (AUTH GATE FIXED)
 
 import { auth, db } from "./firebase.js";
 import {
@@ -11,7 +7,6 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  setDoc,
   onSnapshot,
   query,
   orderBy,
@@ -69,6 +64,7 @@ function openMenu() {
   sideMenu.classList.add("open");
   overlay.classList.add("show");
 }
+
 function closeMenu() {
   sideMenu.classList.remove("open");
   overlay.classList.remove("show");
@@ -92,86 +88,45 @@ function openProfile() {
   closeMenu();
   nicknameModal.classList.remove("hidden");
 }
+
 profileArea?.addEventListener("click", openProfile);
 profileBtn?.addEventListener("click", openProfile);
 
 /* ===============================
-   🔥 USERS DOC ENSURE (핵심)
+   🔥 AUTH GATE (핵심 수정)
 =============================== */
-async function ensureUserDocFromHub(user) {
-  const userRef = doc(db, "users", user.uid);
-
-  let snap;
-  try {
-    snap = await getDoc(userRef);
-  } catch (e) {
-    console.error("❌ hub: users getDoc failed:", e);
-    // 권한 문제면 여기서 더 진행해도 기능이 안 되므로 login으로 보내지 말고,
-    // 콘솔을 남기고 화면은 유지(사용자가 devtools로 확인 가능)
-    throw e;
-  }
-
-  if (snap.exists()) return snap.data();
-
-  // ✅ 여기서 바로 생성 (루프 방지)
-  const data = {
-    email: user.email || "",
-    nickname: user.displayName || (user.email ? user.email.split("@")[0] : "user"),
-    photoURL: user.photoURL || "",
-    role: "user",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
-  try {
-    await setDoc(userRef, data, { merge: true });
-  } catch (e) {
-    console.error("❌ hub: users setDoc failed:", e);
-    throw e;
-  }
-
-  // merge 후 UI 반영용으로 반환
-  return data;
-}
-
-/* ===============================
-   🔥 AUTH GATE
-=============================== */
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, async user => {
   if (!user) {
+    // ❌ 로그인 안 된 상태로 hub 접근 → 즉시 차단
     location.replace("login.html");
     return;
   }
 
   currentUser = user;
 
-  let u;
-  try {
-    u = await ensureUserDocFromHub(user);
-  } catch (e) {
-    // 여기서 강제 리다이렉트하면 사용자 입장에선 "허브가 먹통/무한루프"처럼 보임
-    // 화면은 유지하고, 최소 안내만.
-    console.warn("⚠️ hub auth ready failed:", e);
-    tournamentEmptyEl && (tournamentEmptyEl.style.display = "block");
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    console.warn("❌ users 문서 없음");
+    location.replace("login.html");
     return;
   }
 
-  // 혹시 서버에 role/nickname이 이미 있다면 최신값 다시 읽기 시도(실패해도 계속 진행)
-  try {
-    const snap2 = await getDoc(doc(db, "users", user.uid));
-    if (snap2.exists()) u = snap2.data();
-  } catch (e) {}
-
+  const u = snap.data();
   currentUserRole = u.role || "user";
   document.body.classList.toggle("admin", currentUserRole === "admin");
 
   /* 프로필 표시 */
-  if (profileImg) {
-    profileImg.src = u.photoURL || user.photoURL || "https://via.placeholder.com/40";
-  }
-  if (profileName) {
-    profileName.textContent = u.nickname || u.name || u.email || user.email || "내 프로필";
-  }
+  profileImg.src =
+    u.photoURL ||
+    user.photoURL ||
+    "https://via.placeholder.com/40";
+
+  profileName.textContent =
+    u.nickname ||
+    u.name ||
+    u.email;
 
   profileArea?.classList.remove("hidden");
 
@@ -192,17 +147,15 @@ function startEventsListener() {
 
   unsubscribeEvents = onSnapshot(
     query(collection(db, "events"), orderBy("createdAt", "desc")),
-    (snap) => {
-      tournaments = snap.docs.map((d) => ({
+    snap => {
+      tournaments = snap.docs.map(d => ({
         id: d.id,
-        ...d.data(),
+        ...d.data()
       }));
       renderTournaments();
     },
-    (err) => {
+    err => {
       console.error("🔥 events snapshot error", err);
-      // 권한/네트워크 오류 시, 최소한 빈 상태 UI는 보여줌
-      renderTournaments();
     }
   );
 }
@@ -217,15 +170,11 @@ nicknameSaveBtn?.addEventListener("click", async () => {
     return;
   }
 
-  try {
-    await updateDoc(doc(db, "users", currentUser.uid), { nickname: val });
-  } catch (e) {
-    console.error("❌ nickname update failed:", e);
-    alert("닉네임 저장에 실패했습니다.");
-    return;
-  }
+  await updateDoc(doc(db, "users", currentUser.uid), {
+    nickname: val
+  });
 
-  if (profileName) profileName.textContent = val;
+  profileName.textContent = val;
   nicknameModal.classList.add("hidden");
 });
 
@@ -245,14 +194,14 @@ function renderTournaments() {
 
   tournamentListEl.innerHTML = "";
 
-  if (!tournaments || tournaments.length === 0) {
+  if (tournaments.length === 0) {
     tournamentEmptyEl.style.display = "block";
     return;
   }
 
   tournamentEmptyEl.style.display = "none";
 
-  tournaments.forEach((t) => {
+  tournaments.forEach(t => {
     const row = document.createElement("div");
     row.className = "tournament-row";
 
@@ -277,35 +226,29 @@ function renderTournaments() {
       const menu = row.querySelector(".action-menu");
       const deleteBtn = row.querySelector(".delete-action");
 
-      moreBtn?.addEventListener("click", (e) => {
+      moreBtn.addEventListener("click", e => {
         e.stopPropagation();
-        document.querySelectorAll(".action-menu").forEach((m) => m.classList.add("hidden"));
-        menu?.classList.toggle("hidden");
+        document
+          .querySelectorAll(".action-menu")
+          .forEach(m => m.classList.add("hidden"));
+        menu.classList.toggle("hidden");
       });
 
-      deleteBtn?.addEventListener("click", async (e) => {
+      deleteBtn.addEventListener("click", async e => {
         e.stopPropagation();
         if (!confirm("이 대회를 삭제할까요?")) return;
-        try {
-          await deleteDoc(doc(db, "events", t.id));
-        } catch (err) {
-          console.error("❌ delete event failed:", err);
-          alert("삭제에 실패했습니다.");
-        }
+        await deleteDoc(doc(db, "events", t.id));
       });
     }
 
     tournamentListEl.appendChild(row);
   });
 
-  // 기존 동작 유지: 바깥 클릭 시 메뉴 닫기 (한 번만)
-  document.addEventListener(
-    "click",
-    () => {
-      document.querySelectorAll(".action-menu").forEach((m) => m.classList.add("hidden"));
-    },
-    { once: true }
-  );
+  document.addEventListener("click", () => {
+    document
+      .querySelectorAll(".action-menu")
+      .forEach(m => m.classList.add("hidden"));
+  }, { once: true });
 }
 
 /* ===============================
@@ -325,20 +268,14 @@ eventSaveBtn?.addEventListener("click", async () => {
     return;
   }
 
-  try {
-    await addDoc(collection(db, "events"), {
-      name: eventName.value,
-      location: eventLocation.value,
-      start: eventStart.value,
-      end: eventEnd.value,
-      createdAt: serverTimestamp(),
-      createdBy: currentUser.uid,
-    });
-  } catch (e) {
-    console.error("❌ create event failed:", e);
-    alert("대회 생성에 실패했습니다.");
-    return;
-  }
+  await addDoc(collection(db, "events"), {
+    name: eventName.value,
+    location: eventLocation.value,
+    start: eventStart.value,
+    end: eventEnd.value,
+    createdAt: serverTimestamp(),
+    createdBy: currentUser.uid
+  });
 
   eventName.value = "";
   eventLocation.value = "";
