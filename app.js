@@ -1,280 +1,302 @@
-/* =================================================
-   Box Board – FINAL SYNC (ADMIN / READ-ONLY USER)
-   ================================================= */
+/* =====================================================
+   BOX BOARD — CLEAN SINGLE-STRUCTURE VERSION
+   ===================================================== */
 
-import { db, auth } from "./firebase.js";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  onSnapshot,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import {
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+const LS_KEY = "boxboard_v1_state";
+// 🔥 메인 페이지 로딩 오버레이 강제 해제
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("[layout] boot");
 
-/* ===============================
-   EVENT CONTEXT (MINIMAL PATCH)
-=============================== */
-const params = new URLSearchParams(location.search);
-let eventId = params.get("eventId");
+  // 1️⃣ boxId
+  const params = new URLSearchParams(window.location.search);
+  const boxId = params.get("boxId");
+  console.log("[layout] boxId:", boxId);
 
-// 새로고침 대비
-if (!eventId) {
-  eventId = sessionStorage.getItem("eventId");
-}
-if (eventId) {
-  sessionStorage.setItem("eventId", eventId);
-} else {
-  console.warn("⚠ eventId 없음: 단일 보드 모드");
-}
-
-/* ===============================
-   CONST / STATE
-   =============================== */
-const STATE_REF = eventId
-  ? doc(db, "boxboard", eventId)
-  : doc(db, "boxboard", "state");
-
-const state = {
-  dateText: "",
-  boxes: []
-};
-
-let currentUserRole = "user";
-let appStarted = false;
-
-/* ===============================
-   UTIL
-   =============================== */
-const $ = sel => document.querySelector(sel);
-const uid = () => Math.random().toString(36).slice(2) + Date.now();
-
-/* ===============================
-   LOGOUT
-   =============================== */
-$("#logoutBtn")?.addEventListener("click", async () => {
-  await signOut(auth);
-  (window.__go ? window.__go("login.html", true) : location.replace("/login.html"));
-});
-
-/* ===============================
-   AUTH GUARD
-   =============================== */
-onAuthStateChanged(auth, async user => {
-  if (!user) {
-    (window.__go ? window.__go("login.html", true) : location.replace("/login.html"));
+  // 2️⃣ state
+  const raw = localStorage.getItem("boxboard_v1_state");
+  if (!raw) {
+    console.error("[layout] no localStorage state");
+    alert("No board data");
     return;
   }
 
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
-
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      email: user.email,
-      name: user.displayName || "",
-      role: "user",
-      createdAt: serverTimestamp()
-    });
-    currentUserRole = "user";
-  } else {
-    currentUserRole = snap.data().role || "user";
+  let state;
+  try {
+    state = JSON.parse(raw);
+  } catch (e) {
+    console.error("[layout] invalid JSON", e);
+    alert("Broken board data");
+    return;
   }
 
-  console.log("👤 ROLE =", currentUserRole);
-
-  if (!appStarted) {
-    appStarted = true;
-    startApp();
+  if (!Array.isArray(state.boxes)) {
+    console.error("[layout] boxes missing", state);
+    alert("Invalid board structure");
+    return;
   }
+
+  // 3️⃣ find box
+  const box = state.boxes.find(b => b.id === boxId);
+  console.log("[layout] found box:", box);
+
+  if (!box) {
+    alert("Box not found");
+    return;
+  }
+
+  // 4️⃣ render
+  renderLayout(box);
+
+  // 5️⃣ loader OFF (반드시 마지막)
+  const loader = document.getElementById("layoutLoading");
+  if (loader) loader.classList.add("hidden");
+
 });
 
-/* ===============================
-   FIRESTORE SUBSCRIBE
-   =============================== */
-function subscribeState() {
-  onSnapshot(STATE_REF, snap => {
-    if (!snap.exists()) return;
-    const data = snap.data();
-    state.dateText = data.dateText || "";
-    state.boxes = data.boxes || [];
-    render();
-  });
+
+/* ---------- DOM ---------- */
+const appEl = document.getElementById("app");
+const boardEl = document.getElementById("board");
+const dateTextEl = document.getElementById("dateText");
+
+const overlayText = document.getElementById("overlayText");
+const overlayBox = document.getElementById("overlayBox");
+
+const inputDateText = document.getElementById("inputDateText");
+const saveTextBtn = document.getElementById("saveText");
+const closeTextBtn = document.getElementById("closeText");
+
+const addBoxBtn = document.getElementById("addBoxBtn");
+const boxTitle = document.getElementById("boxTitle");
+const boxStatus = document.getElementById("boxStatus");
+const boxBuyin = document.getElementById("boxBuyin");
+const boxTime = document.getElementById("boxTime");
+const boxExtraLabel = document.getElementById("boxExtraLabel");
+const boxExtraValue = document.getElementById("boxExtraValue");
+const saveBoxBtn = document.getElementById("saveBox");
+const cancelBoxBtn = document.getElementById("cancelBox");
+
+/* ---------- STATE ---------- */
+let state = {
+  dateText: "",
+  boxes: [],
+  view: "main",        // main | layout
+  currentBoxId: null,
+};
+
+let currentTab = 'box';
+let editingBoxId = null;
+
+/* ---------- UTIL ---------- */
+const uid = () => "b_" + Math.random().toString(36).slice(2) + Date.now();
+const isTyping = (el) =>
+  el && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable);
+
+function saveState(){
+  localStorage.setItem(LS_KEY, JSON.stringify({
+    dateText: state.dateText,
+    boxes: state.boxes
+  }));
 }
 
-/* ===============================
-   WRITE (ADMIN ONLY)
-   =============================== */
-async function writeState() {
-  await setDoc(
-    STATE_REF,
-    {
-      dateText: state.dateText,
-      boxes: state.boxes,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
+function loadState(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(!raw) return false;
+  try{
+    const parsed = JSON.parse(raw);
+    if(parsed.dateText) state.dateText = parsed.dateText;
+    if(Array.isArray(parsed.boxes)) state.boxes = parsed.boxes;
+    return true;
+  }catch(e){ return false; }
 }
 
-/* ===============================
-   RENDER
-   =============================== */
-function render() {
-  $("#dateText").textContent = state.dateText || "";
+/* ---------- MODALS ---------- */
+function openTextModal(){
+  inputDateText.value = state.dateText || "";
+  overlayText.classList.remove("hidden");
+  setTimeout(()=>inputDateText.focus(),0);
+}
+function closeTextModal(){ overlayText.classList.add("hidden"); }
 
-  const board = $("#board");
-  board.innerHTML = "";
+function openBoxModal(box=null){
+  overlayBox.classList.remove("hidden");
+  editingBoxId = box?.id || null;
 
-  state.boxes.forEach(b => {
+  boxTitle.value = box?.title || "";
+  boxStatus.value = box?.status || "Opened";
+  boxBuyin.value = box?.buyin || "";
+  boxTime.value = box?.time || "";
+  boxExtraLabel.value = box?.extraLabel || "Entries";
+  boxExtraValue.value = box?.extraValue || "";
+
+  setTimeout(()=>boxTitle.focus(),0);
+}
+function closeBoxModal(){
+  overlayBox.classList.add("hidden");
+  editingBoxId = null;
+}
+
+/* ---------- NAV ---------- */
+function openLayout(boxId){
+  state.view = "layout";
+  state.currentBoxId = boxId;
+  render();
+}
+function backToMain(){
+  state.view = "main";
+  state.currentBoxId = null;
+
+  currentTab = 'box'; 
+  render();
+}
+
+/* ---------- RENDER ---------- */
+function renderHeader(){
+  dateTextEl.textContent = state.dateText || "";
+}
+
+function statusClass(s){
+  s = (s||"").toLowerCase();
+  if(s==="running") return "running";
+  if(s==="closed") return "closed";
+  return "opened";
+}
+
+function renderMain(){
+  boardEl.innerHTML = "";
+
+  state.boxes.forEach(b=>{
     const card = document.createElement("section");
-    card.className = `card ${b.status?.toLowerCase() || ""}`;
+    card.className = `card ${statusClass(b.status)}`;
+    card.dataset.id = b.id;
 
     card.innerHTML = `
-      <div class="badge">${b.status || "Opened"}</div>
-
-      ${
-        currentUserRole === "admin"
-          ? `
-        <div class="card-hover-bar">
-          <div class="card-hover-title">${b.title}</div>
-          <div class="card-hover-actions">
-            <button class="hover-btn edit">✏</button>
-            <button class="hover-btn del">✕</button>
-          </div>
-        </div>
-        `
-          : ""
-      }
-
-      <h2 class="card-title">${b.title}</h2>
-
+      <div class="badge">${b.status}</div>
+      <h3 class="card-title">${b.title}</h3>
       <div class="meta">
-        <div class="pill"><div class="k">Buy-in</div><div class="v">${b.buyin || "-"}</div></div>
-        <div class="pill"><div class="k">Time</div><div class="v">${b.time || "-"}</div></div>
-        <div class="pill"><div class="k">${b.extraLabel || "Entries"}</div><div class="v">${b.extraValue || "-"}</div></div>
+        <div class="pill"><div class="k">Buy-in</div><div class="v">${b.buyin}</div></div>
+        <div class="pill"><div class="k">Time</div><div class="v">${b.time}</div></div>
+        <div class="pill"><div class="k">${b.extraLabel}</div><div class="v">${b.extraValue}</div></div>
       </div>
     `;
 
-    /* ▶ 카드 클릭: 전 유저 공통 */
-    card.addEventListener("click", e => {
-      if (e.target.closest(".hover-btn")) return;
+    // ✅ 카드 클릭 → layout 이동 (여기만 존재)
+    card.addEventListener("click", () => {
+      const loader = document.getElementById("layoutLoading");
+      if (loader) loader.classList.remove("hidden");
 
-      // 🔧 PATCH: eventId 유지해서 layout 이동
-      const __url = eventId
-        ? `layout_index.html?eventId=${eventId}&boxId=${b.id}`
-        : `layout_index.html?boxId=${b.id}`;
-
-      (window.__go ? window.__go(__url, false) : (location.href = __url));
+      const boxId = b.id;
+      requestAnimationFrame(() => {
+        window.location.href = `layout_index.html?boxId=${boxId}`;
+      });
     });
 
-    /* ===== ADMIN ONLY ACTIONS ===== */
-    if (currentUserRole === "admin") {
-      card.querySelector(".edit")?.addEventListener("click", e => {
-        e.stopPropagation();
-        openBoxModal(b);
-      });
-
-      card.querySelector(".del")?.addEventListener("click", async e => {
-        e.stopPropagation();
-        if (!confirm("삭제할까요?")) return;
-        state.boxes = state.boxes.filter(x => x.id !== b.id);
-        render();
-        await writeState();
-      });
-    }
-
-    board.appendChild(card);
+    boardEl.appendChild(card);
   });
 }
 
-/* ===============================
-   BOX MODAL (ADMIN ONLY)
-   =============================== */
-let editingId = null;
+document.addEventListener("click", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) return;
 
-function openBoxModal(box = null) {
-  if (currentUserRole !== "admin") return;
-
-  editingId = box?.id || null;
-  $("#boxTitle").value = box?.title || "";
-  $("#boxStatus").value = box?.status || "Opened";
-  $("#boxBuyin").value = box?.buyin || "";
-  $("#boxTime").value = box?.time || "";
-  $("#boxExtraLabel").value = box?.extraLabel || "Entries";
-  $("#boxExtraValue").value = box?.extraValue || "";
-  $("#overlayBox").classList.remove("hidden");
-}
-
-function closeBoxModal() {
-  $("#overlayBox").classList.add("hidden");
-  editingId = null;
-}
-
-/* ===============================
-   APP START
-   =============================== */
-function startApp() {
-  console.log("🚀 App Start");
-
-  const addBtn = $("#addBoxBtn");
-
-  // 🔒 USER = 완전 제거
-  if (currentUserRole !== "admin") {
-    addBtn?.remove();
-  } else {
-    addBtn.onclick = () => openBoxModal();
+  const boxId = card.dataset.id;
+  if (!boxId) {
+    console.error("no boxId on card");
+    return;
   }
 
-  subscribeState();
+  window.location.href =
+    `layout_index.html?boxId=${boxId}&from=board`;
+});
 
-  /* ===== ADMIN ONLY BINDINGS ===== */
-  if (currentUserRole === "admin") {
-    $("#saveBox").onclick = async () => {
-      const box = {
-        id: editingId || uid(),
-        title: $("#boxTitle").value.trim() || "Untitled",
-        status: $("#boxStatus").value,
-        buyin: $("#boxBuyin").value,
-        time: $("#boxTime").value,
-        extraLabel: $("#boxExtraLabel").value,
-        extraValue: $("#boxExtraValue").value
-      };
 
-      editingId
-        ? state.boxes = state.boxes.map(b => b.id === editingId ? box : b)
-        : state.boxes.push(box);
 
-      closeBoxModal();
-      render();
-      await writeState();
-    };
+function renderLayout(){
+  const box = state.boxes.find(b=>b.id===state.currentBoxId);
+  appEl.innerHTML = `
+    <div class="layout-wrap">
+      <div class="layout-top">
+        <div class="layout-title">${box?.title || "Layout"}</div>
+        <button class="btn back-btn">Back</button>
+      </div>
+      <div class="layout-grid">
+        ${Array.from({length:24},(_,i)=>`<div class="layout-cell">${i+1}</div>`).join("")}
+      </div>
+    </div>
+  `;
+  document.querySelector(".back-btn").onclick = backToMain;
+}
 
-    $("#cancelBox").onclick = closeBoxModal;
+function render(){
+  renderHeader();
 
-    document.addEventListener("keydown", e => {
-      if (e.key === "e") {
-        $("#inputDateText").value = state.dateText || "";
-        $("#overlayText").classList.remove("hidden");
-      }
-      if (e.key === "Escape") {
-        $("#overlayText").classList.add("hidden");
-        closeBoxModal();
-      }
-    });
+  if (state.view === "layout") {
+    renderLayout();
+    return;
+  }
 
-    $("#saveText").onclick = async () => {
-      state.dateText = $("#inputDateText").value;
-      render();
-      $("#overlayText").classList.add("hidden");
-      await writeState();
-    };
-
-    $("#closeText").onclick = () => {
-      $("#overlayText").classList.add("hidden");
-    };
+  if (currentTab === 'box') {
+    renderMain();
+  } else if (currentTab === 'wait') {
+    renderWait();
+  } else if (currentTab === 'seat') {
+    renderSeat();
   }
 }
+
+/* ---------- EVENTS ---------- */
+saveTextBtn.onclick = ()=>{
+  state.dateText = inputDateText.value.trim();
+  saveState(); closeTextModal(); renderHeader();
+};
+closeTextBtn.onclick = closeTextModal;
+
+addBoxBtn.onclick = ()=>openBoxModal(null);
+cancelBoxBtn.onclick = closeBoxModal;
+
+saveBoxBtn.onclick = ()=>{
+  const data = {
+    id: editingBoxId || uid(),
+    title: boxTitle.value || "(untitled)",
+    status: boxStatus.value,
+    buyin: boxBuyin.value,
+    time: boxTime.value,
+    extraLabel: boxExtraLabel.value,
+    extraValue: boxExtraValue.value,
+  };
+  if(editingBoxId)
+    state.boxes = state.boxes.map(b=>b.id===editingBoxId?data:b);
+  else
+    state.boxes.push(data);
+
+  saveState(); closeBoxModal(); render();
+};
+
+/* ---------- KEYBOARD ---------- */
+document.addEventListener("keydown",(e)=>{
+  if(isTyping(document.activeElement)) return;
+  const k = e.key.toLowerCase();
+
+  if(k==="escape"){ closeBoxModal(); closeTextModal(); }
+  if(k==="e") openTextModal();
+  if(k==="w" && state.view==="main") openBoxModal(null);
+  if(k==="b" && state.view==="layout") backToMain();
+});
+
+/* ---------- BOOTSTRAP ---------- */
+if(!loadState() || !state.boxes || state.boxes.length === 0){
+  state.boxes = [
+    {
+      id: uid(),
+      title: "Sample Box 1",
+      status: "Opened",
+      buyin: "1,000,000 KRW",
+      time: "12:00",
+      extraLabel: "Entries",
+      extraValue: "0"
+    }
+  ];
+  saveState();
+}
+render();
+
