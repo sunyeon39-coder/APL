@@ -7,12 +7,50 @@
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
   <script>document.documentElement.classList.add('page-enter');</script>
-<title>Layout</title>
+  <title>Layout</title>
 
   <!-- 공통 / 레이아웃 스타일 -->
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="layout_styles.css">
 </head>
+
+<!-- ================= LAYOUT AUTH GUARD ================= -->
+<script type="module">
+  import { auth } from "./firebase.js";
+  import {
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  const params = new URLSearchParams(location.search);
+
+  let eventId = params.get("eventId");
+  const boxId = params.get("boxId");
+
+  // 🔥 index와 동일한 eventId 복원 로직
+  if (!eventId) {
+    eventId = sessionStorage.getItem("eventId");
+  }
+
+  if (eventId) {
+    sessionStorage.setItem("eventId", eventId);
+  }
+
+  onAuthStateChanged(auth, user => {
+    if (!user) {
+      location.replace("login.html");
+      return;
+    }
+
+    // boxId는 layout 필수
+    if (!boxId) {
+      location.replace(
+        `index.html${eventId ? `?eventId=${eventId}` : ""}`
+      );
+      return;
+    }
+  });
+</script>
+
 <body>
 
   <!-- =========================
@@ -42,12 +80,13 @@
     </button>
 
     <a
-  id="layoutBackBtn"
-  class="btn back-btn"
-  href="index.html"
- onclick="__go(this.href,true); return false;">
-  Back
-</a>
+      id="layoutBackBtn"
+      class="btn back-btn"
+      href="index.html"
+      onclick="__go(this.href,true); return false;"
+    >
+      Back
+    </a>
   </div>
 
   <!-- =========================
@@ -111,27 +150,25 @@
   </div>
 
   <!-- =========================
-       Layout App JS
-  ========================== --><script>
-  // Page transition helper (prevents 1-frame overlap during navigation)
-  window.__go = function(url, replace){
-    try{
-      document.documentElement.classList.add('page-exit');
-      // kill any overlap instantly
-      document.body.style.visibility = 'hidden';
-    }catch(e){}
-    if(replace){
-      location.replace(url);
-    }else{
-      location.href = url;
-    }
-  };
-  window.addEventListener('DOMContentLoaded', function(){
-    document.documentElement.classList.remove('page-enter');
-    document.documentElement.classList.add('page-ready');
-  }, { once:true });
-</script>
+       Page Transition Helper
+  ========================== -->
+  <script>
+    window.__go = function(url, replace){
+      try{
+        document.documentElement.classList.add('page-exit');
+        document.body.style.visibility = 'hidden';
+      }catch(e){}
+      replace ? location.replace(url) : location.href = url;
+    };
+    window.addEventListener('DOMContentLoaded', function(){
+      document.documentElement.classList.remove('page-enter');
+      document.documentElement.classList.add('page-ready');
+    }, { once:true });
+  </script>
 
+  <!-- =========================
+       Layout App JS
+  ========================== -->
   <script type="module" src="layout_app.js"></script>
 
 </body>
