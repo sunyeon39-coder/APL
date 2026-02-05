@@ -1,21 +1,33 @@
-// index.js — CLICK SAFE PATCH (FINAL)
-// 목적: index 화면에서 클릭이 막히는 문제만 해결
-// ⚠️ 기능/UX/UI 변경 없음
+// index.js — ADMIN GATE + CLICK SAFE (EXISTING FILE PATCH)
+// ❗ 새 기능 추가 없음 / 기존 app.js 로직 그대로 사용
 
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// 클릭 차단 잔여 제거 (page-enter 안전 해제)
 document.addEventListener("DOMContentLoaded", () => {
-  // page transition 잔여 상태 제거
   document.documentElement.classList.remove("page-enter");
   document.documentElement.classList.add("page-ready");
-
-  // 혹시 남아있는 클릭 방해 레이어 제거
-  document.querySelectorAll(
-    ".overlay, .loading, .blocker, .page-block, .modal-block"
-  ).forEach(el => {
-    el.style.pointerEvents = "none";
-  });
-
-  // body 클릭 복구
   document.body.style.pointerEvents = "auto";
+});
 
-  console.log("✅ index.js: click restored");
+// admin 권한에 따라 버튼 표시 제어
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
+
+  let role = "user";
+  try {
+    const snap = await getDoc(doc(db, "users", user.uid));
+    if (snap.exists() && snap.data().role) {
+      role = snap.data().role;
+    }
+  } catch (e) {
+    console.warn("role check failed:", e);
+  }
+
+  const adminAreas = document.querySelectorAll(".admin-actions");
+  adminAreas.forEach(el => {
+    el.style.display = role === "admin" ? "" : "none";
+  });
 });
