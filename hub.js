@@ -139,7 +139,7 @@ async function ensureUserDocFromHub(user) {
 =============================== */
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    location.replace("login.html");
+    location.replace("/login");
     return;
   }
 
@@ -269,7 +269,7 @@ function renderTournaments() {
     `;
 
     row.addEventListener("click", () => {
-      location.href = `index.html?eventId=${t.id}`;
+      location.href = `/index?eventId=${t.id}`;
     });
 
     if (currentUserRole === "admin") {

@@ -11,6 +11,9 @@ import {
   signInWithRedirect,
   getRedirectResult,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   doc,
@@ -23,7 +26,7 @@ import {
    CONFIG
 =============================== */
 
-const REDIRECT_URL = "hub.html";
+const REDIRECT_URL = "/hub";
 
 /* (선택) 특정 이메일을 admin으로 자동 부여하고 싶으면 여기에 추가 */
 const ADMIN_EMAILS = [
@@ -118,6 +121,16 @@ loginBtn?.addEventListener("click", async () => {
   provider.setCustomParameters({ prompt: "select_account" });
 
   try {
+  try {
+    // 🔥 iOS/Safari에서 redirect 후 세션이 풀려 로그인 화면으로 되돌아오는 문제 완화
+    // - 우선 localPersistence 시도
+    // - 실패 시 sessionPersistence로 폴백
+    try{
+      await setPersistence(auth, browserLocalPersistence);
+    }catch(e){
+      try{ await setPersistence(auth, browserSessionPersistence); }catch(_){}
+    }
+
     if (isMobileLike()) {
       console.log("📱 mobile → redirect login");
       sessionStorage.setItem("__bb_redirect_pending", "1");

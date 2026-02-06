@@ -1,5 +1,33 @@
 console.log("🔥 layout_app.js FINAL – UI FIRST / FIRESTORE SYNC");
 
+
+/* =================================================
+   CLICK SAFE RESTORE (LAYOUT 버튼 클릭 안됨 방지)
+   - UI/UX 변경 없이, '숨겨진 레이어가 클릭을 먹는' 케이스만 제거
+   ================================================= */
+(function(){
+  try{
+    document.documentElement.classList.remove("page-enter");
+    document.documentElement.classList.add("page-ready");
+    document.body.style.pointerEvents = "auto";
+
+    // 숨김 처리된 overlay류는 클릭을 먹지 않게
+    const blockers = document.querySelectorAll(".overlay, .loading, .blocker, .page-block, .modal-block, .layout-loading");
+    blockers.forEach(el => {
+      const isHidden =
+        el.classList.contains("hidden") ||
+        el.getAttribute("aria-hidden") === "true" ||
+        getComputedStyle(el).display === "none" ||
+        getComputedStyle(el).visibility === "hidden";
+      if (isHidden) el.style.pointerEvents = "none";
+    });
+
+    // top bar는 항상 클릭 가능
+    const top = document.querySelector(".layout-top");
+    if (top) top.style.pointerEvents = "auto";
+  }catch(e){}
+})();
+
 /* =================================================
    IMPORT
    ================================================= */
