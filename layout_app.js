@@ -1,175 +1,99 @@
-/* =================================================
-   🔥 layout_app.js STABLE FINAL
-   ================================================= */
+const seatGrid = document.getElementById("seatGrid");
+const waitingGrid = document.getElementById("waitingGrid");
 
-import { db, auth } from "./firebase.js";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import {
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+const addSeatBtn = document.getElementById("addSeatBtn");
+const addWaitingBtn = document.getElementById("addWaitingBtn");
+const waitingInput = document.getElementById("waitingInput");
 
-/* =================================================
-   STATE
-   ================================================= */
-const STATE_REF = doc(db, "boxboard", "state");
+let seats = [];
+let waiting = [];
 
-let role = "user";
-let hydrated = false;
-let saving = false;
-let unsubscribe = null;
+let selectedSeat = null;
+let selectedWaiting = null;
 
-const layout = {
-  seats: {},
-  waiting: []
+/* ======================
+   RENDER
+====================== */
+function render() {
+  seatGrid.innerHTML = "";
+  waitingGrid.innerHTML = "";
+
+  seats.forEach((name, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.textContent = name;
+
+    if (selectedSeat === i) card.style.outline = "2px solid #6b7cff";
+
+    card.onclick = () => {
+      if (selectedWaiting !== null) {
+        seats[i] = waiting[selectedWaiting];
+        waiting.splice(selectedWaiting, 1);
+        selectedWaiting = null;
+      } else {
+        selectedSeat = i;
+      }
+      render();
+    };
+
+    const del = document.createElement("button");
+    del.className = "delete";
+    del.textContent = "×";
+    del.onclick = e => {
+      e.stopPropagation();
+      seats.splice(i, 1);
+      render();
+    };
+
+    card.appendChild(del);
+    seatGrid.appendChild(card);
+  });
+
+  waiting.forEach((name, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.textContent = name;
+
+    if (selectedWaiting === i) card.style.outline = "2px solid #ffd166";
+
+    card.onclick = () => {
+      if (selectedSeat !== null) {
+        seats[selectedSeat] = name;
+        selectedSeat = null;
+        waiting.splice(i, 1);
+      } else {
+        selectedWaiting = i;
+      }
+      render();
+    };
+
+    const del = document.createElement("button");
+    del.className = "delete";
+    del.textContent = "×";
+    del.onclick = e => {
+      e.stopPropagation();
+      waiting.splice(i, 1);
+      render();
+    };
+
+    card.appendChild(del);
+    waitingGrid.appendChild(card);
+  });
+}
+
+/* ======================
+   EVENTS
+====================== */
+addSeatBtn.onclick = () => {
+  seats.push("Seat " + (seats.length + 1));
+  render();
 };
 
-const $ = id => document.getElementById(id);
+addWaitingBtn.onclick = () => {
+  if (!waitingInput.value.trim()) return;
+  waiting.push(waitingInput.value.trim());
+  waitingInput.value = "";
+  render();
+};
 
-/* =================================================
-   BOOT
-   ================================================= */
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🔥 layout_app.js STABLE BOOT");
-
-  bindUI();
-  bootAuth();
-});
-
-/* =================================================
-   AUTH
-   ================================================= */
-function bootAuth() {
-  onAuthStateChanged(auth, async user => {
-    if (!user) {
-      location.replace("login.html");
-      return;
-    }
-
-    const snap = await getDoc(doc(db, "users", user.uid));
-    role = snap.exists() ? snap.data().role || "user" : "user";
-
-    applyRoleUI();
-    subscribe();
-  });
-}
-
-/* =================================================
-   ROLE UI
-   ================================================= */
-function applyRoleUI() {
-  if (role === "admin") return;
-
-  $("addSeatBtn")?.remove();
-  $("addWaitingBtn")?.remove();
-}
-
-/* =================================================
-   SUBSCRIBE
-   ================================================= */
-function subscribe() {
-  const boxId = new URLSearchParams(location.search).get("boxId");
-  if (!boxId || unsubscribe) return;
-
-  unsubscribe = onSnapshot(STATE_REF, snap => {
-    if (!snap.exists() || saving) return;
-
-    const box = snap.data().boxes?.find(b => b.id === boxId);
-    if (!box) return;
-
-    const server = box.layout || { seats: {}, waiting: [] };
-
-    layout.seats = structuredClone(server.seats || {});
-    layout.waiting = structuredClone(server.waiting || []);
-
-    renderSeats();
-    renderWaiting();
-  });
-}
-
-/* =================================================
-   RENDER
-   ================================================= */
-function renderSeats() {
-  const grid = $("layoutGrid");
-  if (!grid) return;
-
-  grid.innerHTML = "";
-
-  Object.keys(layout.seats).sort().forEach(n => {
-    const seat = document.createElement("div");
-    seat.className = "seat card";
-    seat.dataset.seat = n;
-
-    const data = layout.seats[n];
-
-    seat.innerHTML = `
-      <div class="badge">Seat ${n}</div>
-      <h3>${data?.name || "비어있음"}</h3>
-    `;
-
-    grid.appendChild(seat);
-  });
-}
-
-function renderWaiting() {
-  const list = $("waitingList");
-  if (!list) return;
-
-  list.innerHTML = "";
-
-  if (!layout.waiting.length) {
-    list.innerHTML = `<div class="empty">대기자 없음</div>`;
-    return;
-  }
-
-  layout.waiting.forEach(w => {
-    const div = document.createElement("div");
-    div.className = "waiting card";
-    div.textContent = w.name;
-    list.appendChild(div);
-  });
-}
-
-/* =================================================
-   UI EVENTS
-   ================================================= */
-function bindUI() {
-  $("addSeatBtn")?.addEventListener("click", () => {
-    if (role !== "admin") return;
-    const next = Object.keys(layout.seats).length + 1;
-    layout.seats[next] = null;
-    save();
-  });
-
-  $("addWaitingBtn")?.addEventListener("click", () => {
-    const input = $("waitingNameInput");
-    if (!input.value.trim()) return;
-    layout.waiting.push({ name: input.value.trim(), startedAt: Date.now() });
-    input.value = "";
-    save();
-  });
-}
-
-/* =================================================
-   SAVE
-   ================================================= */
-function save() {
-  const boxId = new URLSearchParams(location.search).get("boxId");
-  if (!boxId) return;
-
-  saving = true;
-
-  getDoc(STATE_REF).then(snap => {
-    const boxes = snap.data().boxes || [];
-    const idx = boxes.findIndex(b => b.id === boxId);
-    if (idx === -1) return;
-
-    boxes[idx].layout = layout;
-    return setDoc(STATE_REF, { boxes }, { merge: true });
-  }).finally(() => saving = false);
-}
+render();

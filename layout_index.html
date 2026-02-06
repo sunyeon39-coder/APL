@@ -2,16 +2,15 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Layout</title>
-
   <link rel="stylesheet" href="layout_styles.css" />
 </head>
 <body>
 
 <div class="layout-wrap">
 
-  <!-- TOP BAR -->
+  <!-- TOP -->
   <header class="layout-top">
     <button id="addSeatBtn" class="btn">+ Seat 추가</button>
     <button class="btn back" onclick="history.back()">Back</button>
@@ -19,21 +18,20 @@
 
   <!-- SEAT AREA -->
   <main class="layout-main">
-    <section id="layoutGrid" class="seat-grid"></section>
+    <section id="seatGrid" class="grid"></section>
   </main>
 
-  <!-- WAITING AREA -->
+  <!-- WAITING -->
   <footer class="layout-bottom">
-    <div class="waiting-header">
-      <input id="waitingNameInput" placeholder="대기자 이름" />
-      <button id="addWaitingBtn" class="btn">+ 대기자 추가</button>
+    <div class="waiting-input">
+      <input id="waitingInput" placeholder="대기자 이름" />
+      <button id="addWaitingBtn" class="btn primary">+ 대기자 추가</button>
     </div>
-
-    <section id="waitingList" class="waiting-list"></section>
+    <section id="waitingGrid" class="waiting-grid"></section>
   </footer>
 
 </div>
 
-<script type="module" src="layout_app.js"></script>
+<script src="layout_app.js"></script>
 </body>
 </html>
