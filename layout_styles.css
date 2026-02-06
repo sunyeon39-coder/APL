@@ -99,3 +99,20 @@ html, body {
   color: #ff5c7c;
   cursor: pointer;
 }
+/* 🔥 클릭 차단 레이어 전부 무력화 */
+.layout-main,
+.layout-bottom,
+.layout-wrap {
+  pointer-events: auto;
+}
+
+/* 🔥 seat / waiting 영역만 클릭 */
+.seat-grid,
+.waiting-list,
+.layout-top,
+button,
+input {
+  pointer-events: auto;
+}
+
+/* ❌ 절대 전체 영역에 pointer-events:none 쓰지 마 */
