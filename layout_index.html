@@ -9,167 +9,78 @@
   <script>document.documentElement.classList.add('page-enter');</script>
   <title>Layout</title>
 
-  <!-- 공통 / 레이아웃 스타일 -->
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="layout_styles.css">
 </head>
 
-<!-- ================= LAYOUT AUTH GUARD ================= -->
+<!-- ================= AUTH GUARD ================= -->
 <script type="module">
   import { auth } from "./firebase.js";
-  import {
-    onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { onAuthStateChanged } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
   const params = new URLSearchParams(location.search);
-
-  let eventId = params.get("eventId");
   const boxId = params.get("boxId");
-
-  // 🔥 index와 동일한 eventId 복원 로직
-  if (!eventId) {
-    eventId = sessionStorage.getItem("eventId");
-  }
-
-  if (eventId) {
-    sessionStorage.setItem("eventId", eventId);
-  }
 
   onAuthStateChanged(auth, user => {
     if (!user) {
       location.replace("login.html");
       return;
     }
-
-    // boxId는 layout 필수
     if (!boxId) {
-      location.replace(
-        `index.html${eventId ? `?eventId=${eventId}` : ""}`
-      );
-      return;
+      location.replace("index.html");
     }
   });
 </script>
 
 <body>
 
-  <!-- =========================
-       Loading Overlay (선택)
-       ❗ 절대 header 위로 못 올라감
-  ========================== -->
-  <div
-    id="layoutBootLoading"
-    class="layout-loading hidden"
-    aria-hidden="true"
-  >
-    <div class="spinner"></div>
+  <!-- Loading -->
+  <div id="layoutBootLoading" class="layout-loading hidden">
     <div>Loading…</div>
   </div>
 
-  <!-- =========================
-       TOP BAR (🔥 최상단 고정)
-       Back 버튼 안전 영역
-  ========================== -->
+  <!-- TOP BAR -->
   <div class="layout-top">
-    <button
-      id="addSeatBtn"
-      class="btn"
-      type="button"
-    >
-      + Seat 추가
-    </button>
-
-    <a
-      id="layoutBackBtn"
-      class="btn back-btn"
-      href="index.html"
-      onclick="__go(this.href,true); return false;"
-    >
-      Back
-    </a>
+    <button id="addSeatBtn" class="btn">+ Seat 추가</button>
+    <a id="layoutBackBtn" class="btn back-btn" href="index.html">Back</a>
   </div>
 
-  <!-- =========================
-       MAIN WRAP
-       header와 완전히 분리
-  ========================== -->
+  <!-- MAIN -->
   <div class="layout-wrap">
 
-    <!-- =========================
-         TOP AREA (좌석 / 스크롤)
-         ❗ header 영역 침범 금지
-    ========================== -->
+    <!-- SEAT AREA -->
     <div class="top-area">
-      <div
-        class="layout-grid"
-        id="layoutGrid"
-        aria-label="Seat Layout"
-      >
-        <!-- Seat 카드들 JS에서 생성 -->
-      </div>
+      <div id="layoutGrid" class="layout-grid"></div>
     </div>
 
-    <!-- =========================
-         BOTTOM AREA (대기자)
-    ========================== -->
+    <!-- WAITING AREA -->
     <div class="bottom-area">
-
-      <!-- 대기자 입력 (user일 경우 JS에서 제거됨) -->
-      <div
-        class="waiting-header"
-        role="group"
-        aria-label="대기자 추가"
-      >
+      <div class="waiting-header">
         <input
           id="waitingNameInput"
-          type="text"
-          inputmode="text"
-          autocomplete="off"
           placeholder="대기자 이름"
+          autocomplete="off"
         />
-        <button
-          id="addWaitingBtn"
-          type="button"
-        >
-          + 대기자 추가
-        </button>
+        <button id="addWaitingBtn">+ 대기자 추가</button>
       </div>
 
       <div class="wait-scroll">
-        <section
-          id="waitingList"
-          class="waiting-grid"
-          aria-label="대기자 목록"
-        >
-          <!-- 대기자 카드 -->
-        </section>
+        <section id="waitingList" class="waiting-grid"></section>
       </div>
-
     </div>
 
   </div>
 
-  <!-- =========================
-       Page Transition Helper
-  ========================== -->
+  <!-- PAGE TRANSITION -->
   <script>
-    window.__go = function(url, replace){
-      try{
-        document.documentElement.classList.add('page-exit');
-        document.body.style.visibility = 'hidden';
-      }catch(e){}
-      replace ? location.replace(url) : location.href = url;
-    };
-    window.addEventListener('DOMContentLoaded', function(){
-      document.documentElement.classList.remove('page-enter');
-      document.documentElement.classList.add('page-ready');
+    window.addEventListener("DOMContentLoaded", ()=>{
+      document.documentElement.classList.remove("page-enter");
+      document.documentElement.classList.add("page-ready");
     }, { once:true });
   </script>
 
-  <!-- =========================
-       Layout App JS
-  ========================== -->
-  <script type="module" src="layout_app.js"></script>
-
+  <!-- APP -->
+  <script src="layout_app.js"></script>
 </body>
 </html>

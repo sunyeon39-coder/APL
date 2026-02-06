@@ -1,9 +1,7 @@
 console.log("🔥 layout_app.js FINAL – UI FIRST / FIRESTORE SYNC");
 
-
 /* =================================================
-   CLICK SAFE RESTORE (LAYOUT 버튼 클릭 안됨 방지)
-   - UI/UX 변경 없이, '숨겨진 레이어가 클릭을 먹는' 케이스만 제거
+   CLICK SAFE RESTORE
    ================================================= */
 (function(){
   try{
@@ -11,25 +9,25 @@ console.log("🔥 layout_app.js FINAL – UI FIRST / FIRESTORE SYNC");
     document.documentElement.classList.add("page-ready");
     document.body.style.pointerEvents = "auto";
 
-    // 숨김 처리된 overlay류는 클릭을 먹지 않게
-    const blockers = document.querySelectorAll(".overlay, .loading, .blocker, .page-block, .modal-block, .layout-loading");
+    const blockers = document.querySelectorAll(
+      ".overlay, .loading, .blocker, .page-block, .modal-block, .layout-loading"
+    );
     blockers.forEach(el => {
+      const cs = getComputedStyle(el);
       const isHidden =
         el.classList.contains("hidden") ||
         el.getAttribute("aria-hidden") === "true" ||
-        getComputedStyle(el).display === "none" ||
-        getComputedStyle(el).visibility === "hidden";
+        cs.display === "none" ||
+        cs.visibility === "hidden";
       if (isHidden) el.style.pointerEvents = "none";
     });
 
-    // top bar는 항상 클릭 가능
-    const top = document.querySelector(".layout-top");
-    if (top) top.style.pointerEvents = "auto";
+    document.querySelector(".layout-top")?.style.pointerEvents = "auto";
   }catch(e){}
 })();
 
 /* =================================================
-   IMPORT
+   IMPORT (🔥 auth 중복 제거됨)
    ================================================= */
 import { db, auth } from "./firebase.js";
 import {
@@ -38,9 +36,9 @@ import {
   setDoc,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { onAuthStateChanged } from
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { auth } from "./firebase.js";
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 /* =================================================
    CONST / STATE
@@ -62,7 +60,6 @@ let suppressClick = false;
 /* UI ↔ Firestore 보호 */
 let hasHydrated = false;
 let isSaving = false;
-
 let unsubscribeLayout = null;
 
 const $ = id => document.getElementById(id);
@@ -113,54 +110,41 @@ function applyRoleUI() {
    ================================================= */
 function subscribeLayout() {
   const boxId = getBoxId();
-  if (!boxId) return;
+  if (!boxId || unsubscribeLayout) return;
 
-  // 🔥 이미 구독 중이면 다시 안 건다
-  if (unsubscribeLayout) {
-    console.warn("⚠️ layout already subscribed");
-    return;
-  }
+  unsubscribeLayout = onSnapshot(
+    STATE_REF,
+    snap => {
+      if (!snap.exists() || isSaving) return;
 
-  onAuthStateChanged(auth, user => {
-    if (!user) return;
+      const box = snap.data().boxes?.find(b => b.id === boxId);
+      if (!box) return;
 
-    unsubscribeLayout = onSnapshot(
-      STATE_REF,
-      snap => {
-        if (!snap.exists()) return;
-        if (isSaving) return;
+      const serverLayout = box.layout || { seats: {}, waiting: [] };
 
-        const box = snap.data().boxes?.find(b => b.id === boxId);
-        if (!box) return;
-
-        const serverLayout = box.layout || { seats: {}, waiting: [] };
-
-        if (!hasHydrated) {
-          layout.seats = structuredClone(serverLayout.seats || {});
-          layout.waiting = structuredClone(serverLayout.waiting || []);
-          hasHydrated = true;
-          renderLayout();
-          renderWaitList();
-          return;
-        }
-
-        if (
-          JSON.stringify(layout.seats) !== JSON.stringify(serverLayout.seats) ||
-          JSON.stringify(layout.waiting) !== JSON.stringify(serverLayout.waiting)
-        ) {
-          layout.seats = structuredClone(serverLayout.seats || {});
-          layout.waiting = structuredClone(serverLayout.waiting || []);
-          renderLayout();
-          renderWaitList();
-        }
-      },
-      err => {
-        // ❗ 여기서는 절대 redirect 금지
-        console.warn("⚠️ layout listen error (ignored):", err.code);
+      if (!hasHydrated) {
+        layout.seats = structuredClone(serverLayout.seats || {});
+        layout.waiting = structuredClone(serverLayout.waiting || []);
+        hasHydrated = true;
+        renderLayout();
+        renderWaitList();
+        return;
       }
-    );
-  });
+
+      if (
+        JSON.stringify(layout.seats) !== JSON.stringify(serverLayout.seats) ||
+        JSON.stringify(layout.waiting) !== JSON.stringify(serverLayout.waiting)
+      ) {
+        layout.seats = structuredClone(serverLayout.seats || {});
+        layout.waiting = structuredClone(serverLayout.waiting || []);
+        renderLayout();
+        renderWaitList();
+      }
+    },
+    err => console.warn("⚠️ layout listen error (ignored):", err.code)
+  );
 }
+
 /* =================================================
    RENDER – SEATS
    ================================================= */

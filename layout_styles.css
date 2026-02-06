@@ -1,8 +1,85 @@
-/* layout_styles.css (minimal fallback)
-   실제 레이아웃 스타일 파일이 있다면 그걸 사용하세요.
-*/
-.layout-wrap{height:100vh;display:flex;flex-direction:column;overflow:hidden}
-.layout-top{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;position:sticky;top:0;z-index:2000;background:rgba(11,16,32,.92);backdrop-filter:blur(8px)}
-.layout-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px}
-@media (max-width:900px){.layout-grid{grid-template-columns:repeat(2,1fr)}}
-.waiting-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
+/* =================================================
+   Layout – STABLE + MOBILE SAFE
+   ================================================= */
+
+.layout-wrap{
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* Top bar */
+.layout-top{
+  position:sticky;
+  top:0;
+  z-index:2000;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px;
+  background:rgba(11,16,32,.92);
+  backdrop-filter:blur(8px);
+}
+
+/* Seat area */
+.top-area{
+  flex:1 1 auto;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.layout-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  padding:12px;
+}
+
+@media (max-width:900px){
+  .layout-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+
+/* Waiting area */
+.bottom-area{
+  flex:0 0 auto;
+  background:rgba(10,14,28,.95);
+  border-top:1px solid rgba(255,255,255,.08);
+}
+
+/* Waiting input */
+.waiting-header{
+  display:flex;
+  gap:8px;
+  padding:10px 12px;
+}
+
+.waiting-header input{
+  flex:1;
+  padding:8px;
+}
+
+/* Waiting list scroll */
+.wait-scroll{
+  max-height:35vh;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.waiting-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+  padding:12px;
+}
+
+/* Cards */
+.seat-card,
+.wait-card{
+  padding:12px;
+  border-radius:12px;
+  background:rgba(255,255,255,.08);
+  cursor:pointer;
+}
