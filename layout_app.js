@@ -1,9 +1,15 @@
-// layout_app.js — BoxBoard Layout (PRODUCTION BASE)
-// Firestore + Role + Timer + Shortcuts
-// Seat is FIXED slot. People move, seats do not.
+// layout_app.js — Firestore + Role + Timer + Shortcuts (Dealer-use v2)
+// 요구사항 반영:
+// - Empty 텍스트 제거
+// - Seat 라벨을 prompt로 직접 입력
+// - Waiting #n 제거
+// - Waiting은 세로 스크롤
+// - Seat 고정(슬롯 객체 유지) + 사람만 이동/스왑
+//
+// ⚠️ 같은 폴더에 firebase.js 필요:
+// export const db, auth;
 
 import { db, auth } from "./firebase.js";
-
 import {
   doc,
   getDoc,
@@ -11,644 +17,522 @@ import {
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-import {
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { onAuthStateChanged } from
+  "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 /* ===============================
    DOM
 =============================== */
-const $ = (id) => document.getElementById(id);
-
-const gridEl = $("layoutGrid");
-const waitingListEl = $("waitingList");
-const addSeatBtn = $("addSeatBtn");
-const waitingNameInput = $("waitingNameInput");
-const addWaitingBtn = $("addWaitingBtn");
+const seatGrid = document.getElementById("seatGrid");
+const waitingGrid = document.getElementById("waitingGrid");
+const addSeatBtn = document.getElementById("addSeatBtn");
+const addWaitingBtn = document.getElementById("addWaitingBtn");
+const waitingInput = document.getElementById("waitingInput");
 
 /* ===============================
-   ROUTE / REF
+   STATE
 =============================== */
-function getBoxId() {
-  return new URLSearchParams(location.search).get("boxId") || "default";
-}
-const boxId = getBoxId();
+const boxId = new URLSearchParams(location.search).get("boxId") || "default";
 const DOC_REF = doc(db, "boxboard_layouts", boxId);
-const LS_KEY = `boxboard_layout_${boxId}_v1`;
+const LS_KEY = `boxboard_layout_${boxId}_v2`;
+
+let currentUser = null;
+let currentUserRole = "user"; // admin | user
+
+// Seat는 '고정 슬롯' 객체. (배열 순서가 곧 레이아웃)
+let state = {
+  seats: [],   // [{id: "A", name: null|"홍길동", start: number|null}]
+  waiting: []  // [{id: "w_xxx", name: "홍길동", start: number}]
+};
+
+let selectedSeatId = null;     // string seat.id
+let selectedWaitingId = null;  // string waiting.id
+
+// Firestore 보호
+let hasHydrated = false;
+let isSaving = false;
+
+const uid = () => "w_" + Math.random().toString(36).slice(2, 10);
+const now = () => Date.now();
+
+/* ===============================
+   TIME
+=============================== */
+function formatElapsed(ms){
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const mm = String(m % 60).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+}
 
 /* ===============================
    ROLE
 =============================== */
-let currentUser = null;
-let currentUserRole = "user"; // "admin" | "user"
-
-/* ===============================
-   STATE (Seat is fixed slot)
-=============================== */
-const state = {
-  version: 1,
-  seats: [],    // [{id:number, name:string|null, start:number|null}]
-  waiting: [],  // [{id:string, name:string, start:number}]
-  updatedAt: null
-};
-
-// selection
-let selectedSeatId = null;
-let selectedWaitingId = null;
-
-/* Firestore hydration / loop guard */
-let hasHydrated = false;
-let isSaving = false;
-
-/* ===============================
-   UTIL
-=============================== */
-const uid = () => "w_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now();
-
-function isTypingTarget(el) {
-  if (!el) return false;
-  const tag = el.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
-}
-
-function formatElapsed(ms) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${m}:${String(sec).padStart(2, "0")}`;
-}
-
-function nowMs() {
-  return Date.now();
-}
-
-function cloneClean(obj) {
-  return JSON.parse(JSON.stringify(obj));
+function applyRoleUI(){
+  const isAdmin = currentUserRole === "admin";
+  addSeatBtn.disabled = !isAdmin;
+  addWaitingBtn.disabled = !isAdmin;
+  waitingInput.disabled = !isAdmin;
 }
 
 /* ===============================
-   STORAGE
+   STORAGE (LOCAL CACHE)
 =============================== */
-function loadLocal() {
-  try {
+function loadLocal(){
+  try{
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return false;
-    if (!Array.isArray(parsed.seats) || !Array.isArray(parsed.waiting)) return false;
-    state.seats = parsed.seats;
-    state.waiting = parsed.waiting;
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(!data || typeof data !== "object") return false;
+    if(Array.isArray(data.seats)) state.seats = data.seats;
+    if(Array.isArray(data.waiting)) state.waiting = data.waiting;
     return true;
-  } catch {
+  }catch(e){
     return false;
   }
 }
-
-function saveLocal() {
-  try {
+function saveLocal(){
+  try{
     localStorage.setItem(LS_KEY, JSON.stringify({
-      version: state.version,
       seats: state.seats,
       waiting: state.waiting
     }));
-  } catch {}
+  }catch(e){}
 }
 
 /* ===============================
-   ROLE UI GATE
+   FIRESTORE SYNC
 =============================== */
-function isAdmin() {
-  return currentUserRole === "admin";
-}
-
-function applyRoleUI() {
-  const admin = isAdmin();
-
-  // buttons
-  if (addSeatBtn) addSeatBtn.style.display = admin ? "" : "none";
-  if (addWaitingBtn) addWaitingBtn.disabled = !admin;
-  if (waitingNameInput) waitingNameInput.disabled = !admin;
-
-  // hint (optional)
-  document.body.dataset.role = admin ? "admin" : "user";
-}
-
-/* ===============================
-   FIRESTORE
-=============================== */
-async function ensureUserDoc(uid) {
-  // You may already manage users elsewhere; this only reads role.
-  const uref = doc(db, "users", uid);
-  const snap = await getDoc(uref);
-  if (snap.exists()) {
-    const data = snap.data() || {};
-    currentUserRole = data.role === "admin" ? "admin" : "user";
-  } else {
-    // default user role; do not auto-write role here (safer)
-    currentUserRole = "user";
-  }
-  applyRoleUI();
-}
-
-async function saveRemote() {
-  if (!currentUser) return;
-  if (isSaving) return;
-
+async function saveRemote(){
+  if(currentUserRole !== "admin") return;
   isSaving = true;
-  try {
-    const payload = {
-      version: state.version,
+  try{
+    await setDoc(DOC_REF, {
       seats: state.seats,
       waiting: state.waiting,
-      updatedAt: serverTimestamp(),
-      updatedBy: currentUser.uid
-    };
-    await setDoc(DOC_REF, payload, { merge: true });
-    saveLocal();
-  } catch (e) {
-    console.warn("saveRemote failed:", e);
-    // still keep local
-    saveLocal();
-  } finally {
-    // small delay prevents immediate snapshot echo from re-entering
-    setTimeout(() => { isSaving = false; }, 120);
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }finally{
+    // snapshot이 올 때까지 잠깐 딜레이 주면 루프가 더 줄어듦
+    setTimeout(() => { isSaving = false; }, 150);
   }
 }
 
-function attachSnapshot() {
-  onSnapshot(DOC_REF, (snap) => {
-    if (!snap.exists()) return;
-
-    const data = snap.data() || {};
-    const incomingSeats = Array.isArray(data.seats) ? data.seats : null;
-    const incomingWaiting = Array.isArray(data.waiting) ? data.waiting : null;
-
-    if (!incomingSeats || !incomingWaiting) return;
-
-    // If we're saving, ignore echo unless first hydration
-    if (isSaving && hasHydrated) return;
-
-    state.seats = incomingSeats;
-    state.waiting = incomingWaiting;
-
-    // keep selections valid
-    if (selectedSeatId != null && !state.seats.some(s => s.id === selectedSeatId)) selectedSeatId = null;
-    if (selectedWaitingId != null && !state.waiting.some(w => w.id === selectedWaitingId)) selectedWaitingId = null;
-
-    hasHydrated = true;
-    saveLocal();
-    renderAll();
-  });
+function saveAndRender(){
+  saveLocal();
+  render(); // 즉시 UI 반영
+  // 원격은 admin만
+  saveRemote();
 }
 
 /* ===============================
-   STATE HELPERS
+   MUTATIONS (Dealer-safe)
 =============================== */
-function getSeatById(id) {
-  return state.seats.find(s => s.id === id) || null;
+function getSeatById(id){
+  return state.seats.find(s => String(s.id) === String(id)) || null;
 }
-function getWaitingById(id) {
+function getWaitingById(id){
   return state.waiting.find(w => w.id === id) || null;
 }
 
-function ensureSeatSlots(minCount = 1) {
-  const maxId = state.seats.reduce((m, s) => Math.max(m, s.id), -1);
-  while (state.seats.length < minCount) {
-    state.seats.push({ id: maxId + 1 + (state.seats.length - minCount + 1), name: null, start: null });
+function assignWaitingToSeat(waitingId, seatId){
+  const seat = getSeatById(seatId);
+  const wIdx = state.waiting.findIndex(w => w.id === waitingId);
+  if(!seat || wIdx < 0) return;
+
+  const w = state.waiting[wIdx];
+
+  // seat가 비어있으면 배정
+  if(!seat.name){
+    seat.name = w.name;
+    seat.start = w.start;
+    state.waiting.splice(wIdx, 1);
+    selectedSeatId = null;
+    selectedWaitingId = null;
+    saveAndRender();
+    return;
   }
-  // If ids got weird, normalize to 0..n-1 while preserving order
-  const needsNormalize = state.seats.some((s, i) => s.id !== i);
-  if (needsNormalize) {
-    state.seats = state.seats.map((s, i) => ({ id: i, name: s.name ?? null, start: s.start ?? null }));
-  }
+
+  // seat가 차있으면 스왑(사람만 교체)
+  // seat 사람이 waiting으로 내려가고, waiting 사람이 seat로 올라감
+  const oldName = seat.name;
+  const oldStart = seat.start;
+
+  seat.name = w.name;
+  seat.start = w.start;
+
+  state.waiting[wIdx] = {
+    id: w.id,
+    name: oldName,
+    start: oldStart || now()
+  };
+
+  selectedSeatId = null;
+  selectedWaitingId = null;
+  saveAndRender();
 }
 
-function seatMoveToWaiting(seatId) {
+function moveSeatPersonToWaiting(seatId){
   const seat = getSeatById(seatId);
-  if (!seat || !seat.name) return false;
+  if(!seat || !seat.name) return;
 
-  state.waiting.push({
+  state.waiting.unshift({
     id: uid(),
     name: seat.name,
-    start: seat.start || nowMs()
+    start: seat.start || now()
   });
 
   seat.name = null;
   seat.start = null;
-  return true;
-}
 
-function assignWaitingToSeat(waitId, seatId) {
-  const seat = getSeatById(seatId);
-  const w = getWaitingById(waitId);
-  if (!seat || !w) return false;
-
-  if (!seat.name) {
-    // assign into empty seat
-    seat.name = w.name;
-    seat.start = w.start || nowMs();
-    state.waiting = state.waiting.filter(x => x.id !== waitId);
-    return true;
-  }
-
-  // swap (seat occupant becomes waiting)
-  const prev = { id: uid(), name: seat.name, start: seat.start || nowMs() };
-
-  seat.name = w.name;
-  seat.start = w.start || nowMs();
-
-  // replace selected waiting with previous seat occupant (keeps position feel)
-  state.waiting = state.waiting.map(x => x.id === waitId ? prev : x);
-  selectedWaitingId = prev.id;
-  return true;
-}
-
-function editSelectedName() {
-  if (!isAdmin()) return;
-
-  if (selectedSeatId != null) {
-    const seat = getSeatById(selectedSeatId);
-    if (!seat) return;
-    const cur = seat.name || "";
-    const next = prompt("Seat 이름 수정", cur);
-    if (next === null) return;
-    const trimmed = next.trim();
-    seat.name = trimmed ? trimmed : null;
-    if (seat.name && !seat.start) seat.start = nowMs();
-    if (!seat.name) seat.start = null;
-    saveRemote();
-    renderAll();
-    return;
-  }
-
-  if (selectedWaitingId != null) {
-    const w = getWaitingById(selectedWaitingId);
-    if (!w) return;
-    const next = prompt("대기자 이름 수정", w.name);
-    if (next === null) return;
-    const trimmed = next.trim();
-    if (!trimmed) return;
-    w.name = trimmed;
-    saveRemote();
-    renderAll();
-  }
-}
-
-function deleteSelected() {
-  if (!isAdmin()) return;
-
-  if (selectedWaitingId != null) {
-    state.waiting = state.waiting.filter(w => w.id !== selectedWaitingId);
-    selectedWaitingId = null;
-    saveRemote();
-    renderAll();
-    return;
-  }
-
-  if (selectedSeatId != null) {
-    const seat = getSeatById(selectedSeatId);
-    if (!seat) return;
-
-    if (seat.name) {
-      // safer: move occupant to waiting instead of hard delete
-      seatMoveToWaiting(seat.id);
-    } else {
-      // remove seat slot only if last seat (prevents layout collapse accidents)
-      // (admin can still add seats back)
-      if (state.seats.length > 1 && seat.id === state.seats.length - 1) {
-        state.seats.pop();
-        if (selectedSeatId === seat.id) selectedSeatId = null;
-      }
-    }
-    saveRemote();
-    renderAll();
-  }
-}
-
-function clearSelection() {
   selectedSeatId = null;
   selectedWaitingId = null;
-  renderAll();
+  saveAndRender();
+}
+
+function deleteWaiting(waitingId){
+  const idx = state.waiting.findIndex(w => w.id === waitingId);
+  if(idx < 0) return;
+  state.waiting.splice(idx, 1);
+  selectedWaitingId = null;
+  saveAndRender();
+}
+
+function deleteSeatSlot(seatId){
+  // 슬롯 삭제는 '마지막 슬롯만' 권장(사고 방지). 그래도 원하면 바로 삭제.
+  const idx = state.seats.findIndex(s => String(s.id) === String(seatId));
+  if(idx < 0) return;
+
+  // 삭제하려는 seat에 사람이 있으면 먼저 waiting으로 이동
+  const seat = state.seats[idx];
+  if(seat.name){
+    state.waiting.unshift({
+      id: uid(),
+      name: seat.name,
+      start: seat.start || now()
+    });
+  }
+
+  state.seats.splice(idx, 1);
+  selectedSeatId = null;
+  saveAndRender();
+}
+
+function renameSelected(){
+  if(currentUserRole !== "admin") return;
+
+  if(selectedSeatId){
+    const seat = getSeatById(selectedSeatId);
+    if(!seat) return;
+    const cur = seat.name || "";
+    const next = prompt("Seat 이름 변경", cur);
+    if(next === null) return;
+    seat.name = next.trim() ? next.trim() : null;
+    if(seat.name && !seat.start) seat.start = now();
+    if(!seat.name) seat.start = null;
+    saveAndRender();
+    return;
+  }
+
+  if(selectedWaitingId){
+    const w = getWaitingById(selectedWaitingId);
+    if(!w) return;
+    const next = prompt("대기자 이름 변경", w.name);
+    if(next === null) return;
+    w.name = next.trim() || w.name;
+    saveAndRender();
+  }
 }
 
 /* ===============================
    RENDER
 =============================== */
-function seatCardHTML(seat) {
-  const title = seat.name ? seat.name : `Empty (Seat ${seat.id + 1})`;
-  const elapsed = seat.start ? formatElapsed(nowMs() - seat.start) : "";
-  const pill = seat.name ? `<span class="pill running">Running</span>` : `<span class="pill waiting">Empty</span>`;
-
-  return `
-    <div class="badge">Seat #${seat.id + 1}</div>
-    <div class="row">
-      <div class="name">${escapeHtml(title)}</div>
-      <div class="time" data-start="${seat.start || ""}">${elapsed}</div>
-    </div>
-    <div class="row row-bottom">
-      ${pill}
-      ${isAdmin() ? `<button class="seat-delete" data-seat-del="${seat.id}" title="Seat 삭제">×</button>` : ``}
-    </div>
-  `;
+function el(tag, cls){
+  const node = document.createElement(tag);
+  if(cls) node.className = cls;
+  return node;
 }
 
-function waitingCardHTML(w, idx) {
-  const elapsed = w.start ? formatElapsed(nowMs() - w.start) : "";
-  return `
-    <div class="badge">Waiting #${idx + 1}</div>
-    <div class="row">
-      <div class="name">${escapeHtml(w.name)}</div>
-      <div class="time" data-start="${w.start || ""}">${elapsed}</div>
-    </div>
-    ${isAdmin() ? `<button class="wait-delete" data-wait-del="${w.id}" title="대기자 삭제">×</button>` : ``}
-  `;
-}
+function render(){
+  seatGrid.innerHTML = "";
+  waitingGrid.innerHTML = "";
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (m) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[m]));
-}
-
-function renderAll() {
-  if (!gridEl || !waitingListEl) return;
-
-  // Seats
-  gridEl.innerHTML = "";
-  const gridWrap = document.createElement("div");
-  gridWrap.className = "layout-grid";
-
-  state.seats.forEach((seat) => {
-    const card = document.createElement("div");
-    card.className = "card seat-card" + (selectedSeatId === seat.id ? " selected" : "");
+  // SEATS
+  const seatFrag = document.createDocumentFragment();
+  for(const seat of state.seats){
+    const card = el("div", "seat-card" + (selectedSeatId === String(seat.id) ? " selected" : ""));
     card.dataset.seatId = String(seat.id);
-    card.innerHTML = seatCardHTML(seat);
-    gridWrap.appendChild(card);
-  });
 
-  gridEl.appendChild(gridWrap);
-
-  // Waiting
-  waitingListEl.innerHTML = "";
-  if (state.waiting.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "대기자가 없습니다.";
-    waitingListEl.appendChild(empty);
-  } else {
-    const row = document.createElement("div");
-    row.className = "waiting-row";
-    state.waiting.forEach((w, idx) => {
-      const card = document.createElement("div");
-      card.className = "card waiting-card" + (selectedWaitingId === w.id ? " selected" : "");
-      card.dataset.waitId = w.id;
-      card.innerHTML = waitingCardHTML(w, idx);
-      row.appendChild(card);
+    card.addEventListener("click", () => {
+      selectedSeatId = String(seat.id);
+      // waiting이 선택된 상태면(=스왑/배정 모드) seat 클릭으로 처리
+      if(selectedWaitingId && currentUserRole === "admin"){
+        assignWaitingToSeat(selectedWaitingId, selectedSeatId);
+        return;
+      }
+      selectedWaitingId = null;
+      render();
     });
-    waitingListEl.appendChild(row);
+
+    card.addEventListener("dblclick", () => {
+      if(currentUserRole !== "admin") return;
+      // 더블클릭: seat -> waiting (사람만 이동)
+      moveSeatPersonToWaiting(String(seat.id));
+    });
+
+    const del = el("button", "delete-btn");
+    del.textContent = "×";
+    del.title = "Seat 슬롯 삭제";
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if(currentUserRole !== "admin") return;
+      deleteSeatSlot(String(seat.id));
+    });
+
+    const label = el("div", "seat-label");
+    label.textContent = `Seat ${seat.id}`;
+
+    const name = el("div", "seat-name");
+    // ✅ Empty 텍스트 제거 (빈칸 유지)
+    name.textContent = seat.name ?? "";
+
+    const time = el("div", "seat-time");
+    time.textContent = seat.start ? formatElapsed(now() - seat.start) : "";
+
+    card.appendChild(label);
+    card.appendChild(name);
+    card.appendChild(time);
+    if(currentUserRole === "admin") card.appendChild(del);
+    seatFrag.appendChild(card);
   }
+  seatGrid.appendChild(seatFrag);
+
+  // WAITING (번호 제거: 이름/시간만)
+  const waitFrag = document.createDocumentFragment();
+  for(const w of state.waiting){
+    const card = el("div", "waiting-card" + (selectedWaitingId === w.id ? " selected" : ""));
+    card.dataset.waitId = w.id;
+
+    card.addEventListener("click", () => {
+      if(currentUserRole !== "admin"){
+        // user는 선택만
+        selectedWaitingId = w.id;
+        selectedSeatId = null;
+        render();
+        return;
+      }
+
+      // admin: seat이 선택돼 있으면 배정(또는 스왑)
+      if(selectedSeatId){
+        assignWaitingToSeat(w.id, selectedSeatId);
+        return;
+      }
+
+      selectedWaitingId = w.id;
+      selectedSeatId = null;
+      render();
+    });
+
+    const name = el("div", "waiting-name");
+    name.textContent = w.name;
+
+    const time = el("div", "waiting-time");
+    time.textContent = formatElapsed(now() - w.start);
+
+    const del = el("button", "delete-btn");
+    del.textContent = "×";
+    del.title = "대기자 삭제";
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if(currentUserRole !== "admin") return;
+      deleteWaiting(w.id);
+    });
+
+    card.appendChild(name);
+    card.appendChild(time);
+    if(currentUserRole === "admin") card.appendChild(del);
+    waitFrag.appendChild(card);
+  }
+  waitingGrid.appendChild(waitFrag);
 
   applyRoleUI();
 }
 
-/* Update only timers every second (no full rerender) */
-function updateTimersOnly() {
-  document.querySelectorAll(".time[data-start]").forEach((el) => {
-    const v = el.getAttribute("data-start");
-    const start = v ? Number(v) : 0;
-    if (!start) return;
-    el.textContent = formatElapsed(nowMs() - start);
-  });
-}
+/* ===============================
+   EVENTS
+=============================== */
+addSeatBtn.addEventListener("click", () => {
+  if(currentUserRole !== "admin") return;
+
+  const label = prompt("Seat 라벨 입력 (예: 1, A, BTN)");
+  if(label === null) return;
+  const id = label.trim();
+  if(!id) return;
+
+  // 중복 방지
+  if(state.seats.some(s => String(s.id).toLowerCase() === id.toLowerCase())){
+    alert("이미 존재하는 Seat 라벨입니다.");
+    return;
+  }
+
+  state.seats.push({ id, name: null, start: null });
+  saveAndRender();
+});
+
+addWaitingBtn.addEventListener("click", () => {
+  if(currentUserRole !== "admin") return;
+
+  const name = (waitingInput.value || "").trim();
+  if(!name) return;
+
+  state.waiting.unshift({ id: uid(), name, start: now() });
+  waitingInput.value = "";
+  saveAndRender();
+});
+
+waitingInput.addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    e.preventDefault();
+    addWaitingBtn.click();
+  }
+});
 
 /* ===============================
-   EVENT BINDINGS
+   SHORTCUTS
 =============================== */
-function bindUI() {
-  // Add seat (admin only)
-  addSeatBtn?.addEventListener("click", () => {
-    if (!isAdmin()) return;
-    const nextId = state.seats.length;
-    state.seats.push({ id: nextId, name: null, start: null });
-    saveRemote();
-    renderAll();
-  });
-
-  // Add waiting (admin only)
-  addWaitingBtn?.addEventListener("click", () => {
-    if (!isAdmin()) return;
-    const name = (waitingNameInput?.value || "").trim();
-    if (!name) return;
-    state.waiting.push({ id: uid(), name, start: nowMs() });
-    waitingNameInput.value = "";
-    saveRemote();
-    renderAll();
-  });
-
-  waitingNameInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") addWaitingBtn?.click();
-  });
-
-  // Delegate clicks (seat & waiting)
-  document.addEventListener("click", (e) => {
-    const t = e.target;
-
-    // seat delete
-    const seatDel = t?.closest?.("[data-seat-del]");
-    if (seatDel && isAdmin()) {
-      e.preventDefault();
-      e.stopPropagation();
-      const seatId = Number(seatDel.getAttribute("data-seat-del"));
-      const seat = getSeatById(seatId);
-      if (!seat) return;
-      if (seat.name) {
-        seatMoveToWaiting(seatId);
-      } else {
-        // allow removing only last seat
-        if (state.seats.length > 1 && seatId === state.seats.length - 1) {
-          state.seats.pop();
-          if (selectedSeatId === seatId) selectedSeatId = null;
-        }
-      }
-      saveRemote();
-      renderAll();
-      return;
-    }
-
-    // wait delete
-    const waitDel = t?.closest?.("[data-wait-del]");
-    if (waitDel && isAdmin()) {
-      e.preventDefault();
-      e.stopPropagation();
-      const wid = waitDel.getAttribute("data-wait-del");
-      state.waiting = state.waiting.filter(w => w.id !== wid);
-      if (selectedWaitingId === wid) selectedWaitingId = null;
-      saveRemote();
-      renderAll();
-      return;
-    }
-
-    // waiting card click
-    const waitCard = t?.closest?.(".waiting-card");
-    if (waitCard) {
-      const wid = waitCard.dataset.waitId;
-      if (!wid) return;
-
-      // if a seat is selected -> assign/swap
-      if (selectedSeatId != null && isAdmin()) {
-        const changed = assignWaitingToSeat(wid, selectedSeatId);
-        if (changed) {
-          selectedSeatId = null;
-          saveRemote();
-          renderAll();
-        }
-        return;
-      }
-
-      selectedWaitingId = (selectedWaitingId === wid) ? null : wid;
-      selectedSeatId = null;
-      renderAll();
-      return;
-    }
-
-    // seat card click
-    const seatCard = t?.closest?.(".seat-card");
-    if (seatCard) {
-      const seatId = Number(seatCard.dataset.seatId);
-      if (Number.isNaN(seatId)) return;
-
-      // if waiting selected -> assign/swap (admin)
-      if (selectedWaitingId != null && isAdmin()) {
-        const changed = assignWaitingToSeat(selectedWaitingId, seatId);
-        if (changed) {
-          selectedWaitingId = null;
-          saveRemote();
-          renderAll();
-        }
-        return;
-      }
-
-      selectedSeatId = (selectedSeatId === seatId) ? null : seatId;
-      selectedWaitingId = null;
-      renderAll();
-      return;
-    }
-
-    // click outside -> clear selection
-    const inside = t?.closest?.(".seat-card, .waiting-card, .waiting-header, .layout-top");
-    if (!inside) clearSelection();
-  });
-
-  // dblclick seat -> move occupant to waiting (admin)
-  document.addEventListener("dblclick", (e) => {
-    if (!isAdmin()) return;
-    const seatCard = e.target?.closest?.(".seat-card");
-    if (!seatCard) return;
-    const seatId = Number(seatCard.dataset.seatId);
-    const seat = getSeatById(seatId);
-    if (!seat || !seat.name) return;
-    seatMoveToWaiting(seatId);
-    saveRemote();
-    renderAll();
-  });
-
-  // Shortcuts
-  document.addEventListener("keydown", (e) => {
-    if (isTypingTarget(document.activeElement)) return;
-
-    // Esc: clear selection
-    if (e.key === "Escape") {
-      clearSelection();
-      return;
-    }
-
-    // W: focus waiting input
-    if (e.key === "w" || e.key === "W") {
-      if (!isAdmin()) return;
-      waitingNameInput?.focus();
-      waitingNameInput?.select?.();
-      return;
-    }
-
-    // A: add seat
-    if (e.key === "a" || e.key === "A") {
-      if (!isAdmin()) return;
-      addSeatBtn?.click();
-      return;
-    }
-
-    // E: edit name
-    if (e.key === "e" || e.key === "E") {
-      if (!isAdmin()) return;
-      editSelectedName();
-      return;
-    }
-
-    // Delete / Backspace: delete selected
-    if (e.key === "Delete" || e.key === "Backspace") {
-      if (!isAdmin()) return;
-      deleteSelected();
-      return;
-    }
-
-    // Cmd/Ctrl + S : force save (admin)
-    if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
-      if (!isAdmin()) return;
-      e.preventDefault();
-      saveRemote();
-    }
-  });
+function isTypingTarget(){
+  const el = document.activeElement;
+  return el && ["INPUT","TEXTAREA","SELECT"].includes(el.tagName);
 }
+
+window.addEventListener("keydown", (e) => {
+  if(isTypingTarget()) {
+    if(e.key === "Escape"){
+      e.preventDefault();
+      document.activeElement.blur();
+    }
+    return;
+  }
+
+  // Esc: 선택 해제
+  if(e.key === "Escape"){
+    selectedSeatId = null;
+    selectedWaitingId = null;
+    render();
+    return;
+  }
+
+  if(currentUserRole !== "admin") return;
+
+  // W: 대기 입력 포커스
+  if(e.key.toLowerCase() === "w"){
+    e.preventDefault();
+    waitingInput.focus();
+    return;
+  }
+
+  // A: Seat 추가
+  if(e.key.toLowerCase() === "a"){
+    e.preventDefault();
+    addSeatBtn.click();
+    return;
+  }
+
+  // E: 이름 변경
+  if(e.key.toLowerCase() === "e"){
+    e.preventDefault();
+    renameSelected();
+    return;
+  }
+
+  // Delete/Backspace: 선택 삭제/내보내기
+  if(e.key === "Delete" || e.key === "Backspace"){
+    e.preventDefault();
+    if(selectedWaitingId){
+      deleteWaiting(selectedWaitingId);
+      return;
+    }
+    if(selectedSeatId){
+      const seat = getSeatById(selectedSeatId);
+      if(!seat) return;
+      // 사람이 있으면 waiting으로 내보내기, 비어있으면 슬롯 삭제
+      if(seat.name) moveSeatPersonToWaiting(selectedSeatId);
+      else deleteSeatSlot(selectedSeatId);
+      return;
+    }
+  }
+
+  // Ctrl/Cmd+S: 강제 저장
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){
+    e.preventDefault();
+    saveRemote();
+  }
+});
 
 /* ===============================
    BOOT
 =============================== */
-function bootDefaultState() {
-  if (state.seats.length === 0) state.seats = [{ id: 0, name: null, start: null }];
-  ensureSeatSlots(1);
+function ensureDefaultSeats(){
+  if(state.seats.length > 0) return;
+  // 기본 좌석 4개(라벨만). 필요 없으면 바로 삭제해도 됨.
+  state.seats = [
+    { id: "1", name: null, start: null },
+    { id: "2", name: null, start: null },
+    { id: "3", name: null, start: null },
+    { id: "4", name: null, start: null },
+  ];
 }
 
-function init() {
-  // local first for instant UI
-  loadLocal();
-  bootDefaultState();
-  renderAll();
-  setInterval(updateTimersOnly, 1000);
-
-  bindUI();
-
-  onAuthStateChanged(auth, async (user) => {
-    currentUser = user || null;
-
-    if (!currentUser) {
-      // no auth: readonly user mode
-      currentUserRole = "user";
-      applyRoleUI();
-      // still attach snapshot to view live state if rules allow read
-      attachSnapshot();
-      return;
+async function loadUserRole(uid){
+  try{
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
+    if(snap.exists()){
+      const role = snap.data()?.role;
+      if(role === "admin" || role === "user") return role;
     }
-
-    await ensureUserDoc(currentUser.uid);
-    attachSnapshot();
-
-    // If remote doc is empty and we have local, push once (admin only)
-    if (isAdmin()) {
-      try {
-        const snap = await getDoc(DOC_REF);
-        if (!snap.exists()) {
-          await saveRemote();
-        }
-      } catch {}
-    }
-  });
+  }catch(e){}
+  return "user";
 }
 
-init();
+// 1) 로컬 먼저 띄우고
+loadLocal();
+ensureDefaultSeats();
+render();
+
+// 2) Auth → Role
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user || null;
+  currentUserRole = user ? await loadUserRole(user.uid) : "user";
+  applyRoleUI();
+  render();
+});
+
+// 3) Firestore subscribe
+onSnapshot(DOC_REF, (snap) => {
+  if(!snap.exists()){
+    // 최초 문서 없으면 admin이면 올려서 생성
+    hasHydrated = true;
+    saveLocal();
+    return;
+  }
+
+  if(isSaving) return;
+
+  const data = snap.data() || {};
+  if(Array.isArray(data.seats)) state.seats = data.seats;
+  if(Array.isArray(data.waiting)) state.waiting = data.waiting;
+
+  hasHydrated = true;
+  saveLocal();
+  render();
+});
+
+// 4) 타이머 업데이트(가볍게 렌더 재호출)
+setInterval(() => {
+  // 타이머 텍스트만 갱신하려면 더 최적화 가능하지만,
+  // 현재 규모(수십명)에서는 전체 render도 충분히 안정적.
+  render();
+}, 1000);
