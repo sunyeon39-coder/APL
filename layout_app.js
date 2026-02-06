@@ -100,9 +100,18 @@ onAuthStateChanged(auth, async user => {
 function applyRoleUI() {
   if (currentUserRole === "admin") return;
 
-  $("addSeatBtn")?.remove();
-  $("waitingNameInput")?.closest(".waiting-header")?.remove();
-  $("addWaitingBtn")?.remove();
+  const addSeatBtnEl = $("addSeatBtn");
+if (addSeatBtnEl) addSeatBtnEl.remove();
+
+const waitInput = $("waitingNameInput");
+if (waitInput) {
+  const header = waitInput.closest(".waiting-header");
+  if (header) header.remove();
+}
+
+const addWaitingBtnEl = $("addWaitingBtn");
+if (addWaitingBtnEl) addWaitingBtnEl.remove();
+
 }
 
 /* =================================================
