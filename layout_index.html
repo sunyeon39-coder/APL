@@ -2,52 +2,37 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Layout</title>
 
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="layout_styles.css">
+  <link rel="stylesheet" href="layout_styles.css" />
 </head>
-
 <body>
-  <div class="layout-root">
 
-    <!-- TOP BAR -->
-    <header class="layout-top">
-      <button id="addSeatBtn" class="btn">+ Seat 추가</button>
-      <a href="index.html" class="btn back-btn">Back</a>
-    </header>
+<div class="layout-wrap">
 
-    <!-- MAIN -->
-    <main class="layout-main">
-
-      <!-- SEAT BOARD -->
-      <section class="seat-area">
-        <div id="layoutGrid" class="seat-grid"></div>
-      </section>
-
-      <!-- WAITING PANEL -->
-      <aside class="wait-area">
-        <div class="wait-input">
-          <input
-            id="waitingNameInput"
-            placeholder="대기자 이름"
-            autocomplete="off"
-          />
-          <button id="addWaitingBtn" class="btn small">+ 추가</button>
-        </div>
-
-        <div class="wait-list-wrap">
-          <div id="waitingList" class="wait-list"></div>
-        </div>
-      </aside>
-
-    </main>
+  <!-- TOP -->
+  <div class="layout-top">
+    <button id="addSeatBtn" class="btn">+ Seat 추가</button>
+    <button id="backBtn" class="btn">Back</button>
   </div>
 
-  <script src="layout_app.js"></script>
+  <!-- MAIN -->
+  <div class="layout-main">
+    <div id="layoutGrid" class="layout-grid"></div>
+  </div>
+
+  <!-- WAITING -->
+  <div class="layout-waiting">
+    <div class="waiting-header">
+      <input id="waitingNameInput" placeholder="대기자 이름" />
+      <button id="addWaitingBtn" class="btn">+ 대기자 추가</button>
+    </div>
+    <div id="waitingList" class="waiting-list"></div>
+  </div>
+
+</div>
+
+<script type="module" src="layout_app.js"></script>
 </body>
 </html>
