@@ -7,30 +7,24 @@
 
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- 🔐 AUTH GUARD (index는 eventId까지만) -->
+  <!-- 🔐 AUTH GUARD -->
   <script type="module">
     import { auth } from "./firebase.js";
     import { onAuthStateChanged } from
       "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     let resolved = false;
-
     onAuthStateChanged(auth, user => {
       if (resolved) return;
       resolved = true;
-
-      if (!user) {
-        location.replace("login.html");
-        return;
-      }
-
-      // ❗ index에서는 redirect 강제 금지
+      if (!user) location.replace("login.html");
       console.log("✅ index auth ok");
     });
   </script>
 </head>
 
 <body>
+
   <div class="app">
     <header class="header">
       <div>
@@ -43,42 +37,51 @@
       </div>
     </header>
 
-    <!-- 🔥 카드 보드 -->
-    <main id="board" class="board">
-      <!-- 예시 카드 (Firestore 렌더링 시 이 구조만 맞추면 됨) -->
-      <div class="card" data-box-id="sample1">
-        <div class="badge">Opened</div>
-
-        <div class="card-title">Sample Box 1</div>
-
-        <div class="meta">
-          <div class="pill">
-            <div class="k">Buy-in</div>
-            <div class="v">1,000,000</div>
-          </div>
-          <div class="pill">
-            <div class="k">Time</div>
-            <div class="v">12:00</div>
-          </div>
-          <div class="pill">
-            <div class="k">Entries</div>
-            <div class="v">0</div>
-          </div>
-        </div>
-
-        <!-- hover bar -->
-        <div class="card-hover-bar">
-          <div class="card-hover-title">Sample Box 1</div>
-          <div class="card-hover-actions">
-            <button class="hover-btn">✏️</button>
-            <button class="hover-btn">✖</button>
-          </div>
-        </div>
-      </div>
-    </main>
+    <main id="board" class="board"></main>
   </div>
 
-  <!-- 🔥 CLICK SAFE JS -->
+  <!-- ================= TEXT EDIT MODAL (E) ================= -->
+  <div id="overlayText" class="overlay hidden" aria-hidden="true">
+    <div class="modal">
+      <h3>Edit Text</h3>
+      <input id="inputDateText" placeholder="Date text" />
+      <div class="modal-actions">
+        <button id="saveText" class="btn">Save</button>
+        <button id="closeText" class="btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= BOX MODAL (+ / W) ================= -->
+  <div id="overlayBox" class="overlay hidden" aria-hidden="true">
+    <div class="modal modal-wide">
+      <h3>Create / Edit Box</h3>
+
+      <input id="boxTitle" placeholder="Title" />
+      <select id="boxStatus">
+        <option value="Opened">Opened</option>
+        <option value="Running">Running</option>
+        <option value="Closed">Closed</option>
+      </select>
+
+      <input id="boxBuyin" placeholder="Buy-in" />
+      <input id="boxTime" placeholder="Time" />
+
+      <select id="boxExtraLabel">
+        <option value="Entries">Entries</option>
+        <option value="Reg Closes">Reg Closes</option>
+      </select>
+
+      <input id="boxExtraValue" placeholder="Extra value" />
+
+      <div class="modal-actions">
+        <button id="saveBox" class="btn btn-primary">Save</button>
+        <button id="cancelBox" class="btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔥 APP -->
   <script src="app.js"></script>
 </body>
 </html>
