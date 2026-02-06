@@ -6,81 +6,47 @@
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
-  <script>document.documentElement.classList.add('page-enter');</script>
   <title>Layout</title>
 
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="layout_styles.css">
 </head>
 
-<!-- ================= AUTH GUARD ================= -->
-<script type="module">
-  import { auth } from "./firebase.js";
-  import { onAuthStateChanged } from
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-  const params = new URLSearchParams(location.search);
-  const boxId = params.get("boxId");
-
-  onAuthStateChanged(auth, user => {
-    if (!user) {
-      location.replace("login.html");
-      return;
-    }
-    if (!boxId) {
-      location.replace("index.html");
-    }
-  });
-</script>
-
 <body>
 
-  <!-- Loading -->
-  <div id="layoutBootLoading" class="layout-loading hidden">
-    <div>Loading…</div>
-  </div>
-
   <!-- TOP BAR -->
-  <div class="layout-top">
+  <header class="layout-top">
     <button id="addSeatBtn" class="btn">+ Seat 추가</button>
-    <a id="layoutBackBtn" class="btn back-btn" href="index.html">Back</a>
-  </div>
+    <a class="btn back-btn" href="index.html">Back</a>
+  </header>
 
-  <!-- MAIN -->
+  <!-- 🔥 ROOT LAYOUT -->
   <div class="layout-wrap">
 
-    <!-- SEAT AREA -->
-    <div class="top-area">
+    <!-- SEAT AREA (SCROLL HERE) -->
+    <section class="top-area">
       <div id="layoutGrid" class="layout-grid"></div>
-    </div>
+    </section>
 
     <!-- WAITING AREA -->
-    <div class="bottom-area">
+    <section class="bottom-area">
       <div class="waiting-header">
         <input
           id="waitingNameInput"
           placeholder="대기자 이름"
           autocomplete="off"
         />
-        <button id="addWaitingBtn">+ 대기자 추가</button>
+        <button id="addWaitingBtn" class="btn">+ 대기자 추가</button>
       </div>
 
+      <!-- SCROLL HERE -->
       <div class="wait-scroll">
-        <section id="waitingList" class="waiting-grid"></section>
+        <div id="waitingList" class="waiting-grid"></div>
       </div>
-    </div>
+    </section>
 
   </div>
 
-  <!-- PAGE TRANSITION -->
-  <script>
-    window.addEventListener("DOMContentLoaded", ()=>{
-      document.documentElement.classList.remove("page-enter");
-      document.documentElement.classList.add("page-ready");
-    }, { once:true });
-  </script>
-
-  <!-- APP -->
   <script src="layout_app.js"></script>
 </body>
 </html>
