@@ -6,36 +6,8 @@
   <title>Box Board</title>
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- 🔐 AUTH GUARD (index 직접 접근 차단) -->
-  <script type="module">
-  import { auth } from "./firebase.js";
-  import { onAuthStateChanged } from
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-  let resolved = false;
-
-  onAuthStateChanged(auth, user => {
-    if (resolved) return;
-    resolved = true;
-
-    if (!user) {
-      location.replace("login.html");
-      return;
-    }
-
-    // ✅ index는 eventId까지만 요구
-    const eventId = new URLSearchParams(location.search).get("eventId");
-
-    if (!eventId) {
-      console.log("ℹ️ index: eventId 없음 → hub 유지");
-      // ❌ redirect 하지 않음
-      return;
-    }
-
-    // 정상 진입
-    console.log("✅ index: eventId =", eventId);
-  });
-  </script>
+  <!-- 🔐 AUTH + EVENT GATE -->
+  <script type="module" src="./index.js"></script>
 </head>
 
 <body>
@@ -166,6 +138,6 @@
   </div>
 
   <!-- 기존 기능 유지 -->
-  <script src="app.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

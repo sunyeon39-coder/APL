@@ -124,10 +124,19 @@ html,body{
   grid-template-columns:repeat(2,1fr);
   gap:18px;
   pointer-events:auto;
+  position:relative;
+  z-index:1;
 }
 
 @media (max-width:900px){
   .board{ grid-template-columns:1fr; }
+}
+
+/* 🔥 혹시 board 위에 pseudo-layer가 있는 경우 강제 무력화 */
+.board::before,
+.board::after{
+  content:none !important;
+  pointer-events:none !important;
 }
 
 /* =================================================
@@ -148,6 +157,7 @@ html,body{
   overflow:hidden;
   cursor:pointer;
   pointer-events:auto;
+  z-index:2;
 }
 
 .card.running{ border-color:rgba(122,91,214,.8); }
@@ -289,9 +299,10 @@ html,body{
   justify-content:center;
 
   z-index:100000;
+  pointer-events:auto;
 }
 
-.hidden{ display:none !important; }
+.hidden{ display:none !important; pointer-events:none !important; }
 
 .modal{
   width:min(680px, calc(100vw - 36px));
@@ -310,8 +321,6 @@ html,body{
 .modal-wide{
   width:min(760px, calc(100vw - 36px));
 }
-
-
 
 /* =================================================
    LOADING (있으면 클릭 막아도 됨)
@@ -334,7 +343,6 @@ html,body{
   pointer-events:none !important;
 }
 
-
 /* =================================================
    CLICK SAFETY (시각 레이어만 차단)
    - ❗ app/board/card/button 절대 차단 금지
@@ -348,6 +356,8 @@ html,body{
   pointer-events:none !important;
 }
 
+/* ===== 마지막 안전장치: body가 클릭이 죽어있는 경우 복구 ===== */
+html, body { pointer-events:auto; }
 
 /* =================================================
    PAGE TRANSITION (prevents flash overlap between index <-> layout)
