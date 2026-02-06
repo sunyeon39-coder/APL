@@ -1,85 +1,98 @@
 /* =================================================
-   Layout – STABLE + MOBILE SAFE
+   Layout v2 – CLEAN & STABLE
    ================================================= */
 
-.layout-wrap{
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* 🔥 body 스크롤 금지 */
 }
 
-/* Top bar */
-.layout-top{
-  position:sticky;
-  top:0;
-  z-index:2000;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:10px 12px;
-  background:rgba(11,16,32,.92);
-  backdrop-filter:blur(8px);
+/* ROOT */
+.layout-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Seat area */
-.top-area{
-  flex:1 1 auto;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
+/* TOP BAR */
+.layout-top {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: rgba(11,16,32,.92);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
 }
 
-.layout-grid{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:12px;
-  padding:12px;
+/* MAIN */
+.layout-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-@media (max-width:900px){
-  .layout-grid{
-    grid-template-columns:repeat(2,1fr);
+/* SEAT AREA */
+.seat-area {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+@media (max-width: 900px) {
+  .seat-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* Waiting area */
-.bottom-area{
-  flex:0 0 auto;
-  background:rgba(10,14,28,.95);
-  border-top:1px solid rgba(255,255,255,.08);
+/* WAITING AREA */
+.wait-area {
+  flex-shrink: 0;
+  background: rgba(10,14,28,.95);
+  border-top: 1px solid rgba(255,255,255,.08);
 }
 
-/* Waiting input */
-.waiting-header{
-  display:flex;
-  gap:8px;
-  padding:10px 12px;
+/* INPUT BAR */
+.wait-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
 }
 
-.waiting-header input{
-  flex:1;
-  padding:8px;
+.wait-input input {
+  flex: 1;
+  padding: 8px;
 }
 
-/* Waiting list scroll */
-.wait-scroll{
-  max-height:35vh;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
+/* WAIT LIST */
+.wait-list-wrap {
+  max-height: 32vh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.waiting-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;
-  padding:12px;
+.wait-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 12px;
 }
 
-/* Cards */
-.seat-card,
-.wait-card{
-  padding:12px;
-  border-radius:12px;
-  background:rgba(255,255,255,.08);
-  cursor:pointer;
+/* CARD BASE */
+.card {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  cursor: pointer;
 }

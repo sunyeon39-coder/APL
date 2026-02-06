@@ -13,38 +13,39 @@
 </head>
 
 <body>
+  <div class="layout-root">
 
-  <!-- TOP BAR -->
-  <header class="layout-top">
-    <button id="addSeatBtn" class="btn">+ Seat 추가</button>
-    <a class="btn back-btn" href="index.html">Back</a>
-  </header>
+    <!-- TOP BAR -->
+    <header class="layout-top">
+      <button id="addSeatBtn" class="btn">+ Seat 추가</button>
+      <a href="index.html" class="btn back-btn">Back</a>
+    </header>
 
-  <!-- 🔥 ROOT LAYOUT -->
-  <div class="layout-wrap">
+    <!-- MAIN -->
+    <main class="layout-main">
 
-    <!-- SEAT AREA (SCROLL HERE) -->
-    <section class="top-area">
-      <div id="layoutGrid" class="layout-grid"></div>
-    </section>
+      <!-- SEAT BOARD -->
+      <section class="seat-area">
+        <div id="layoutGrid" class="seat-grid"></div>
+      </section>
 
-    <!-- WAITING AREA -->
-    <section class="bottom-area">
-      <div class="waiting-header">
-        <input
-          id="waitingNameInput"
-          placeholder="대기자 이름"
-          autocomplete="off"
-        />
-        <button id="addWaitingBtn" class="btn">+ 대기자 추가</button>
-      </div>
+      <!-- WAITING PANEL -->
+      <aside class="wait-area">
+        <div class="wait-input">
+          <input
+            id="waitingNameInput"
+            placeholder="대기자 이름"
+            autocomplete="off"
+          />
+          <button id="addWaitingBtn" class="btn small">+ 추가</button>
+        </div>
 
-      <!-- SCROLL HERE -->
-      <div class="wait-scroll">
-        <div id="waitingList" class="waiting-grid"></div>
-      </div>
-    </section>
+        <div class="wait-list-wrap">
+          <div id="waitingList" class="wait-list"></div>
+        </div>
+      </aside>
 
+    </main>
   </div>
 
   <script src="layout_app.js"></script>
