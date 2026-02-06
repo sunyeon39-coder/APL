@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Layout</title>
 
   <link rel="stylesheet" href="layout_styles.css" />
@@ -13,39 +13,23 @@
 
   <!-- TOP BAR -->
   <header class="layout-top">
-    <div class="top-left">
-      <button id="addSeatBtn" class="btn">+ Seat 추가</button>
-    </div>
-
-    <div class="top-right">
-      <div id="syncPill" class="pill">OFFLINE</div>
-      <div id="rolePill" class="pill role">ROLE: -</div>
-      <button class="btn back" onclick="history.back()">Back</button>
-    </div>
+    <button id="addSeatBtn" class="btn">+ Seat 추가</button>
+    <button class="btn back" onclick="history.back()">Back</button>
   </header>
 
   <!-- SEAT AREA -->
   <main class="layout-main">
-    <section id="layoutGrid" class="layout-grid"></section>
-    <div id="emptySeats" class="empty hidden">아직 Seat가 없습니다. 상단에서 + Seat 추가</div>
+    <section id="layoutGrid" class="seat-grid"></section>
   </main>
 
   <!-- WAITING AREA -->
   <footer class="layout-bottom">
     <div class="waiting-header">
       <input id="waitingNameInput" placeholder="대기자 이름" />
-      <button id="addWaitingBtn" class="btn primary">+ 대기자 추가</button>
+      <button id="addWaitingBtn" class="btn">+ 대기자 추가</button>
     </div>
 
-    <section id="waitingList" class="waiting-grid"></section>
-    <div id="emptyWaiting" class="empty hidden">대기자가 없습니다.</div>
-
-    <div class="hint">
-      <span class="kbd">클릭</span> 선택 · <span class="kbd">Seat↔Waiting</span> 스왑 ·
-      <span class="kbd">더블클릭(Seat)</span> 대기자로 빼기 ·
-      <span class="kbd">W</span> 대기 입력 · <span class="kbd">E</span> 이름 변경 ·
-      <span class="kbd">Esc</span> 선택 해제
-    </div>
+    <section id="waitingList" class="waiting-list"></section>
   </footer>
 
 </div>

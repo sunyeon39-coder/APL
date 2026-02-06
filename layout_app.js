@@ -1,7 +1,9 @@
-// layout_app.js — FIRESTORE + ROLE + TIMER + SHORTCUTS (CLICK SAFE)
-// 요구사항: Seat/Waiting 스왑, 더블클릭 Seat -> Waiting 이동, Role 기반 UI, Firestore 동기화, 타이머, 단축키
+// layout_app.js — BoxBoard Layout (PRODUCTION BASE)
+// Firestore + Role + Timer + Shortcuts
+// Seat is FIXED slot. People move, seats do not.
 
 import { db, auth } from "./firebase.js";
+
 import {
   doc,
   getDoc,
@@ -9,6 +11,7 @@ import {
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -19,551 +22,633 @@ import {
 const $ = (id) => document.getElementById(id);
 
 const gridEl = $("layoutGrid");
-const waitingEl = $("waitingList");
-const emptySeatsEl = $("emptySeats");
-const emptyWaitingEl = $("emptyWaiting");
-
+const waitingListEl = $("waitingList");
 const addSeatBtn = $("addSeatBtn");
-const waitingInput = $("waitingNameInput");
+const waitingNameInput = $("waitingNameInput");
 const addWaitingBtn = $("addWaitingBtn");
 
-const syncPill = $("syncPill");
-const rolePill = $("rolePill");
-
 /* ===============================
-   STATE
+   ROUTE / REF
 =============================== */
-const boxId = new URLSearchParams(location.search).get("boxId") || "default";
-
+function getBoxId() {
+  return new URLSearchParams(location.search).get("boxId") || "default";
+}
+const boxId = getBoxId();
+const DOC_REF = doc(db, "boxboard_layouts", boxId);
 const LS_KEY = `boxboard_layout_${boxId}_v1`;
 
+/* ===============================
+   ROLE
+=============================== */
 let currentUser = null;
-let currentUserRole = "user"; // user | admin
-
-// 데이터 모델
-// layout.seats: { [seatNum]: { name: string, start: number } }
-// layout.waiting: Array<{ name: string, start: number }>
-const layout = {
-  seats: {},
-  waiting: []
-};
-
-let selectedSeatNum = null;
-let selectedWaitingIndex = null;
-
-// Firestore 보호 플래그
-let hydrated = false;
-let isSaving = false;
-
-// Firestore doc
-const LAYOUT_REF = doc(db, "boxboard_layouts", boxId);
+let currentUserRole = "user"; // "admin" | "user"
 
 /* ===============================
-   UTILS
+   STATE (Seat is fixed slot)
 =============================== */
-function now() { return Date.now(); }
+const state = {
+  version: 1,
+  seats: [],    // [{id:number, name:string|null, start:number|null}]
+  waiting: [],  // [{id:string, name:string, start:number}]
+  updatedAt: null
+};
+
+// selection
+let selectedSeatId = null;
+let selectedWaitingId = null;
+
+/* Firestore hydration / loop guard */
+let hasHydrated = false;
+let isSaving = false;
+
+/* ===============================
+   UTIL
+=============================== */
+const uid = () => "w_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now();
+
+function isTypingTarget(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
+}
 
 function formatElapsed(ms) {
-  const s = Math.floor(ms / 1000);
+  const s = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
-  return `${m}:${String(sec).padStart(2,"0")}`;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-function seatNumsSorted() {
-  return Object.keys(layout.seats)
-    .map(n => Number(n))
-    .filter(n => Number.isFinite(n))
-    .sort((a,b) => a-b);
+function nowMs() {
+  return Date.now();
 }
 
-function nextSeatNum() {
-  const nums = seatNumsSorted();
-  if (!nums.length) return 1;
-  return Math.max(...nums) + 1;
-}
-
-function setPill(el, text, clsAdd, clsRemove) {
-  el.textContent = text;
-  el.classList.remove(...clsRemove);
-  el.classList.add(...clsAdd);
+function cloneClean(obj) {
+  return JSON.parse(JSON.stringify(obj));
 }
 
 /* ===============================
-   LOCAL STORAGE
+   STORAGE
 =============================== */
 function loadLocal() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return false;
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      if (parsed.seats) layout.seats = parsed.seats;
-      if (Array.isArray(parsed.waiting)) layout.waiting = parsed.waiting;
-      return true;
-    }
-  } catch (e) {}
-  return false;
+    if (!parsed || typeof parsed !== "object") return false;
+    if (!Array.isArray(parsed.seats) || !Array.isArray(parsed.waiting)) return false;
+    state.seats = parsed.seats;
+    state.waiting = parsed.waiting;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function saveLocal() {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify({
-      seats: layout.seats,
-      waiting: layout.waiting
+      version: state.version,
+      seats: state.seats,
+      waiting: state.waiting
     }));
-  } catch (e) {}
+  } catch {}
 }
 
 /* ===============================
-   ROLE
+   ROLE UI GATE
 =============================== */
-async function fetchRole(uid) {
-  try {
-    const uref = doc(db, "users", uid);
-    const snap = await getDoc(uref);
-    const role = snap.exists() ? (snap.data().role || "user") : "user";
-    return (role === "admin") ? "admin" : "user";
-  } catch (e) {
-    return "user";
-  }
+function isAdmin() {
+  return currentUserRole === "admin";
 }
 
 function applyRoleUI() {
-  const isAdmin = currentUserRole === "admin";
+  const admin = isAdmin();
 
-  // 버튼 가시성
-  addSeatBtn.style.display = isAdmin ? "" : "none";
-  addWaitingBtn.style.display = isAdmin ? "" : "none";
-  waitingInput.disabled = !isAdmin;
+  // buttons
+  if (addSeatBtn) addSeatBtn.style.display = admin ? "" : "none";
+  if (addWaitingBtn) addWaitingBtn.disabled = !admin;
+  if (waitingNameInput) waitingNameInput.disabled = !admin;
 
-  // 삭제 버튼은 렌더에서 role로 제어
-  rolePill.textContent = `ROLE: ${currentUserRole.toUpperCase()}`;
+  // hint (optional)
+  document.body.dataset.role = admin ? "admin" : "user";
 }
 
 /* ===============================
    FIRESTORE
 =============================== */
+async function ensureUserDoc(uid) {
+  // You may already manage users elsewhere; this only reads role.
+  const uref = doc(db, "users", uid);
+  const snap = await getDoc(uref);
+  if (snap.exists()) {
+    const data = snap.data() || {};
+    currentUserRole = data.role === "admin" ? "admin" : "user";
+  } else {
+    // default user role; do not auto-write role here (safer)
+    currentUserRole = "user";
+  }
+  applyRoleUI();
+}
+
 async function saveRemote() {
-  // admin만 쓰기 허용 (원하면 user도 허용 가능)
-  if (currentUserRole !== "admin") return;
+  if (!currentUser) return;
+  if (isSaving) return;
 
   isSaving = true;
-  saveLocal();
-
   try {
-    await setDoc(LAYOUT_REF, {
-      seats: layout.seats,
-      waiting: layout.waiting,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    setPill(syncPill, "SYNC", ["online"], ["offline"]);
+    const payload = {
+      version: state.version,
+      seats: state.seats,
+      waiting: state.waiting,
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.uid
+    };
+    await setDoc(DOC_REF, payload, { merge: true });
+    saveLocal();
   } catch (e) {
-    setPill(syncPill, "OFFLINE", ["offline"], ["online"]);
+    console.warn("saveRemote failed:", e);
+    // still keep local
+    saveLocal();
   } finally {
-    isSaving = false;
+    // small delay prevents immediate snapshot echo from re-entering
+    setTimeout(() => { isSaving = false; }, 120);
   }
 }
 
-let saveTimer = null;
-function saveRemoteDebounced() {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveRemote, 200);
-}
-
-function bindSnapshot() {
-  onSnapshot(LAYOUT_REF, (snap) => {
-    // 처음엔 로컬 먼저, 서버 있으면 덮어쓰기
-    if (!snap.exists()) {
-      if (!hydrated) {
-        hydrated = true;
-        render();
-      }
-      setPill(syncPill, "OFFLINE", ["offline"], ["online"]);
-      return;
-    }
-
-    setPill(syncPill, "LIVE", ["online"], ["offline"]);
-
-    if (isSaving) return;
+function attachSnapshot() {
+  onSnapshot(DOC_REF, (snap) => {
+    if (!snap.exists()) return;
 
     const data = snap.data() || {};
-    // 서버 데이터 → 로컬 반영
-    if (data.seats) layout.seats = data.seats;
-    if (Array.isArray(data.waiting)) layout.waiting = data.waiting;
+    const incomingSeats = Array.isArray(data.seats) ? data.seats : null;
+    const incomingWaiting = Array.isArray(data.waiting) ? data.waiting : null;
 
-    hydrated = true;
+    if (!incomingSeats || !incomingWaiting) return;
+
+    // If we're saving, ignore echo unless first hydration
+    if (isSaving && hasHydrated) return;
+
+    state.seats = incomingSeats;
+    state.waiting = incomingWaiting;
+
+    // keep selections valid
+    if (selectedSeatId != null && !state.seats.some(s => s.id === selectedSeatId)) selectedSeatId = null;
+    if (selectedWaitingId != null && !state.waiting.some(w => w.id === selectedWaitingId)) selectedWaitingId = null;
+
+    hasHydrated = true;
     saveLocal();
-    render();
-  }, () => {
-    setPill(syncPill, "OFFLINE", ["offline"], ["online"]);
+    renderAll();
   });
 }
 
 /* ===============================
-   ACTIONS
+   STATE HELPERS
 =============================== */
-function clearSelection() {
-  selectedSeatNum = null;
-  selectedWaitingIndex = null;
+function getSeatById(id) {
+  return state.seats.find(s => s.id === id) || null;
+}
+function getWaitingById(id) {
+  return state.waiting.find(w => w.id === id) || null;
 }
 
-function addSeat() {
-  if (currentUserRole !== "admin") return;
-  const n = nextSeatNum();
-  layout.seats[String(n)] = { name: `Seat ${n}`, start: now() };
-  clearSelection();
-  render();
-  saveRemoteDebounced();
+function ensureSeatSlots(minCount = 1) {
+  const maxId = state.seats.reduce((m, s) => Math.max(m, s.id), -1);
+  while (state.seats.length < minCount) {
+    state.seats.push({ id: maxId + 1 + (state.seats.length - minCount + 1), name: null, start: null });
+  }
+  // If ids got weird, normalize to 0..n-1 while preserving order
+  const needsNormalize = state.seats.some((s, i) => s.id !== i);
+  if (needsNormalize) {
+    state.seats = state.seats.map((s, i) => ({ id: i, name: s.name ?? null, start: s.start ?? null }));
+  }
 }
 
-function deleteSeat(seatNum) {
-  if (currentUserRole !== "admin") return;
-  delete layout.seats[String(seatNum)];
-  if (selectedSeatNum === seatNum) selectedSeatNum = null;
-  render();
-  saveRemoteDebounced();
+function seatMoveToWaiting(seatId) {
+  const seat = getSeatById(seatId);
+  if (!seat || !seat.name) return false;
+
+  state.waiting.push({
+    id: uid(),
+    name: seat.name,
+    start: seat.start || nowMs()
+  });
+
+  seat.name = null;
+  seat.start = null;
+  return true;
 }
 
-function addWaiting(name) {
-  if (currentUserRole !== "admin") return;
-  const n = String(name || "").trim();
-  if (!n) return;
-  layout.waiting.push({ name: n, start: now() });
-  waitingInput.value = "";
-  selectedWaitingIndex = layout.waiting.length - 1;
-  render();
-  saveRemoteDebounced();
+function assignWaitingToSeat(waitId, seatId) {
+  const seat = getSeatById(seatId);
+  const w = getWaitingById(waitId);
+  if (!seat || !w) return false;
+
+  if (!seat.name) {
+    // assign into empty seat
+    seat.name = w.name;
+    seat.start = w.start || nowMs();
+    state.waiting = state.waiting.filter(x => x.id !== waitId);
+    return true;
+  }
+
+  // swap (seat occupant becomes waiting)
+  const prev = { id: uid(), name: seat.name, start: seat.start || nowMs() };
+
+  seat.name = w.name;
+  seat.start = w.start || nowMs();
+
+  // replace selected waiting with previous seat occupant (keeps position feel)
+  state.waiting = state.waiting.map(x => x.id === waitId ? prev : x);
+  selectedWaitingId = prev.id;
+  return true;
 }
 
-function deleteWaiting(idx) {
-  if (currentUserRole !== "admin") return;
-  layout.waiting.splice(idx, 1);
-  if (selectedWaitingIndex === idx) selectedWaitingIndex = null;
-  render();
-  saveRemoteDebounced();
-}
+function editSelectedName() {
+  if (!isAdmin()) return;
 
-// Seat ↔ Waiting 스왑/할당
-function swapSeatWaiting(seatNum, wIdx) {
-  const sKey = String(seatNum);
-  const seatObj = layout.seats[sKey] || { name: `Seat ${seatNum}`, start: now() };
-  const wObj = layout.waiting[wIdx];
-
-  // 스왑: seat.name <-> waiting.name
-  const tmp = { ...seatObj };
-  layout.seats[sKey] = { name: wObj.name, start: wObj.start ?? now() };
-  layout.waiting[wIdx] = { name: tmp.name, start: tmp.start ?? now() };
-
-  clearSelection();
-  render();
-  saveRemoteDebounced();
-}
-
-// Seat 더블클릭: Seat 사람을 Waiting으로 빼기 (Seat 비우기 X → 기본 Seat명으로 돌림)
-function seatToWaiting(seatNum) {
-  if (currentUserRole !== "admin") return;
-  const sKey = String(seatNum);
-  const seatObj = layout.seats[sKey];
-  if (!seatObj || !seatObj.name) return;
-
-  layout.waiting.unshift({ name: seatObj.name, start: seatObj.start ?? now() });
-  layout.seats[sKey] = { name: `Seat ${seatNum}`, start: now() };
-
-  clearSelection();
-  render();
-  saveRemoteDebounced();
-}
-
-// 이름 변경
-function renameSelected() {
-  if (currentUserRole !== "admin") return;
-
-  if (selectedSeatNum !== null) {
-    const sKey = String(selectedSeatNum);
-    const cur = layout.seats[sKey]?.name || "";
-    const next = prompt("Seat 이름 변경", cur);
-    if (next && next.trim()) {
-      layout.seats[sKey].name = next.trim();
-      render();
-      saveRemoteDebounced();
-    }
+  if (selectedSeatId != null) {
+    const seat = getSeatById(selectedSeatId);
+    if (!seat) return;
+    const cur = seat.name || "";
+    const next = prompt("Seat 이름 수정", cur);
+    if (next === null) return;
+    const trimmed = next.trim();
+    seat.name = trimmed ? trimmed : null;
+    if (seat.name && !seat.start) seat.start = nowMs();
+    if (!seat.name) seat.start = null;
+    saveRemote();
+    renderAll();
     return;
   }
 
-  if (selectedWaitingIndex !== null) {
-    const cur = layout.waiting[selectedWaitingIndex]?.name || "";
-    const next = prompt("대기자 이름 변경", cur);
-    if (next && next.trim()) {
-      layout.waiting[selectedWaitingIndex].name = next.trim();
-      render();
-      saveRemoteDebounced();
-    }
+  if (selectedWaitingId != null) {
+    const w = getWaitingById(selectedWaitingId);
+    if (!w) return;
+    const next = prompt("대기자 이름 수정", w.name);
+    if (next === null) return;
+    const trimmed = next.trim();
+    if (!trimmed) return;
+    w.name = trimmed;
+    saveRemote();
+    renderAll();
   }
+}
+
+function deleteSelected() {
+  if (!isAdmin()) return;
+
+  if (selectedWaitingId != null) {
+    state.waiting = state.waiting.filter(w => w.id !== selectedWaitingId);
+    selectedWaitingId = null;
+    saveRemote();
+    renderAll();
+    return;
+  }
+
+  if (selectedSeatId != null) {
+    const seat = getSeatById(selectedSeatId);
+    if (!seat) return;
+
+    if (seat.name) {
+      // safer: move occupant to waiting instead of hard delete
+      seatMoveToWaiting(seat.id);
+    } else {
+      // remove seat slot only if last seat (prevents layout collapse accidents)
+      // (admin can still add seats back)
+      if (state.seats.length > 1 && seat.id === state.seats.length - 1) {
+        state.seats.pop();
+        if (selectedSeatId === seat.id) selectedSeatId = null;
+      }
+    }
+    saveRemote();
+    renderAll();
+  }
+}
+
+function clearSelection() {
+  selectedSeatId = null;
+  selectedWaitingId = null;
+  renderAll();
 }
 
 /* ===============================
    RENDER
 =============================== */
-function render() {
-  // seats
+function seatCardHTML(seat) {
+  const title = seat.name ? seat.name : `Empty (Seat ${seat.id + 1})`;
+  const elapsed = seat.start ? formatElapsed(nowMs() - seat.start) : "";
+  const pill = seat.name ? `<span class="pill running">Running</span>` : `<span class="pill waiting">Empty</span>`;
+
+  return `
+    <div class="badge">Seat #${seat.id + 1}</div>
+    <div class="row">
+      <div class="name">${escapeHtml(title)}</div>
+      <div class="time" data-start="${seat.start || ""}">${elapsed}</div>
+    </div>
+    <div class="row row-bottom">
+      ${pill}
+      ${isAdmin() ? `<button class="seat-delete" data-seat-del="${seat.id}" title="Seat 삭제">×</button>` : ``}
+    </div>
+  `;
+}
+
+function waitingCardHTML(w, idx) {
+  const elapsed = w.start ? formatElapsed(nowMs() - w.start) : "";
+  return `
+    <div class="badge">Waiting #${idx + 1}</div>
+    <div class="row">
+      <div class="name">${escapeHtml(w.name)}</div>
+      <div class="time" data-start="${w.start || ""}">${elapsed}</div>
+    </div>
+    ${isAdmin() ? `<button class="wait-delete" data-wait-del="${w.id}" title="대기자 삭제">×</button>` : ``}
+  `;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[m]));
+}
+
+function renderAll() {
+  if (!gridEl || !waitingListEl) return;
+
+  // Seats
   gridEl.innerHTML = "";
-  const seatNums = seatNumsSorted();
+  const gridWrap = document.createElement("div");
+  gridWrap.className = "layout-grid";
 
-  emptySeatsEl.classList.toggle("hidden", seatNums.length !== 0);
-
-  seatNums.forEach((seatNum) => {
-    const sKey = String(seatNum);
-    const seatObj = layout.seats[sKey];
-
+  state.seats.forEach((seat) => {
     const card = document.createElement("div");
-    card.className = "card";
-    if (selectedSeatNum === seatNum) card.classList.add("selected");
-
-    const top = document.createElement("div");
-    top.className = "row";
-
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = seatObj?.name || `Seat ${seatNum}`;
-
-    const time = document.createElement("div");
-    time.className = "time";
-    const start = Number(seatObj?.start || now());
-    time.textContent = formatElapsed(now() - start);
-
-    top.appendChild(name);
-    top.appendChild(time);
-
-    const sub = document.createElement("div");
-    sub.className = "sub";
-    sub.innerHTML = `<span class="badge">Seat #${seatNum}</span>`;
-
-    card.appendChild(top);
-    card.appendChild(sub);
-
-    // 클릭
-    card.addEventListener("click", () => {
-      // waiting 선택 상태면 스왑
-      if (selectedWaitingIndex !== null) {
-        swapSeatWaiting(seatNum, selectedWaitingIndex);
-        return;
-      }
-      selectedSeatNum = seatNum;
-      selectedWaitingIndex = null;
-      render();
-    });
-
-    // 더블클릭 → waiting으로 빼기
-    card.addEventListener("dblclick", (e) => {
-      e.preventDefault();
-      seatToWaiting(seatNum);
-    });
-
-    // 삭제 버튼 (admin)
-    if (currentUserRole === "admin") {
-      const del = document.createElement("button");
-      del.className = "seat-delete";
-      del.textContent = "×";
-      del.title = "Seat 삭제";
-      del.addEventListener("click", (e) => {
-        e.stopPropagation();
-        deleteSeat(seatNum);
-      });
-      card.appendChild(del);
-    }
-
-    gridEl.appendChild(card);
+    card.className = "card seat-card" + (selectedSeatId === seat.id ? " selected" : "");
+    card.dataset.seatId = String(seat.id);
+    card.innerHTML = seatCardHTML(seat);
+    gridWrap.appendChild(card);
   });
 
-  // waiting
-  waitingEl.innerHTML = "";
-  emptyWaitingEl.classList.toggle("hidden", layout.waiting.length !== 0);
+  gridEl.appendChild(gridWrap);
 
-  layout.waiting.forEach((w, idx) => {
-    const card = document.createElement("div");
-    card.className = "card waiting-card";
-    if (selectedWaitingIndex === idx) {
-      card.classList.add("selected", "waitingSel");
-    }
-
-    const top = document.createElement("div");
-    top.className = "row";
-
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = w?.name || "-";
-
-    const time = document.createElement("div");
-    time.className = "time";
-    const start = Number(w?.start || now());
-    time.textContent = formatElapsed(now() - start);
-
-    top.appendChild(name);
-    top.appendChild(time);
-
-    const sub = document.createElement("div");
-    sub.className = "sub";
-    sub.innerHTML = `<span class="badge">Waiting #${idx+1}</span>`;
-
-    card.appendChild(top);
-    card.appendChild(sub);
-
-    card.addEventListener("click", () => {
-      // seat 선택 상태면 스왑
-      if (selectedSeatNum !== null) {
-        swapSeatWaiting(selectedSeatNum, idx);
-        return;
-      }
-      selectedWaitingIndex = idx;
-      selectedSeatNum = null;
-      render();
+  // Waiting
+  waitingListEl.innerHTML = "";
+  if (state.waiting.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "대기자가 없습니다.";
+    waitingListEl.appendChild(empty);
+  } else {
+    const row = document.createElement("div");
+    row.className = "waiting-row";
+    state.waiting.forEach((w, idx) => {
+      const card = document.createElement("div");
+      card.className = "card waiting-card" + (selectedWaitingId === w.id ? " selected" : "");
+      card.dataset.waitId = w.id;
+      card.innerHTML = waitingCardHTML(w, idx);
+      row.appendChild(card);
     });
+    waitingListEl.appendChild(row);
+  }
 
-    if (currentUserRole === "admin") {
-      const del = document.createElement("button");
-      del.className = "wait-delete";
-      del.textContent = "×";
-      del.title = "대기자 삭제";
-      del.addEventListener("click", (e) => {
-        e.stopPropagation();
-        deleteWaiting(idx);
-      });
-      card.appendChild(del);
-    }
+  applyRoleUI();
+}
 
-    waitingEl.appendChild(card);
+/* Update only timers every second (no full rerender) */
+function updateTimersOnly() {
+  document.querySelectorAll(".time[data-start]").forEach((el) => {
+    const v = el.getAttribute("data-start");
+    const start = v ? Number(v) : 0;
+    if (!start) return;
+    el.textContent = formatElapsed(nowMs() - start);
   });
 }
 
 /* ===============================
-   TIMERS
+   EVENT BINDINGS
 =============================== */
-setInterval(() => {
-  // 화면을 매초 통째로 다시 그릴 필요 없이
-  // 간단히 텍스트만 업데이트하려면 selector로 time만 갱신해도 되지만,
-  // 카드 수가 많지 않으니 안전하게 render는 피하고 time만 갱신
-  document.querySelectorAll(".card .time").forEach((el) => {
-    const parent = el.closest(".card");
-    if (!parent) return;
+function bindUI() {
+  // Add seat (admin only)
+  addSeatBtn?.addEventListener("click", () => {
+    if (!isAdmin()) return;
+    const nextId = state.seats.length;
+    state.seats.push({ id: nextId, name: null, start: null });
+    saveRemote();
+    renderAll();
+  });
 
-    // seat 카드인지 waiting 카드인지 판별
-    const seatBadge = parent.querySelector(".badge")?.textContent || "";
+  // Add waiting (admin only)
+  addWaitingBtn?.addEventListener("click", () => {
+    if (!isAdmin()) return;
+    const name = (waitingNameInput?.value || "").trim();
+    if (!name) return;
+    state.waiting.push({ id: uid(), name, start: nowMs() });
+    waitingNameInput.value = "";
+    saveRemote();
+    renderAll();
+  });
 
-    if (seatBadge.startsWith("Seat #")) {
-      const seatNum = Number(seatBadge.replace("Seat #",""));
-      const obj = layout.seats[String(seatNum)];
-      if (!obj) return;
-      el.textContent = formatElapsed(now() - Number(obj.start || now()));
+  waitingNameInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addWaitingBtn?.click();
+  });
+
+  // Delegate clicks (seat & waiting)
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+
+    // seat delete
+    const seatDel = t?.closest?.("[data-seat-del]");
+    if (seatDel && isAdmin()) {
+      e.preventDefault();
+      e.stopPropagation();
+      const seatId = Number(seatDel.getAttribute("data-seat-del"));
+      const seat = getSeatById(seatId);
+      if (!seat) return;
+      if (seat.name) {
+        seatMoveToWaiting(seatId);
+      } else {
+        // allow removing only last seat
+        if (state.seats.length > 1 && seatId === state.seats.length - 1) {
+          state.seats.pop();
+          if (selectedSeatId === seatId) selectedSeatId = null;
+        }
+      }
+      saveRemote();
+      renderAll();
       return;
     }
 
-    if (seatBadge.startsWith("Waiting #")) {
-      const idx = Number(seatBadge.replace("Waiting #","")) - 1;
-      const obj = layout.waiting[idx];
-      if (!obj) return;
-      el.textContent = formatElapsed(now() - Number(obj.start || now()));
+    // wait delete
+    const waitDel = t?.closest?.("[data-wait-del]");
+    if (waitDel && isAdmin()) {
+      e.preventDefault();
+      e.stopPropagation();
+      const wid = waitDel.getAttribute("data-wait-del");
+      state.waiting = state.waiting.filter(w => w.id !== wid);
+      if (selectedWaitingId === wid) selectedWaitingId = null;
+      saveRemote();
+      renderAll();
+      return;
+    }
+
+    // waiting card click
+    const waitCard = t?.closest?.(".waiting-card");
+    if (waitCard) {
+      const wid = waitCard.dataset.waitId;
+      if (!wid) return;
+
+      // if a seat is selected -> assign/swap
+      if (selectedSeatId != null && isAdmin()) {
+        const changed = assignWaitingToSeat(wid, selectedSeatId);
+        if (changed) {
+          selectedSeatId = null;
+          saveRemote();
+          renderAll();
+        }
+        return;
+      }
+
+      selectedWaitingId = (selectedWaitingId === wid) ? null : wid;
+      selectedSeatId = null;
+      renderAll();
+      return;
+    }
+
+    // seat card click
+    const seatCard = t?.closest?.(".seat-card");
+    if (seatCard) {
+      const seatId = Number(seatCard.dataset.seatId);
+      if (Number.isNaN(seatId)) return;
+
+      // if waiting selected -> assign/swap (admin)
+      if (selectedWaitingId != null && isAdmin()) {
+        const changed = assignWaitingToSeat(selectedWaitingId, seatId);
+        if (changed) {
+          selectedWaitingId = null;
+          saveRemote();
+          renderAll();
+        }
+        return;
+      }
+
+      selectedSeatId = (selectedSeatId === seatId) ? null : seatId;
+      selectedWaitingId = null;
+      renderAll();
+      return;
+    }
+
+    // click outside -> clear selection
+    const inside = t?.closest?.(".seat-card, .waiting-card, .waiting-header, .layout-top");
+    if (!inside) clearSelection();
+  });
+
+  // dblclick seat -> move occupant to waiting (admin)
+  document.addEventListener("dblclick", (e) => {
+    if (!isAdmin()) return;
+    const seatCard = e.target?.closest?.(".seat-card");
+    if (!seatCard) return;
+    const seatId = Number(seatCard.dataset.seatId);
+    const seat = getSeatById(seatId);
+    if (!seat || !seat.name) return;
+    seatMoveToWaiting(seatId);
+    saveRemote();
+    renderAll();
+  });
+
+  // Shortcuts
+  document.addEventListener("keydown", (e) => {
+    if (isTypingTarget(document.activeElement)) return;
+
+    // Esc: clear selection
+    if (e.key === "Escape") {
+      clearSelection();
+      return;
+    }
+
+    // W: focus waiting input
+    if (e.key === "w" || e.key === "W") {
+      if (!isAdmin()) return;
+      waitingNameInput?.focus();
+      waitingNameInput?.select?.();
+      return;
+    }
+
+    // A: add seat
+    if (e.key === "a" || e.key === "A") {
+      if (!isAdmin()) return;
+      addSeatBtn?.click();
+      return;
+    }
+
+    // E: edit name
+    if (e.key === "e" || e.key === "E") {
+      if (!isAdmin()) return;
+      editSelectedName();
+      return;
+    }
+
+    // Delete / Backspace: delete selected
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if (!isAdmin()) return;
+      deleteSelected();
+      return;
+    }
+
+    // Cmd/Ctrl + S : force save (admin)
+    if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+      if (!isAdmin()) return;
+      e.preventDefault();
+      saveRemote();
     }
   });
-}, 1000);
-
-/* ===============================
-   EVENTS
-=============================== */
-addSeatBtn?.addEventListener("click", addSeat);
-
-addWaitingBtn?.addEventListener("click", () => {
-  addWaiting(waitingInput.value);
-});
-
-waitingInput?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    addWaiting(waitingInput.value);
-  }
-});
-
-// 단축키
-window.addEventListener("keydown", (e) => {
-  // 입력 중이면 최소한만 허용
-  const isTyping = document.activeElement &&
-    ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName);
-
-  if (e.key === "Escape") {
-    clearSelection();
-    render();
-    return;
-  }
-
-  if (isTyping) return;
-
-  // W: waiting 입력 포커스
-  if (e.key.toLowerCase() === "w") {
-    e.preventDefault();
-    if (currentUserRole === "admin") waitingInput?.focus();
-    return;
-  }
-
-  // E: 이름 변경
-  if (e.key.toLowerCase() === "e") {
-    e.preventDefault();
-    renameSelected();
-    return;
-  }
-
-  // A: Seat 추가
-  if (e.key.toLowerCase() === "a") {
-    e.preventDefault();
-    addSeat();
-    return;
-  }
-
-  // Delete: 선택 삭제
-  if (e.key === "Delete" || e.key === "Backspace") {
-    if (currentUserRole !== "admin") return;
-
-    if (selectedSeatNum !== null) {
-      deleteSeat(selectedSeatNum);
-      return;
-    }
-    if (selectedWaitingIndex !== null) {
-      deleteWaiting(selectedWaitingIndex);
-    }
-  }
-
-  // Ctrl/Cmd+S: 저장
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-    e.preventDefault();
-    saveRemoteDebounced();
-  }
-});
+}
 
 /* ===============================
    BOOT
 =============================== */
-(function boot() {
-  // 로컬 먼저
+function bootDefaultState() {
+  if (state.seats.length === 0) state.seats = [{ id: 0, name: null, start: null }];
+  ensureSeatSlots(1);
+}
+
+function init() {
+  // local first for instant UI
   loadLocal();
-  render();
+  bootDefaultState();
+  renderAll();
+  setInterval(updateTimersOnly, 1000);
 
-  setPill(syncPill, "OFFLINE", ["offline"], ["online"]);
-  rolePill.textContent = "ROLE: -";
+  bindUI();
 
-  // auth + role
   onAuthStateChanged(auth, async (user) => {
     currentUser = user || null;
-    currentUserRole = user ? await fetchRole(user.uid) : "user";
-    applyRoleUI();
-    render();
 
-    // 서버 동기화 시작
-    bindSnapshot();
+    if (!currentUser) {
+      // no auth: readonly user mode
+      currentUserRole = "user";
+      applyRoleUI();
+      // still attach snapshot to view live state if rules allow read
+      attachSnapshot();
+      return;
+    }
 
-    // 최초 1회: 서버에 문서 없으면 로컬을 올려두기 (admin만)
-    if (!hydrated && currentUserRole === "admin") {
-      saveRemoteDebounced();
+    await ensureUserDoc(currentUser.uid);
+    attachSnapshot();
+
+    // If remote doc is empty and we have local, push once (admin only)
+    if (isAdmin()) {
+      try {
+        const snap = await getDoc(DOC_REF);
+        if (!snap.exists()) {
+          await saveRemote();
+        }
+      } catch {}
     }
   });
-})();
+}
+
+init();
