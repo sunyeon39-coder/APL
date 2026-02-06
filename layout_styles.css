@@ -1,104 +1,386 @@
-* { box-sizing: border-box; }
+/* =================================================
+   RESET / BASE
+================================================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-html, body {
+html,
+body {
   margin: 0;
+  padding: 0;
   height: 100%;
   background: #0b1020;
   color: #e9ecff;
-  font-family: system-ui, -apple-system;
-  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Apple SD Gothic Neo, sans-serif;
+
+  /* ❗ body는 절대 클릭 막으면 안 됨 */
+  pointer-events: auto;
+  overflow: hidden; /* 전체 스크롤은 우리가 관리 */
 }
 
+/* =================================================
+   ROOT LAYOUT
+================================================= */
 .layout-wrap {
-  height: 100dvh;
+  position: relative;
+  height: 100dvh; /* 모바일 주소창 대응 */
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+
+  pointer-events: auto;
 }
 
-/* TOP */
+/* =================================================
+   TOP BAR
+================================================= */
 .layout-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+
   height: 56px;
   padding: 0 12px;
+
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  background: rgba(12,18,40,.95);
+  justify-content: space-between;
+
+  background: linear-gradient(
+    180deg,
+    rgba(12, 18, 40, 0.95),
+    rgba(12, 18, 40, 0.75)
+  );
+  backdrop-filter: blur(10px);
+
+  pointer-events: auto;
 }
 
-/* MAIN */
+.layout-top .btn {
+  pointer-events: auto;
+}
+
+/* =================================================
+   MAIN (SEAT AREA)
+================================================= */
 .layout-main {
+  position: relative;
   flex: 1;
-  padding: 12px;
   overflow-y: auto;
+  overflow-x: hidden;
+
+  padding: 16px;
+
+  /* 🔥 핵심 */
+  pointer-events: auto;
+  z-index: 1;
 }
 
-/* GRID */
-.grid {
+/* 스크롤 부드럽게 */
+.layout-main {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =================================================
+   SEAT GRID
+================================================= */
+.layout-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
 
-/* CARD */
+/* =================================================
+   CARD (SEAT / WAITING 공통)
+================================================= */
 .card {
-  background: #1b2245;
-  border-radius: 14px;
-  padding: 12px;
   position: relative;
-  cursor: pointer;
+  padding: 14px;
+  border-radius: 16px;
+
+  background: linear-gradient(
+    180deg,
+    rgba(28, 36, 72, 0.95),
+    rgba(20, 26, 56, 0.95)
+  );
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  pointer-events: auto;
 }
 
-.card:active { transform: scale(.98); }
+/* 클릭 / 터치 반응 */
+.card:active {
+  transform: scale(0.985);
+}
 
-/* DELETE */
-.delete {
+/* =================================================
+   BADGE / PILL
+================================================= */
+.badge {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-bottom: 6px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.pill.running {
+  background: rgba(90, 120, 255, 0.2);
+  color: #b8c7ff;
+}
+
+.pill.waiting {
+  background: rgba(255, 200, 90, 0.18);
+  color: #ffe2a8;
+}
+
+/* =================================================
+   DELETE BUTTONS
+================================================= */
+.seat-delete,
+.wait-delete {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  background: #ff5c7c;
-  border: none;
-  color: #fff;
-  width: 22px;
-  height: 22px;
+  top: 8px;
+  right: 8px;
+
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
+
+  border: none;
+  background: rgba(255, 90, 120, 0.9);
+  color: #fff;
+  font-size: 14px;
+
+  cursor: pointer;
+  pointer-events: auto;
 }
 
-/* WAITING */
+/* =================================================
+   BOTTOM (WAITING AREA)
+================================================= */
 .layout-bottom {
-  padding: 10px;
-  background: rgba(12,18,40,.95);
+  position: sticky;
+  bottom: 0;
+  z-index: 25;
+
+  background: linear-gradient(
+    180deg,
+    rgba(12, 18, 40, 0.85),
+    rgba(12, 18, 40, 0.95)
+  );
+  backdrop-filter: blur(12px);
+
+  padding: 10px 12px;
+
+  pointer-events: auto;
 }
 
-.waiting-input {
+/* =================================================
+   WAITING INPUT BAR
+================================================= */
+.waiting-header {
   display: flex;
   gap: 8px;
+  align-items: center;
+
+  pointer-events: auto;
 }
 
-.waiting-input input {
+#waitingNameInput {
   flex: 1;
   height: 36px;
+  padding: 0 12px;
+
   border-radius: 999px;
   border: none;
-  padding: 0 12px;
+  outline: none;
+
+  background: rgba(255, 255, 255, 0.95);
+  color: #000;
+
+  pointer-events: auto;
 }
 
+#addWaitingBtn {
+  height: 36px;
+  padding: 0 14px;
+
+  border-radius: 999px;
+  border: none;
+
+  background: rgba(120, 140, 255, 0.95);
+  color: #fff;
+  font-weight: 600;
+
+  pointer-events: auto;
+}
+
+/* =================================================
+   WAITING LIST
+================================================= */
 .waiting-grid {
   margin-top: 10px;
   display: flex;
   gap: 10px;
   overflow-x: auto;
+
+  pointer-events: auto;
 }
 
-/* BUTTON */
+.waiting-card {
+  min-width: 160px;
+}
+
+/* =================================================
+   BUTTON BASE
+================================================= */
 .btn {
   height: 36px;
   padding: 0 14px;
   border-radius: 999px;
-  border: none;
-  background: rgba(255,255,255,.15);
+
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
+
+  cursor: pointer;
+  pointer-events: auto;
 }
 
-.btn.primary {
-  background: #6b7cff;
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* =================================================
+   BACKGROUND / DECORATION (CLICK BLOCK 금지)
+================================================= */
+.background,
+.gradient,
+.canvas,
+.overlay,
+.layout-loading {
+  pointer-events: none !important;
+}
+
+/* =================================================
+   EMPTY STATE
+================================================= */
+.empty {
+  opacity: 0.6;
+  font-size: 14px;
+  padding: 12px;
+}
+
+/* =================================================
+   MOBILE SAFETY
+================================================= */
+@media (max-width: 600px) {
+  .layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =================================================
+   UTIL
+================================================= */
+.hidden{ display:none !important; }
+
+.top-left, .top-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.top-right{
+  justify-content:flex-end;
+}
+
+/* Pills */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.08);
+}
+.pill.online{
+  background: rgba(80,220,160,.18);
+  border-color: rgba(80,220,160,.25);
+}
+.pill.offline{
+  background: rgba(255,120,160,.14);
+  border-color: rgba(255,120,160,.25);
+}
+.pill.role{
+  opacity:.9;
+}
+
+/* Selected highlight */
+.card.selected{
+  outline: 2px solid rgba(120,140,255,.95);
+  outline-offset: 2px;
+}
+.card.selected.waitingSel{
+  outline-color: rgba(255, 200, 90, .95);
+}
+
+/* Card content */
+.card .row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.card .name{
+  font-weight:700;
+  font-size:15px;
+  line-height:1.1;
+  word-break:break-word;
+}
+.card .time{
+  font-variant-numeric: tabular-nums;
+  opacity:.85;
+  font-size:12px;
+  white-space:nowrap;
+}
+.card .sub{
+  margin-top:8px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  opacity:.8;
+  font-size:12px;
+}
+
+/* Bottom hint */
+.hint{
+  margin-top:10px;
+  opacity:.7;
+  font-size:12px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.kbd{
+  padding:2px 6px;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,.16);
+  background: rgba(0,0,0,.18);
 }
