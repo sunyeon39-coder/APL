@@ -1,10 +1,10 @@
-console.log("🔥 layout_app.js FINAL – UI FIRST / FIRESTORE SYNC");
+console.log("🔥 layout_app.js STABLE – CLEAN PARSE");
 
 /* =================================================
-   CLICK SAFE RESTORE
+   CLICK SAFE RESTORE (문법 안전)
    ================================================= */
-(function(){
-  try{
+(function () {
+  try {
     document.documentElement.classList.remove("page-enter");
     document.documentElement.classList.add("page-ready");
     document.body.style.pointerEvents = "auto";
@@ -12,22 +12,27 @@ console.log("🔥 layout_app.js FINAL – UI FIRST / FIRESTORE SYNC");
     const blockers = document.querySelectorAll(
       ".overlay, .loading, .blocker, .page-block, .modal-block, .layout-loading"
     );
+
     blockers.forEach(el => {
       const cs = getComputedStyle(el);
-      const isHidden =
+      const hidden =
         el.classList.contains("hidden") ||
         el.getAttribute("aria-hidden") === "true" ||
         cs.display === "none" ||
         cs.visibility === "hidden";
-      if (isHidden) el.style.pointerEvents = "none";
+
+      if (hidden) el.style.pointerEvents = "none";
     });
 
-    document.querySelector(".layout-top")?.style.pointerEvents = "auto";
-  }catch(e){}
+    const top = document.querySelector(".layout-top");
+    if (top) top.style.pointerEvents = "auto";
+  } catch (e) {
+    console.warn("click-safe skipped", e);
+  }
 })();
 
 /* =================================================
-   IMPORT (🔥 auth 중복 제거됨)
+   IMPORT
    ================================================= */
 import { db, auth } from "./firebase.js";
 import {
@@ -41,25 +46,19 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 /* =================================================
-   CONST / STATE
+   STATE
    ================================================= */
 const STATE_REF = doc(db, "boxboard", "state");
-
-let currentUserRole = "user";
 
 const layout = {
   seats: {},
   waiting: []
 };
 
-let selectedSeatNum = null;
+let currentUserRole = "user";
 let selectedWaitingIndex = null;
-let isAddingWaiting = false;
-let suppressClick = false;
-
-/* UI ↔ Firestore 보호 */
-let hasHydrated = false;
 let isSaving = false;
+let hasHydrated = false;
 let unsubscribeLayout = null;
 
 const $ = id => document.getElementById(id);
@@ -83,7 +82,7 @@ function formatElapsed(ms) {
    ================================================= */
 onAuthStateChanged(auth, async user => {
   if (!user) {
-    location.replace(new URL("login.html", location.href).href);
+    location.replace("login.html");
     return;
   }
 
@@ -100,58 +99,53 @@ onAuthStateChanged(auth, async user => {
 function applyRoleUI() {
   if (currentUserRole === "admin") return;
 
-  const addSeatBtnEl = $("addSeatBtn");
-if (addSeatBtnEl) addSeatBtnEl.remove();
+  const addSeatBtn = $("addSeatBtn");
+  if (addSeatBtn) addSeatBtn.remove();
 
-const waitInput = $("waitingNameInput");
-if (waitInput) {
-  const header = waitInput.closest(".waiting-header");
-  if (header) header.remove();
-}
+  const input = $("waitingNameInput");
+  if (input) {
+    const wrap = input.closest(".waiting-header");
+    if (wrap) wrap.remove();
+  }
 
-const addWaitingBtnEl = $("addWaitingBtn");
-if (addWaitingBtnEl) addWaitingBtnEl.remove();
-
+  const addWaitingBtn = $("addWaitingBtn");
+  if (addWaitingBtn) addWaitingBtn.remove();
 }
 
 /* =================================================
-   FIRESTORE SUBSCRIBE
+   FIRESTORE
    ================================================= */
 function subscribeLayout() {
   const boxId = getBoxId();
   if (!boxId || unsubscribeLayout) return;
 
-  unsubscribeLayout = onSnapshot(
-    STATE_REF,
-    snap => {
-      if (!snap.exists() || isSaving) return;
+  unsubscribeLayout = onSnapshot(STATE_REF, snap => {
+    if (!snap.exists() || isSaving) return;
 
-      const box = snap.data().boxes?.find(b => b.id === boxId);
-      if (!box) return;
+    const box = snap.data().boxes?.find(b => b.id === boxId);
+    if (!box) return;
 
-      const serverLayout = box.layout || { seats: {}, waiting: [] };
+    const serverLayout = box.layout || { seats: {}, waiting: [] };
 
-      if (!hasHydrated) {
-        layout.seats = structuredClone(serverLayout.seats || {});
-        layout.waiting = structuredClone(serverLayout.waiting || []);
-        hasHydrated = true;
-        renderLayout();
-        renderWaitList();
-        return;
-      }
+    if (!hasHydrated) {
+      layout.seats = structuredClone(serverLayout.seats || {});
+      layout.waiting = structuredClone(serverLayout.waiting || []);
+      hasHydrated = true;
+      renderLayout();
+      renderWaitList();
+      return;
+    }
 
-      if (
-        JSON.stringify(layout.seats) !== JSON.stringify(serverLayout.seats) ||
-        JSON.stringify(layout.waiting) !== JSON.stringify(serverLayout.waiting)
-      ) {
-        layout.seats = structuredClone(serverLayout.seats || {});
-        layout.waiting = structuredClone(serverLayout.waiting || []);
-        renderLayout();
-        renderWaitList();
-      }
-    },
-    err => console.warn("⚠️ layout listen error (ignored):", err.code)
-  );
+    if (
+      JSON.stringify(layout.seats) !== JSON.stringify(serverLayout.seats) ||
+      JSON.stringify(layout.waiting) !== JSON.stringify(serverLayout.waiting)
+    ) {
+      layout.seats = structuredClone(serverLayout.seats || {});
+      layout.waiting = structuredClone(serverLayout.waiting || []);
+      renderLayout();
+      renderWaitList();
+    }
+  });
 }
 
 /* =================================================
@@ -168,27 +162,23 @@ function renderLayout() {
     .sort((a, b) => a - b)
     .forEach(num => {
       const data = layout.seats[num];
-      const seat = document.createElement("section");
-      seat.className = "card";
-      seat.dataset.seat = num;
+      const el = document.createElement("section");
+      el.className = "card";
+      el.dataset.seat = num;
 
-      seat.innerHTML = `
+      el.innerHTML = `
         ${currentUserRole === "admin"
           ? `<button class="seat-delete" data-seat="${num}">×</button>`
           : ""}
         <div class="badge">Seat ${num}</div>
-        <div class="seat-main">
-          <h3>${data ? data.name : "비어있음"}</h3>
-          ${
-            data
-              ? `<div class="pill running">
-                   <span class="time" data-start="${data.startedAt}">0:00</span>
-                 </div>`
-              : ""
-          }
-        </div>
+        <h3>${data ? data.name : "비어있음"}</h3>
+        ${data
+          ? `<div class="pill running">
+               <span class="time" data-start="${data.startedAt}">0:00</span>
+             </div>`
+          : ""}
       `;
-      grid.appendChild(seat);
+      grid.appendChild(el);
     });
 }
 
@@ -207,20 +197,22 @@ function renderWaitList() {
   }
 
   layout.waiting.forEach((w, i) => {
-    const card = document.createElement("section");
-    card.className = "waiting-card card";
-    card.dataset.waitingIndex = i;
+    const el = document.createElement("section");
+    el.className = "waiting-card card";
+    el.dataset.waitingIndex = i;
 
-    if (i === selectedWaitingIndex) card.classList.add("selected");
+    if (i === selectedWaitingIndex) el.classList.add("selected");
 
-    card.innerHTML = `
-      <button class="wait-delete" data-index="${i}">×</button>
+    el.innerHTML = `
+      ${currentUserRole === "admin"
+        ? `<button class="wait-delete" data-index="${i}">×</button>`
+        : ""}
       <h3>${w.name}</h3>
       <div class="pill waiting">
         <span class="time" data-start="${w.startedAt}">0:00</span>
       </div>
     `;
-    list.appendChild(card);
+    list.appendChild(el);
   });
 }
 
@@ -228,12 +220,8 @@ function renderWaitList() {
    CLICK HANDLER
    ================================================= */
 document.addEventListener("click", e => {
-  if (suppressClick) return;
-
-  /* WAITING DELETE */
   const waitDel = e.target.closest(".wait-delete");
   if (waitDel && currentUserRole === "admin") {
-    e.stopPropagation();
     layout.waiting.splice(Number(waitDel.dataset.index), 1);
     selectedWaitingIndex = null;
     renderWaitList();
@@ -241,30 +229,20 @@ document.addEventListener("click", e => {
     return;
   }
 
-  /* SEAT DELETE (사람 → 대기 + Seat 삭제) */
   const seatDel = e.target.closest(".seat-delete");
   if (seatDel && currentUserRole === "admin") {
-    e.stopPropagation();
     const seatNum = Number(seatDel.dataset.seat);
     const person = layout.seats[seatNum];
     if (person) {
       layout.waiting.push({ name: person.name, startedAt: Date.now() });
     }
     delete layout.seats[seatNum];
-    selectedWaitingIndex = null;
     renderLayout();
     renderWaitList();
     saveLayout();
     return;
   }
 
-  /* ADD SEAT */
-  if (e.target.closest("#addSeatBtn")) {
-    addSeat();
-    return;
-  }
-
-  /* WAITING SELECT */
   const waitingCard = e.target.closest(".waiting-card");
   if (waitingCard && currentUserRole === "admin") {
     selectedWaitingIndex = Number(waitingCard.dataset.waitingIndex);
@@ -272,7 +250,6 @@ document.addEventListener("click", e => {
     return;
   }
 
-  /* WAITING → SEAT (교체 포함) */
   const seatCard = e.target.closest(".card");
   if (!seatCard || currentUserRole !== "admin") return;
 
@@ -296,55 +273,20 @@ document.addEventListener("click", e => {
 });
 
 /* =================================================
-   DOUBLE CLICK – Seat → Waiting
-   ================================================= */
-document.addEventListener("dblclick", e => {
-  if (currentUserRole !== "admin") return;
-
-  suppressClick = true;
-
-  const seatCard = e.target.closest(".card");
-  if (!seatCard || seatCard.classList.contains("waiting-card")) {
-    suppressClick = false;
-    return;
-  }
-
-  const seatNum = Number(seatCard.dataset.seat);
-  const person = layout.seats[seatNum];
-  if (!person) {
-    suppressClick = false;
-    return;
-  }
-
-  layout.waiting.push({ name: person.name, startedAt: Date.now() });
-  layout.seats[seatNum] = null;
-  selectedWaitingIndex = null;
-
-  renderLayout();
-  renderWaitList();
-  saveLayout();
-
-  setTimeout(() => (suppressClick = false), 0);
-});
-
-/* =================================================
    ADD WAITING
    ================================================= */
-function addWaiting(name) {
-  if (!name || isAddingWaiting) return;
-  isAddingWaiting = true;
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const input = $("waitingNameInput");
+  if (!input || document.activeElement !== input) return;
+
+  const name = input.value.trim();
+  if (!name) return;
+
   layout.waiting.push({ name, startedAt: Date.now() });
+  input.value = "";
   renderWaitList();
   saveLayout();
-  setTimeout(() => (isAddingWaiting = false), 0);
-}
-
-document.addEventListener("keydown", e => {
-  const input = e.target.closest("#waitingNameInput");
-  if (!input || e.key !== "Enter") return;
-  e.preventDefault();
-  addWaiting(input.value.trim());
-  input.value = "";
 });
 
 /* =================================================
@@ -369,7 +311,9 @@ function saveLayout() {
       };
       return setDoc(STATE_REF, { boxes }, { merge: true });
     })
-    .finally(() => setTimeout(() => (isSaving = false), 100));
+    .finally(() => {
+      setTimeout(() => (isSaving = false), 100);
+    });
 }
 
 /* =================================================
@@ -382,13 +326,9 @@ setInterval(() => {
   });
 }, 1000);
 
-/* ===============================
-   🔥 CLEANUP (여기!)
-=============================== */
+/* =================================================
+   CLEANUP
+   ================================================= */
 window.addEventListener("beforeunload", () => {
-  if (unsubscribeLayout) {
-    unsubscribeLayout();
-    unsubscribeLayout = null;
-    console.log("🧹 layout listener cleaned up");
-  }
+  if (unsubscribeLayout) unsubscribeLayout();
 });
