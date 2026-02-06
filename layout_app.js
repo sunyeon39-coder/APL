@@ -63,6 +63,8 @@ let suppressClick = false;
 let hasHydrated = false;
 let isSaving = false;
 
+let unsubscribeLayout = null;
+
 const $ = id => document.getElementById(id);
 
 /* =================================================
@@ -111,70 +113,54 @@ function applyRoleUI() {
    ================================================= */
 function subscribeLayout() {
   const boxId = getBoxId();
+  if (!boxId) return;
 
-  if (!boxId) {
-    console.warn("⚠️ boxId 없음 → layout subscribe 중단");
+  // 🔥 이미 구독 중이면 다시 안 건다
+  if (unsubscribeLayout) {
+    console.warn("⚠️ layout already subscribed");
     return;
   }
 
-  // 🔥 auth 완료 이후에만 listen
   onAuthStateChanged(auth, user => {
-    if (!user) {
-      console.warn("⚠️ auth 안됨 → layout subscribe 중단");
-      return;
-    }
+    if (!user) return;
 
-    onSnapshot(STATE_REF, snap => {
-      if (!snap.exists()) return;
-      if (isSaving) return;
+    unsubscribeLayout = onSnapshot(
+      STATE_REF,
+      snap => {
+        if (!snap.exists()) return;
+        if (isSaving) return;
 
-      // 🔐 최초 hydration 보호
-      if (!hasHydrated && !snap.data()?.boxes?.length) {
-        console.warn("⚠️ 서버 boxes 비어있음 → 초기 hydration 스킵");
-        return;
+        const box = snap.data().boxes?.find(b => b.id === boxId);
+        if (!box) return;
+
+        const serverLayout = box.layout || { seats: {}, waiting: [] };
+
+        if (!hasHydrated) {
+          layout.seats = structuredClone(serverLayout.seats || {});
+          layout.waiting = structuredClone(serverLayout.waiting || []);
+          hasHydrated = true;
+          renderLayout();
+          renderWaitList();
+          return;
+        }
+
+        if (
+          JSON.stringify(layout.seats) !== JSON.stringify(serverLayout.seats) ||
+          JSON.stringify(layout.waiting) !== JSON.stringify(serverLayout.waiting)
+        ) {
+          layout.seats = structuredClone(serverLayout.seats || {});
+          layout.waiting = structuredClone(serverLayout.waiting || []);
+          renderLayout();
+          renderWaitList();
+        }
+      },
+      err => {
+        // ❗ 여기서는 절대 redirect 금지
+        console.warn("⚠️ layout listen error (ignored):", err.code);
       }
-
-      const box = snap.data().boxes?.find(b => b.id === boxId);
-      if (!box) return;
-
-      const serverLayout = box.layout || { seats: {}, waiting: [] };
-
-      if (!hasHydrated) {
-        layout.seats = structuredClone(serverLayout.seats || {});
-        layout.waiting = structuredClone(serverLayout.waiting || []);
-        hasHydrated = true;
-        renderLayout();
-        renderWaitList();
-        return;
-      }
-
-      if (
-        JSON.stringify(layout.seats) !== JSON.stringify(serverLayout.seats) ||
-        JSON.stringify(layout.waiting) !== JSON.stringify(serverLayout.waiting)
-      ) {
-        layout.seats = structuredClone(serverLayout.seats || {});
-        layout.waiting = structuredClone(serverLayout.waiting || []);
-        renderLayout();
-        renderWaitList();
-      }
-    });
+    );
   });
 }
-/* =================================================
-   ADD SEAT (ADMIN)
-   ================================================= */
-function addSeat() {
-  if (currentUserRole !== "admin") return;
-
-  const seatNum = Number(prompt("추가할 Seat 번호"));
-  if (!Number.isInteger(seatNum) || seatNum <= 0) return;
-  if (layout.seats.hasOwnProperty(seatNum)) return;
-
-  layout.seats[seatNum] = null;
-  renderLayout();
-  saveLayout();
-}
-
 /* =================================================
    RENDER – SEATS
    ================================================= */
@@ -402,3 +388,14 @@ setInterval(() => {
     el.textContent = formatElapsed(now - Number(el.dataset.start));
   });
 }, 1000);
+
+/* ===============================
+   🔥 CLEANUP (여기!)
+=============================== */
+window.addEventListener("beforeunload", () => {
+  if (unsubscribeLayout) {
+    unsubscribeLayout();
+    unsubscribeLayout = null;
+    console.log("🧹 layout listener cleaned up");
+  }
+});
