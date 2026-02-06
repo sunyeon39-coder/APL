@@ -5,7 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BoxBoard Login</title>
   <link rel="stylesheet" href="./login.css" />
+
+  <!-- 🔐 AUTH GUARD (login은 로그인 안 된 사람만) -->
+  <script type="module">
+    import { auth } from "./firebase.js";
+    import { onAuthStateChanged } from
+      "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    console.log("🔥 login auth guard loaded");
+
+    let checked = false;
+
+    onAuthStateChanged(auth, user => {
+      // 최초 1회만 판단 (redirect loop 방지)
+      if (checked) return;
+      checked = true;
+
+      if (user) {
+        console.log("✅ already logged in → hub");
+        location.replace("hub.html");
+      }
+    });
+  </script>
 </head>
+
 <body>
 
   <div class="auth-wrap">
@@ -36,7 +59,7 @@
     </div>
   </div>
 
-  <!-- 🔥 로그인 전용 로직 (중요: login.html에서만 로드) -->
- <script type="module" src="./login.js"></script>
+  <!-- 🔥 로그인 전용 로직 (여기서만 로그인 처리) -->
+  <script type="module" src="./login.js"></script>
 </body>
 </html>

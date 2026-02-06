@@ -41,7 +41,8 @@
   </div>
 
   <div id="tournamentList" class="tournament-list"></div>
-  <div id="tournamentEmpty" class="empty">
+
+  <div id="tournamentEmpty" class="empty hidden">
     등록된 대회가 없습니다.
   </div>
 </div>
@@ -80,7 +81,7 @@
   </div>
 </div>
 
-<!-- ================= AUTH GUARD (STABLE) ================= -->
+<!-- ================= AUTH GUARD (FIXED) ================= -->
 <script type="module">
   import { auth } from "./firebase.js";
   import {
@@ -90,15 +91,15 @@
 
   console.log("🔥 hub auth guard loaded");
 
-  let checked = false;
+  // ⚠️ redirect 루프 방지용
+  let resolved = false;
 
   onAuthStateChanged(auth, user => {
-    // 최초 1회만 판단 (🔥 핵심)
-    if (checked) return;
-    checked = true;
+    if (resolved) return;
+    resolved = true;
 
     if (!user) {
-      console.log("⛔ hub: not logged in");
+      console.log("⛔ hub: not logged in → login");
       location.replace("login.html");
       return;
     }
