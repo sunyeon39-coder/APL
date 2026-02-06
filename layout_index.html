@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Layout</title>
 
   <link rel="stylesheet" href="layout_styles.css" />
@@ -11,25 +11,26 @@
 
 <div class="layout-wrap">
 
-  <!-- TOP -->
-  <div class="layout-top">
+  <!-- TOP BAR -->
+  <header class="layout-top">
     <button id="addSeatBtn" class="btn">+ Seat 추가</button>
-    <button id="backBtn" class="btn">Back</button>
-  </div>
+    <button class="btn back" onclick="history.back()">Back</button>
+  </header>
 
-  <!-- MAIN -->
-  <div class="layout-main">
-    <div id="layoutGrid" class="layout-grid"></div>
-  </div>
+  <!-- SEAT AREA -->
+  <main class="layout-main">
+    <section id="layoutGrid" class="seat-grid"></section>
+  </main>
 
-  <!-- WAITING -->
-  <div class="layout-waiting">
+  <!-- WAITING AREA -->
+  <footer class="layout-bottom">
     <div class="waiting-header">
       <input id="waitingNameInput" placeholder="대기자 이름" />
       <button id="addWaitingBtn" class="btn">+ 대기자 추가</button>
     </div>
-    <div id="waitingList" class="waiting-list"></div>
-  </div>
+
+    <section id="waitingList" class="waiting-list"></section>
+  </footer>
 
 </div>
 

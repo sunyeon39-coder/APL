@@ -1,29 +1,5 @@
-console.log("🔥 layout_app.js FINAL STABLE – SAFE & MOBILE READY");
+console.log("🔥 layout_app.js STABLE BOOT");
 
-/* =================================================
-   CLICK SAFE INIT
-================================================= */
-(function () {
-  try {
-    document.documentElement.classList.remove("page-enter");
-    document.documentElement.classList.add("page-ready");
-    document.body.style.pointerEvents = "auto";
-
-    document
-      .querySelectorAll(".overlay,.loading,.layout-loading")
-      .forEach(el => {
-        if (el.classList.contains("hidden")) {
-          el.style.pointerEvents = "none";
-        }
-      });
-
-    document.querySelector(".layout-top")?.style.pointerEvents = "auto";
-  } catch {}
-})();
-
-/* =================================================
-   IMPORT
-================================================= */
 import { db, auth } from "./firebase.js";
 import {
   doc,
@@ -35,287 +11,170 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-/* =================================================
-   CONST / STATE
-================================================= */
+/* ================= STATE ================= */
 const STATE_REF = doc(db, "boxboard", "state");
 
-const layout = {
-  seats: {},      // { 1: {name, startedAt}, ... }
-  waiting: []     // [{name, startedAt}]
-};
-
-let currentUserRole = "user";
-let selectedWaitingIndex = null;
-let hasHydrated = false;
+let role = "user";
+let selectedWaiting = null;
 let isSaving = false;
-let unsubscribe = null;
+let unsub = null;
+
+const layout = {
+  seats: {},
+  waiting: []
+};
 
 const $ = id => document.getElementById(id);
 
-/* =================================================
-   UTIL
-================================================= */
-function getBoxId() {
+/* ================= UTIL ================= */
+function getBoxId(){
   return new URLSearchParams(location.search).get("boxId");
 }
 
-function formatElapsed(ms) {
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${String(sec).padStart(2, "0")}`;
-}
-
-/* =================================================
-   AUTH / ROLE
-================================================= */
+/* ================= AUTH ================= */
 onAuthStateChanged(auth, async user => {
-  if (!user) {
-    location.replace("login.html");
-    return;
-  }
+  if (!user) return;
 
-  try {
-    const snap = await getDoc(doc(db, "users", user.uid));
-    currentUserRole = snap.exists() ? snap.data().role || "user" : "user";
-  } catch {
-    currentUserRole = "user";
-  }
+  const snap = await getDoc(doc(db, "users", user.uid));
+  role = snap.exists() ? snap.data().role || "user" : "user";
 
-  applyRoleUI();
-  subscribe();
+  bindUI();
+  listen();
 });
 
-/* =================================================
-   ROLE UI
-================================================= */
-function applyRoleUI() {
-  if (currentUserRole === "admin") return;
-
-  $("addSeatBtn")?.remove();
-  $("addWaitingBtn")?.remove();
-
-  const input = $("waitingNameInput");
-  input?.closest(".waiting-header")?.remove();
-}
-
-/* =================================================
-   FIRESTORE SUBSCRIBE (SAFE)
-================================================= */
-function subscribe() {
+/* ================= FIRESTORE ================= */
+function listen(){
   const boxId = getBoxId();
-  if (!boxId || unsubscribe) return;
+  if (!boxId || unsub) return;
 
-  unsubscribe = onSnapshot(
-    STATE_REF,
-    snap => {
-      if (!snap.exists()) return;
+  unsub = onSnapshot(STATE_REF, snap => {
+    if (!snap.exists() || isSaving) return;
 
-      const data = snap.data();
-      if (!data || !Array.isArray(data.boxes)) return;
+    const box = snap.data().boxes?.find(b => b.id === boxId);
+    if (!box || !box.layout) return;
 
-      const box = data.boxes.find(b => b.id === boxId);
-      if (!box) return;
+    layout.seats = structuredClone(box.layout.seats || {});
+    layout.waiting = structuredClone(box.layout.waiting || []);
 
-      const server = box.layout || { seats: {}, waiting: [] };
-
-      if (!hasHydrated) {
-        layout.seats = structuredClone(server.seats || {});
-        layout.waiting = structuredClone(server.waiting || []);
-        hasHydrated = true;
-        renderAll();
-        return;
-      }
-
-      if (
-        JSON.stringify(layout.seats) !== JSON.stringify(server.seats) ||
-        JSON.stringify(layout.waiting) !== JSON.stringify(server.waiting)
-      ) {
-        layout.seats = structuredClone(server.seats || {});
-        layout.waiting = structuredClone(server.waiting || []);
-        renderAll();
-      }
-    },
-    err => console.warn("⚠️ snapshot blocked:", err.code)
-  );
+    render();
+  });
 }
 
-/* =================================================
-   RENDER
-================================================= */
-function renderAll() {
+/* ================= RENDER ================= */
+function render(){
   renderSeats();
   renderWaiting();
 }
 
-function renderSeats() {
+function renderSeats(){
   const grid = $("layoutGrid");
-  if (!grid) return;
   grid.innerHTML = "";
 
-  Object.keys(layout.seats)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .forEach(num => {
-      const p = layout.seats[num];
-      const el = document.createElement("section");
-      el.className = "card seat-card";
-      el.dataset.seat = num;
+  Object.keys(layout.seats).sort().forEach(num => {
+    const p = layout.seats[num];
+    const el = document.createElement("div");
+    el.className = "card";
+    el.dataset.seat = num;
 
-      el.innerHTML = `
-        ${currentUserRole === "admin"
-          ? `<button class="seat-delete" data-seat="${num}">×</button>`
-          : ""}
-        <div class="badge">Seat ${num}</div>
-        <h3>${p ? p.name : "비어있음"}</h3>
-        ${p ? `<div class="pill"><span class="time" data-start="${p.startedAt}">0:00</span></div>` : ""}
-      `;
-      grid.appendChild(el);
-    });
+    el.innerHTML = `
+      ${role==="admin" ? `<button class="seat-delete">×</button>`:""}
+      <div class="badge">Seat ${num}</div>
+      <h3>${p ? p.name : "비어있음"}</h3>
+    `;
+    grid.appendChild(el);
+  });
 }
 
-function renderWaiting() {
+function renderWaiting(){
   const list = $("waitingList");
-  if (!list) return;
   list.innerHTML = "";
 
-  if (!layout.waiting.length) {
-    list.innerHTML = `<div class="empty">대기자 없음</div>`;
-    return;
-  }
-
-  layout.waiting.forEach((w, i) => {
-    const el = document.createElement("section");
-    el.className = "card waiting-card";
-    if (i === selectedWaitingIndex) el.classList.add("selected");
+  layout.waiting.forEach((w,i)=>{
+    const el = document.createElement("div");
+    el.className = "card";
+    if(i===selectedWaiting) el.classList.add("selected");
     el.dataset.index = i;
 
     el.innerHTML = `
-      ${currentUserRole === "admin"
-        ? `<button class="wait-delete" data-index="${i}">×</button>`
-        : ""}
       <h3>${w.name}</h3>
-      <div class="pill">
-        <span class="time" data-start="${w.startedAt}">0:00</span>
-      </div>
+      ${role==="admin"?`<button class="wait-delete">×</button>`:""}
     `;
     list.appendChild(el);
   });
 }
 
-/* =================================================
-   CLICK HANDLING (MOBILE SAFE)
-================================================= */
-document.addEventListener("click", e => {
-  if (currentUserRole !== "admin") return;
+/* ================= EVENTS ================= */
+function bindUI(){
 
-  // delete waiting
-  const wdel = e.target.closest(".wait-delete");
-  if (wdel) {
-    layout.waiting.splice(Number(wdel.dataset.index), 1);
-    selectedWaitingIndex = null;
-    renderWaiting();
+  $("addSeatBtn")?.addEventListener("click",()=>{
+    if(role!=="admin") return;
+    const next = Object.keys(layout.seats).length + 1;
+    layout.seats[next] = null;
     save();
-    return;
-  }
+  });
 
-  // delete seat
-  const sdel = e.target.closest(".seat-delete");
-  if (sdel) {
-    const n = Number(sdel.dataset.seat);
-    const p = layout.seats[n];
-    if (p) layout.waiting.push({ name: p.name, startedAt: Date.now() });
-    delete layout.seats[n];
-    renderAll();
+  $("addWaitingBtn")?.addEventListener("click",()=>{
+    const name = $("waitingNameInput").value.trim();
+    if(!name) return;
+    layout.waiting.push({name});
+    $("waitingNameInput").value="";
     save();
-    return;
-  }
+  });
 
-  // select waiting
-  const w = e.target.closest(".waiting-card");
-  if (w) {
-    selectedWaitingIndex = Number(w.dataset.index);
-    renderWaiting();
-    return;
-  }
+  document.addEventListener("click",e=>{
+    const w = e.target.closest(".waiting-list .card");
+    if(w && role==="admin"){
+      selectedWaiting = Number(w.dataset.index);
+      renderWaiting();
+      return;
+    }
 
-  // waiting → seat
-  const s = e.target.closest(".seat-card");
-  if (!s || selectedWaitingIndex === null) return;
+    const seat = e.target.closest(".seat-grid .card");
+    if(seat && selectedWaiting!==null && role==="admin"){
+      const seatNum = seat.dataset.seat;
+      const incoming = layout.waiting[selectedWaiting];
+      layout.seats[seatNum] = incoming;
+      layout.waiting.splice(selectedWaiting,1);
+      selectedWaiting=null;
+      save();
+    }
 
-  const seatNum = Number(s.dataset.seat);
-  const incoming = layout.waiting[selectedWaitingIndex];
-  const existing = layout.seats[seatNum];
+    if(e.target.classList.contains("seat-delete")){
+      const s = e.target.closest(".card").dataset.seat;
+      delete layout.seats[s];
+      save();
+    }
 
-  if (existing) {
-    layout.waiting.push({ name: existing.name, startedAt: Date.now() });
-  }
+    if(e.target.classList.contains("wait-delete")){
+      const i = e.target.closest(".card").dataset.index;
+      layout.waiting.splice(i,1);
+      save();
+    }
+  });
+}
 
-  layout.seats[seatNum] = { name: incoming.name, startedAt: Date.now() };
-  layout.waiting.splice(selectedWaitingIndex, 1);
-  selectedWaitingIndex = null;
-
-  renderAll();
-  save();
-});
-
-/* =================================================
-   ADD WAITING
-================================================= */
-$("addWaitingBtn")?.addEventListener("click", () => {
-  const input = $("waitingNameInput");
-  if (!input?.value.trim()) return;
-  layout.waiting.push({ name: input.value.trim(), startedAt: Date.now() });
-  input.value = "";
-  renderWaiting();
-  save();
-});
-
-/* =================================================
-   SAVE (SAFE)
-================================================= */
-function save() {
-  if (isSaving) return;
+/* ================= SAVE ================= */
+function save(){
   const boxId = getBoxId();
-  if (!boxId) return;
+  if(!boxId) return;
 
   isSaving = true;
 
-  getDoc(STATE_REF)
-    .then(snap => {
-      if (!snap.exists()) return;
-      const data = snap.data();
-      if (!data || !Array.isArray(data.boxes)) return;
+  getDoc(STATE_REF).then(snap=>{
+    const boxes = snap.data().boxes || [];
+    const idx = boxes.findIndex(b=>b.id===boxId);
+    if(idx===-1) return;
 
-      const boxes = data.boxes;
-      const idx = boxes.findIndex(b => b.id === boxId);
-      if (idx === -1) return;
+    boxes[idx] = {
+      ...boxes[idx],
+      layout: {
+        seats: layout.seats,
+        waiting: layout.waiting
+      }
+    };
 
-      boxes[idx] = {
-        ...boxes[idx],
-        layout: { seats: layout.seats, waiting: layout.waiting }
-      };
-
-      return setDoc(STATE_REF, { boxes }, { merge: true });
-    })
-    .catch(err => console.warn("⚠️ save blocked:", err.code))
-    .finally(() => setTimeout(() => (isSaving = false), 150));
-}
-
-/* =================================================
-   TIMER
-================================================= */
-setInterval(() => {
-  const now = Date.now();
-  document.querySelectorAll(".time[data-start]").forEach(el => {
-    el.textContent = formatElapsed(now - Number(el.dataset.start));
+    return setDoc(STATE_REF,{boxes},{merge:true});
+  }).finally(()=>{
+    setTimeout(()=>isSaving=false,50);
   });
-}, 1000);
-
-/* =================================================
-   CLEANUP
-================================================= */
-window.addEventListener("beforeunload", () => {
-  if (unsubscribe) unsubscribe();
-});
+}
