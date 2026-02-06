@@ -1,170 +1,261 @@
-*{box-sizing:border-box}
-html,body{
+/* =================================================
+   RESET / BASE
+================================================= */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body{
   margin:0;
+  padding:0;
   height:100%;
   background:#0b1020;
   color:#e9ecff;
-  font-family:system-ui,-apple-system;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Apple SD Gothic Neo,sans-serif;
   overflow:hidden;
+  pointer-events:auto; /* 클릭 막지 말 것 */
 }
 
-/* LAYOUT */
+/* =================================================
+   ROOT LAYOUT
+================================================= */
 .layout-wrap{
+  position:relative;
   height:100dvh;
   display:flex;
   flex-direction:column;
+  overflow:hidden;
+  pointer-events:auto;
 }
 
-/* TOP */
+/* =================================================
+   TOP BAR
+================================================= */
 .layout-top{
+  position:sticky;
+  top:0;
+  z-index:30;
   height:56px;
   padding:0 12px;
   display:flex;
-  justify-content:space-between;
   align-items:center;
-  background:rgba(12,18,40,.95);
+  justify-content:space-between;
+  background:linear-gradient(180deg, rgba(12,18,40,.95), rgba(12,18,40,.75));
+  backdrop-filter: blur(10px);
+  pointer-events:auto;
 }
 
-/* MAIN */
+.layout-top .btn{ pointer-events:auto; }
+
+/* =================================================
+   MAIN (SEAT AREA)
+================================================= */
 .layout-main{
+  position:relative;
   flex:1;
   overflow-y:auto;
-  padding:12px;
+  overflow-x:hidden;
+  padding:16px;
+  z-index:1;
+  pointer-events:auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* SEAT GRID */
-.seat-grid{
+/* wrapper inside #layoutGrid */
+.layout-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
-  gap:14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap:12px;
 }
 
-/* SEAT CARD */
-.seat-card{
-  background:#1b2245;
-  border-radius:18px;
-  padding:14px;
-  min-height:82px;
+/* =================================================
+   CARD BASE
+================================================= */
+.card{
   position:relative;
-  cursor:pointer;
+  border-radius:16px;
+  background: linear-gradient(180deg, rgba(28,36,72,.95), rgba(20,26,56,.95));
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  pointer-events:auto;
   user-select:none;
+  transform: translateZ(0);
 }
 
-.seat-card.selected{
-  outline:2px solid #6b7cff;
+.card:active{ transform: scale(.985); }
+
+.card.selected{
+  outline: 2px solid rgba(120,140,255,.9);
 }
 
-.seat-label{
-  font-size:13px;
+.card .badge{
+  font-size:12px;
   opacity:.65;
+  padding:12px 14px 6px;
 }
 
-.seat-name{
-  margin-top:4px;
+.card .row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 14px 12px;
+}
+
+.card .name{
   font-size:16px;
-  font-weight:600;
-  min-height:20px; /* 이름 없을 때도 카드 높이 유지 */
+  font-weight:700;
+  line-height:1.15;
+  word-break:break-word;
 }
 
-.seat-time{
-  margin-top:6px;
+.card .time{
   font-size:13px;
-  opacity:.7;
-  min-height:18px;
+  opacity:.75;
+  font-variant-numeric: tabular-nums;
+  white-space:nowrap;
 }
 
-/* DELETE */
-.delete-btn{
+.row-bottom{
+  padding-top:2px;
+  padding-bottom:12px;
+}
+
+/* Seat card size */
+.seat-card{ min-height:88px; }
+
+/* Waiting card size (smaller!) */
+.waiting-card{
+  min-width: 150px;
+  border-radius:14px;
+}
+.waiting-card .badge{ padding:10px 12px 4px; }
+.waiting-card .row{ padding:0 12px 10px; }
+.waiting-card .name{ font-size:14px; }
+.waiting-card .time{ font-size:12px; }
+
+/* selected waiting has warmer outline */
+.waiting-card.selected{
+  outline: 2px solid rgba(255, 209, 102, .95);
+}
+
+/* =================================================
+   PILL
+================================================= */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+}
+
+.pill.running{ background: rgba(90,120,255,.2); color:#b8c7ff; }
+.pill.waiting{ background: rgba(255,200,90,.18); color:#ffe2a8; }
+
+/* =================================================
+   DELETE BUTTONS
+================================================= */
+.seat-delete, .wait-delete{
   position:absolute;
   top:8px;
   right:8px;
-  width:26px;
-  height:26px;
+  width:24px;
+  height:24px;
   border-radius:50%;
   border:none;
-  background:#ff5c7c;
+  background: rgba(255, 90, 120, .92);
   color:#fff;
-  font-size:15px;
+  font-size:14px;
   cursor:pointer;
+  pointer-events:auto;
 }
 
-/* BOTTOM */
+/* =================================================
+   BOTTOM (WAITING AREA)
+================================================= */
 .layout-bottom{
-  padding:10px;
-  background:rgba(12,18,40,.95);
+  position:sticky;
+  bottom:0;
+  z-index:25;
+  background: linear-gradient(180deg, rgba(12,18,40,.80), rgba(12,18,40,.95));
+  backdrop-filter: blur(12px);
+  padding:10px 12px;
+  pointer-events:auto;
 }
 
-/* WAITING INPUT */
-.waiting-input{
+/* input bar */
+.waiting-header{
   display:flex;
   gap:8px;
+  align-items:center;
+  pointer-events:auto;
 }
 
-.waiting-input input{
+#waitingNameInput{
   flex:1;
   height:36px;
+  padding:0 12px;
   border-radius:999px;
   border:none;
-  padding:0 12px;
+  outline:none;
+  background: rgba(255,255,255,.95);
+  color:#000;
+  pointer-events:auto;
 }
 
-/* WAITING LIST (세로 스크롤) */
-.waiting-grid{
-  margin-top:10px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  max-height:180px;
-  overflow-y:auto;
-}
-
-/* WAITING CARD */
-.waiting-card{
-  background:#202a55;
-  border-radius:14px;
-  padding:10px 12px;
-  cursor:pointer;
-  user-select:none;
-}
-
-.waiting-card.selected{
-  outline:2px solid #ffd166;
-}
-
-.waiting-name{
-  font-size:14px;
-  font-weight:600;
-}
-
-.waiting-time{
-  font-size:12px;
-  opacity:.6;
-  margin-top:4px;
-}
-
-/* BUTTON */
-.btn{
+#addWaitingBtn{
   height:36px;
   padding:0 14px;
   border-radius:999px;
   border:none;
-  background:rgba(255,255,255,.15);
+  background: rgba(120,140,255,.95);
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+  pointer-events:auto;
+}
+
+/* waiting list container */
+.waiting-list{ margin-top:10px; pointer-events:auto; }
+.waiting-row{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding-bottom:4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =================================================
+   BUTTON BASE
+================================================= */
+.btn{
+  height:36px;
+  padding:0 14px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.10);
   color:#fff;
   cursor:pointer;
+  pointer-events:auto;
 }
+.btn:active{ transform: scale(.97); }
 
-.btn.primary{
-  background:#6b7cff;
-}
+/* role hint (optional) */
+body[data-role="user"] #addSeatBtn{ display:none; }
 
-.btn[disabled]{
-  opacity:.45;
-  cursor:not-allowed;
-}
-
-/* 작은 안내 텍스트 */
-.hint{
-  font-size:12px;
+/* =================================================
+   EMPTY STATE
+================================================= */
+.empty{
   opacity:.6;
-  margin-left:10px;
+  font-size:14px;
+  padding:12px 4px 6px;
+}
+
+/* =================================================
+   MOBILE
+================================================= */
+@media (max-width: 600px){
+  .layout-grid{ grid-template-columns: 1fr; }
 }
