@@ -8,23 +8,33 @@
 
   <!-- 🔐 AUTH GUARD (index 직접 접근 차단) -->
   <script type="module">
-    import { auth } from "./firebase.js";
-    import { onAuthStateChanged } from
-      "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { auth } from "./firebase.js";
+  import { onAuthStateChanged } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-    onAuthStateChanged(auth, user => {
-      // ❌ 로그인 안 됨 → login.html
-      if (!user) {
-        location.replace("login.html");
-        return;
-      }
+  let resolved = false;
 
-      // ❌ boxId 없이 index 접근 → hub.html
-      const boxId = new URLSearchParams(location.search).get("boxId");
-      if (!boxId) {
-        location.replace("hub.html");
-      }
-    });
+  onAuthStateChanged(auth, user => {
+    if (resolved) return;
+    resolved = true;
+
+    if (!user) {
+      location.replace("login.html");
+      return;
+    }
+
+    // ✅ index는 eventId까지만 요구
+    const eventId = new URLSearchParams(location.search).get("eventId");
+
+    if (!eventId) {
+      console.log("ℹ️ index: eventId 없음 → hub 유지");
+      // ❌ redirect 하지 않음
+      return;
+    }
+
+    // 정상 진입
+    console.log("✅ index: eventId =", eventId);
+  });
   </script>
 </head>
 
