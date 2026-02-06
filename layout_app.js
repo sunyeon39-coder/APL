@@ -40,6 +40,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { onAuthStateChanged } from
   "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { auth } from "./firebase.js";
 
 /* =================================================
    CONST / STATE
@@ -111,48 +112,54 @@ function applyRoleUI() {
 function subscribeLayout() {
   const boxId = getBoxId();
 
-  // 🔒 boxId 없으면 절대 초기화 / 구독 안 함
   if (!boxId) {
     console.warn("⚠️ boxId 없음 → layout subscribe 중단");
     return;
   }
 
-  onSnapshot(STATE_REF, snap => {
-  if (!snap.exists()) return;
-  if (isSaving) return;
-
-  // 🔒 최초 hydration 전에는 덮어쓰기 금지
-  if (!hasHydrated && !snap.data()?.boxes?.length) {
-    console.warn("⚠️ 서버 boxes 비어있음 → 초기 hydration 스킵");
-    return;
-  }
-
-    const box = snap.data().boxes?.find(b => b.id === boxId);
-    if (!box) return;
-
-    const serverLayout = box.layout || { seats: {}, waiting: [] };
-
-    if (!hasHydrated) {
-      layout.seats = structuredClone(serverLayout.seats || {});
-      layout.waiting = structuredClone(serverLayout.waiting || []);
-      hasHydrated = true;
-      renderLayout();
-      renderWaitList();
+  // 🔥 auth 완료 이후에만 listen
+  onAuthStateChanged(auth, user => {
+    if (!user) {
+      console.warn("⚠️ auth 안됨 → layout subscribe 중단");
       return;
     }
 
-    if (
-      JSON.stringify(layout.seats) !== JSON.stringify(serverLayout.seats) ||
-      JSON.stringify(layout.waiting) !== JSON.stringify(serverLayout.waiting)
-    ) {
-      layout.seats = structuredClone(serverLayout.seats || {});
-      layout.waiting = structuredClone(serverLayout.waiting || []);
-      renderLayout();
-      renderWaitList();
-    }
+    onSnapshot(STATE_REF, snap => {
+      if (!snap.exists()) return;
+      if (isSaving) return;
+
+      // 🔐 최초 hydration 보호
+      if (!hasHydrated && !snap.data()?.boxes?.length) {
+        console.warn("⚠️ 서버 boxes 비어있음 → 초기 hydration 스킵");
+        return;
+      }
+
+      const box = snap.data().boxes?.find(b => b.id === boxId);
+      if (!box) return;
+
+      const serverLayout = box.layout || { seats: {}, waiting: [] };
+
+      if (!hasHydrated) {
+        layout.seats = structuredClone(serverLayout.seats || {});
+        layout.waiting = structuredClone(serverLayout.waiting || []);
+        hasHydrated = true;
+        renderLayout();
+        renderWaitList();
+        return;
+      }
+
+      if (
+        JSON.stringify(layout.seats) !== JSON.stringify(serverLayout.seats) ||
+        JSON.stringify(layout.waiting) !== JSON.stringify(serverLayout.waiting)
+      ) {
+        layout.seats = structuredClone(serverLayout.seats || {});
+        layout.waiting = structuredClone(serverLayout.waiting || []);
+        renderLayout();
+        renderWaitList();
+      }
+    });
   });
 }
-
 /* =================================================
    ADD SEAT (ADMIN)
    ================================================= */
