@@ -1,0 +1,132 @@
+:root {
+  --font-ui: system-ui, -apple-system, BlinkMacSystemFont,
+             "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --font-num: ui-monospace, SFMono-Regular, Menlo, Monaco,
+              Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(1200px 600px at 50% -200px, #1a2040, #0e1324);
+  color: #fff;
+  font-family: var(--font-ui);
+  letter-spacing: -0.2px;
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* ===== Date Header ===== */
+.date-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 28px 0 14px;
+}
+
+.date-title {
+  font-size: 25px;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.date-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+/* ===== Event Card ===== */
+.event-card {
+  background: linear-gradient(180deg, #0b1220, #020617);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 18px;
+  border: 2px solid transparent;
+}
+
+.event-card.opened { border-color: #3b82f6; }
+.event-card.running { border-color: #8b5cf6; }
+.event-card.closed { border-color: #ef4444; }
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.event-title {
+  font-size: 25px;
+  font-weight: 700;
+  color: #f9fafb;
+  letter-spacing: -0.3px;
+}
+
+/* ===== Status Pill ===== */
+.pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.pill.scheduled { background: #374151; }
+.pill.opened { background: #3b82f6; }
+.pill.running { background: #8b5cf6; }
+.pill.closed { background: #ef4444; }
+
+/* ===== Info Boxes ===== */
+.event-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.info-box {
+  background: rgba(255,255,255,0.06);
+  border-radius: 25px;
+  padding: 12px;
+  font-family: var(--font-num);
+  font-size: 25px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.info-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 0.3px;
+  margin-bottom: 4px;
+  font-family: var(--font-ui);
+}
+
+.entries-table {
+  height: 38px;
+  border-radius: 8px;
+  background: #020617;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .event-info {
+    grid-template-columns: 1fr;
+  }
+}

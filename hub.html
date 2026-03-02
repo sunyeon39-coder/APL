@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+  <title>Han Pit – Hub</title>
+
+  <style>
+    /* ===== Base ===== */
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 50% -200px, #1a2040, #0e1324);
+      color: #111;
+    }
+
+    /* ===== Top Bar ===== */
+    .hub-top {
+      position: relative;
+      z-index: 2000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      color: #fff;
+    }
+    .hub-top h1 { margin: 0; font-size: 22px; }
+
+    .hub-actions { display: flex; gap: 10px; }
+
+    .top-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .top-btn.logout {
+      background: #000;
+      color: #fff;
+      pointer-events: auto;
+    }
+
+    /* ===== Main ===== */
+    .hub-main { padding: 20px; }
+
+    .event-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .event-row {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.08);
+      cursor: pointer;
+    }
+
+    .event-left {
+      width: 90px;
+      height: 90px;
+      border-radius: 10px;
+      background: #000;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .event-center { flex: 1; }
+    .event-center .date {
+      margin-top: 8px;
+      font-weight: 700;
+      color: #16a34a;
+    }
+
+    .detail-btn {
+      background: #000;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+    }
+
+    @media (max-width: 768px) {
+      .event-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .detail-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===== Top ===== -->
+  <div class="hub-top">
+    <h1>Han Pit</h1>
+    <div class="hub-actions">
+      <button class="top-btn logout" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <!-- ===== Main ===== -->
+  <main class="hub-main">
+    <div class="event-list" id="eventList">
+     <div class="event-row event-card" data-event-id="ept-paris-2026">
+        <div class="event-left">EPT</div>
+        <div class="event-center">
+          <h2>EPT Paris 2026</h2>
+          <div class="date">26.02.18 ~ 26.03.01</div>
+        </div>
+        <button class="detail-btn">자세히 보기 →</button>
+      </div>
+    </div>
+  </main>
+
+<script>
+  /* ===============================
+     LOGOUT
+  =============================== */
+  document.getElementById("logoutBtn").onclick = () => {
+    location.href = "./login.html";
+  };
+
+  /* ===============================
+     CARD CLICK → INDEX (🔥 FIX)
+     이벤트 위임 방식
+  =============================== */
+  const eventList = document.getElementById("eventList");
+
+  eventList.addEventListener("click", (e) => {
+    const card = e.target.closest(".event-card");
+    if (!card) return;
+
+    const eventId = card.dataset.eventId;
+    if (!eventId) return;
+
+    console.log("👉 go index:", eventId);
+    location.href = `index.html?eventId=${eventId}`;
+  });
+
+  /* MOBILE CLICK SAFE */
+  document.body.style.pointerEvents = "auto";
+</script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+/* ===== Reset ===== */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ===== Background ===== */
+body {
+  background: radial-gradient(
+    1200px 800px at 20% 10%,
+    #1b2250,
+    #0f1220
+  );
+  color: #e9ecff;
+}
+
+/* ===== Layout ===== */
+.login-wrap {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* ===== Card ===== */
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: rgba(23, 26, 43, 0.92);
+  border-radius: 20px;
+  padding: 32px 28px;
+  text-align: center;
+
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+/* ===== Text ===== */
+.logo {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: .6px;
+}
+
+.subtitle {
+  margin: 8px 0 26px;
+  font-size: 14px;
+  color: #a9b0d6;
+}
+
+/* ===== Google Button ===== */
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+
+  background: #ffffff;
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.google-btn img {
+  width: 18px;
+  height: 18px;
+}
+
+.google-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+
+.google-btn:active {
+  transform: translateY(0);
+}
+
+/* ===== Hint ===== */
+.hint {
+  margin-top: 20px;
+  font-size: 12px;
+  opacity: .5;
+}

@@ -1,0 +1,366 @@
+/* ===== List Wrapper ===== */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+/* ===== Event Row ===== */
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,.08);
+  cursor: pointer;
+
+  transition: box-shadow .15s ease, transform .15s ease;
+}
+
+.event-row:hover {
+  box-shadow: 0 10px 26px rgba(0,0,0,.12);
+  transform: translateY(-1px);
+}
+
+/* ===== Left (Logo) ===== */
+.event-left {
+  width: 90px;
+  height: 90px;
+  border-radius: 10px;
+  background: #f2f2f2;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.event-left img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.event-left.dark {
+  background: #000;
+  color: #fff;
+  font-size: 22px;
+}
+
+/* ===== Center ===== */
+.event-center {
+  flex: 1;
+}
+
+.event-center h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+.event-center .location {
+  color: var(--text-sub);
+}
+
+.event-center .date {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #16a34a; /* 날짜 초록 */
+}
+
+/* ===== Right ===== */
+
+.event-right {
+  display: flex;
+  align-items: center;
+}
+
+.detail-btn {
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+  .event-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .event-left {
+    width: 70px;
+    height: 70px;
+  }
+
+  .event-center h2 {
+    font-size: 20px;
+  }
+
+  .event-center .date {
+    font-size: 16px;
+  }
+
+  .detail-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+/* ===== Base ===== */
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+}
+
+body {
+  background: radial-gradient
+    1200px 600px at 50% -200px,
+    #1a2040,
+    #0e1324
+}
+
+/* ===== Top Bar ===== */
+.hub-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+
+.hub-top h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+#logoutBtn {
+  background: #ff5c7c;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* ===== Main ===== */
+.hub-main {
+  padding: 16px;
+}
+
+/* ===== Grid ===== */
+.event-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+/* ===== Card ===== */
+.event-card {
+  background: #171a2b;
+  border-radius: 16px;
+  padding: 18px 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.35);
+  cursor: pointer;
+
+  transition: transform .15s ease, opacity .15s ease;
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+}
+
+/* ===== Disabled ===== */
+.event-card.disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.event-card.disabled:hover {
+  transform: none;
+}
+
+/* ===== Text ===== */
+.event-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+
+.event-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #a9b0d6;
+}
+
+/* ===== Meta ===== */
+.event-meta {
+  margin-top: 14px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ===== Pills ===== */
+.pill {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+}
+
+.pill.live {
+  background: #38d39f;
+  color: #0f1220;
+  font-weight: 600;
+}
+/* ===== Modal ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 24, 0.55);
+  backdrop-filter: blur(6px);
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 1000;
+}
+
+.modal-backdrop.show {
+  display: flex;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.35);
+}
+
+.modal-card h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+/* ===== Form ===== */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+}
+
+.form-group input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #000;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+
+/* ===== Modal Buttons ===== */
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+}
+
+.btn.primary {
+  background: #000;
+  color: #fff;
+}
+
+.btn.primary:hover {
+  background: #111;
+}
+
+.btn.ghost {
+  background: #f3f3f3;
+  color: #333;
+}
+
+.btn.ghost:hover {
+  background: #e8e8e8;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 480px) {
+  .modal-card {
+    margin: 0 14px;
+    padding: 20px;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+}
+/* ===== Admin Actions ===== */
+.admin-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-btn.edit {
+  background: #f3f3f3;
+  color: #111;
+}
+
+.admin-btn.edit:hover {
+  background: #e6e6e6;
+}
+
+.admin-btn.delete {
+  background: #ff5c7c;
+  color: #fff;
+}
+
+.admin-btn.delete:hover {
+  background: #ff3b63;
+}
