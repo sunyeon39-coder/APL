@@ -1,4 +1,4 @@
-import { db, auth } from "./firebase.js";
+import { db, auth, getMessagingSafe } from "./firebase.js";
 import {
   doc,
   getDoc,
@@ -9,6 +9,10 @@ import {
 import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  getToken,
+  onMessage
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
 (() => {
   "use strict";
@@ -50,6 +54,9 @@ let audioCtx = null;
 const ALERT_VOLUME = 0.12;
 let soundPromptShown = false;
   let activeNotificationId = "";
+    const VAPID_KEY = "BAZXsr3GQtq_nPLrF7C89mr3ejM7DbS-cBBfWNZzHfcHggNier7C2fbIG0uex3DZl8ykVxbqrli54cCdLkena94";
+  let pushInitStarted = false;
+  let messagingForegroundBound = false;
 
   function clone(obj) {
     return JSON.parse(JSON.stringify(obj));
@@ -166,7 +173,79 @@ let soundPromptShown = false;
     console.error("acknowledgeMyNotification error:", err);
   }
 }
+  function getSeatTargetUrl(seatId = "") {
+    const params = new URLSearchParams();
+    if (TOURNAMENT_ID) params.set("tournamentId", TOURNAMENT_ID);
+    if (EVENT_ID) params.set("eventId", EVENT_ID);
+    if (BOX_ID) params.set("boxId", BOX_ID);
+    if (seatId) params.set("focusSeatId", seatId);
+    return `./layout.html?${params.toString()}`;
+  }
 
+  async function registerPushForCurrentUser() {
+    if (pushInitStarted) return;
+    pushInitStarted = true;
+
+    if (!currentUser) return;
+    if (!("serviceWorker" in navigator)) return;
+    if (!("Notification" in window)) return;
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        console.log("push permission not granted");
+        return;
+      }
+
+      const swReg = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+      const messaging = await getMessagingSafe();
+      if (!messaging) return;
+
+      const token = await getToken(messaging, {
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: swReg
+      });
+
+      if (!token) {
+        console.warn("FCM token not available");
+        return;
+      }
+
+      await setDoc(
+        doc(db, "users", currentUser.uid),
+        {
+          fcmWebToken: token,
+          pushEnabled: true,
+          pushUpdatedAt: Date.now(),
+          pushUpdatedAtServer: serverTimestamp()
+        },
+        { merge: true }
+      );
+
+      if (!messagingForegroundBound) {
+        onMessage(messaging, (payload) => {
+          console.log("FCM foreground message:", payload);
+
+          const msg =
+            payload?.notification?.body ||
+            payload?.data?.message ||
+            "Seat에 배치되었습니다.";
+
+          showSeatAlert(msg);
+
+          if (audioUnlocked) {
+            playAlertSoundLoop();
+          } else {
+            showSoundPrompt();
+          }
+        });
+
+        messagingForegroundBound = true;
+      }
+    } catch (err) {
+      console.error("registerPushForCurrentUser error:", err);
+    }
+  }
   function touchEvent() {
     eventState.updatedAt = Date.now();
     void saveEventState();
@@ -743,6 +822,7 @@ if (w.uid) {
     seatId: seat.id,
     seatLabel: seat.label ?? seat.no ?? "",
     message: `Seat ${seat.label ?? seat.no}에 배치되었습니다.`,
+    targetUrl: getSeatTargetUrl(seat.id),
     acknowledged: false,
     createdAt: Date.now()
   });
@@ -1798,15 +1878,42 @@ if (FOCUS_SEAT_ID) {
   }
 
   onAuthStateChanged(auth, async (user) => {
+    currentUser = user || null;
+
     if (!user) {
-      location.replace("./login.html");
+      location.href = "./login.html";
       return;
     }
 
-    currentUser = user;
     currentUserProfile = await loadMyUserProfile();
     isAdminUser = currentUserProfile?.role === "admin";
 
-    await init();
+    await registerPushForCurrentUser();
+
+    if (!hasInitialized) {
+      hasInitialized = true;
+
+      const remoteEvent = await loadEventStateRemote();
+      if (remoteEvent) {
+        eventState.version = remoteEvent.version || 2;
+        eventState.eventId = remoteEvent.eventId || EVENT_ID;
+        eventState.boxId = remoteEvent.boxId || BOX_ID;
+        eventState.nextSeatNo = remoteEvent.nextSeatNo || 1;
+        eventState.nextSeatOrder = remoteEvent.nextSeatOrder || 1;
+        eventState.seats = Array.isArray(remoteEvent.seats) ? remoteEvent.seats : [];
+        eventState.updatedAt = Number(remoteEvent.updatedAt || Date.now());
+      }
+
+      const remoteWaiting = await loadWaitingStateRemote();
+      if (remoteWaiting) {
+        waitingState.version = remoteWaiting.version || 2;
+        waitingState.waiting = Array.isArray(remoteWaiting.waiting) ? remoteWaiting.waiting : [];
+        waitingState.updatedAt = Number(remoteWaiting.updatedAt || Date.now());
+      }
+
+      bindRealtime();
+      render();
+      startTick();
+    }
   });
 })();
