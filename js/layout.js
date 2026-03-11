@@ -933,56 +933,48 @@ function renderMobile() {
         const isSel = ui.selectedSeatId === s.id;
 
         seatCard.innerHTML += `
-          <div class="mobile-seat-row ${isSel ? "selected" : ""}" data-mobile-seat="${s.id}">
-            <div class="mobile-seat-top">
-              <div class="mobile-seat-left">
-                <div class="mobile-seat-badge">${escapeHtml(s.label ?? s.no)}</div>
-                <div class="mobile-seat-texts">
-                  <div class="mobile-seat-title">Seat ${escapeHtml(s.label ?? s.no)}</div>
-                  <div class="mobile-seat-person ${isEmptyPerson(s.person) ? "is-empty" : ""}">
-                    ${escapeHtml(s.person)}
-                  </div>
-                </div>
-              </div>
+  <div class="mobile-seat-row compact ${isSel ? "selected" : ""}" data-mobile-seat="${s.id}">
+    <div class="mobile-seat-mainline">
+      <div class="mobile-seat-inline">
+        <div class="mobile-seat-name ${isEmptyPerson(s.person) ? "is-empty" : ""}">
+          ${escapeHtml(s.person)}
+        </div>
 
-              <div class="mobile-seat-right">
-                ${
-                  hasPerson
-                    ? `<span class="time-chip" data-timer="seat" data-start="${start}" data-target="seat:${s.id}">00:00:00</span>`
-                    : `<span class="mobile-empty-dash">—</span>`
-                }
-              </div>
+        ${
+          canManageLayout()
+            ? `
+            <div class="mobile-seat-inline-actions">
+              <button class="mobile-pill-btn ${isSel ? "active" : ""}" data-mobile-seat-select="${s.id}">
+                ${isSel ? "선택됨" : "Seat 선택"}
+              </button>
+
+              <button class="mobile-pill-btn danger" data-del="${s.id}">
+                삭제
+              </button>
+
+              ${
+                selectedWaiting
+                  ? `<button class="mobile-pill-btn primary" data-mobile-assign="${s.id}">
+                      ${escapeHtml(selectedWaiting.name)} 배치
+                    </button>`
+                  : ``
+              }
             </div>
+            `
+            : ``
+        }
+      </div>
 
-            ${
-              canManageLayout()
-                ? `
-                <div class="mobile-row-actions">
-                  <button class="mobile-pill-btn ${isSel ? "active" : ""}" data-mobile-seat-select="${s.id}">
-                    ${isSel ? "선택됨" : "Seat 선택"}
-                  </button>
-
-                  <button class="mobile-pill-btn" data-rename="${s.id}">
-                    라벨
-                  </button>
-
-                  <button class="mobile-pill-btn danger" data-del="${s.id}">
-                    삭제
-                  </button>
-
-                  ${
-                    selectedWaiting
-                      ? `<button class="mobile-pill-btn primary" data-mobile-assign="${s.id}">
-                          ${escapeHtml(selectedWaiting.name)} 배치
-                        </button>`
-                      : ``
-                  }
-                </div>
-                `
-                : ``
-            }
-          </div>
-        `;
+      <div class="mobile-seat-right">
+        ${
+          hasPerson
+            ? `<span class="time-chip" data-timer="seat" data-start="${start}" data-target="seat:${s.id}">00:00:00</span>`
+            : `<span class="mobile-empty-dash">—</span>`
+        }
+      </div>
+    </div>
+  </div>
+`;
       });
   }
 
@@ -1014,28 +1006,21 @@ function renderMobile() {
     `;
   } else {
     sortedWaiting.forEach((w, index) => {
-      const start = w.addedAt || Date.now();
-      const isSel = ui.selectedWaitingId === w.id;
+  const start = w.addedAt || Date.now();
+  const isSel = ui.selectedWaitingId === w.id;
 
-      waitCard.innerHTML += `
-        <div class="mobile-wait-row ${isSel ? "selected" : ""}" data-mobile-wait="${w.id}">
-          <div class="mobile-wait-top">
-            <div class="mobile-wait-left">
-              <div class="wait-order-badge">${index + 1}</div>
-              <div class="mobile-wait-name">${escapeHtml(w.name)}</div>
-            </div>
-
-            <div class="mobile-wait-right">
-              <span class="time-chip" data-timer="wait" data-start="${start}" data-target="wait:${w.id}">
-                00:00:00
-              </span>
-            </div>
+  waitCard.innerHTML += `
+    <div class="mobile-wait-row compact ${isSel ? "selected" : ""}" data-mobile-wait="${w.id}">
+      <div class="mobile-wait-mainline">
+        <div class="mobile-wait-inline">
+          <div class="mobile-wait-name">
+            ${escapeHtml(w.name)}
           </div>
 
           ${
             canManageLayout()
               ? `
-              <div class="mobile-row-actions">
+              <div class="mobile-wait-inline-actions">
                 <button class="mobile-pill-btn ${isSel ? "active" : ""}" data-mobile-wait-select="${w.id}">
                   ${isSel ? "선택됨" : "대기 선택"}
                 </button>
@@ -1048,8 +1033,16 @@ function renderMobile() {
               : ``
           }
         </div>
-      `;
-    });
+
+        <div class="mobile-wait-right">
+          <span class="time-chip" data-timer="wait" data-start="${start}" data-target="wait:${w.id}">
+            00:00:00
+          </span>
+        </div>
+      </div>
+    </div>
+  `;
+});
   }
 
   if (canManageLayout()) {
@@ -1229,10 +1222,6 @@ function renderWaitPanel() {
         <div class="row" data-wid="${w.id}" style="cursor:pointer; align-items:center;">
           <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
 
-            <div class="wait-order-badge">
-              ${waitingNo}
-            </div>
-
             <div class="wait-name-line" style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
               <div class="wait-name-text">
                 ${escapeHtml(w.name)}
@@ -1330,59 +1319,50 @@ function renderSeatPanel() {
         const hasPerson = !isEmptyPerson(s.person);
         const start = hasPerson ? (s.seatedAt || Date.now()) : null;
 
-        left.push(`
-          <div class="seat-manage-row" data-sid="${s.id}" style="cursor:pointer;">
-            <div class="seat-manage-main">
-              <div class="seat-manage-badge">
-                ${escapeHtml(s.label ?? s.no)}
+ left.push(`
+  <div class="seat-manage-row ${isSel ? "selected" : ""}" data-sid="${s.id}" style="cursor:pointer;">
+    <div class="seat-manage-main">
+      <div class="seat-manage-inline">
+        <div class="seat-manage-name ${isEmptyPerson(s.person) ? "is-empty" : ""}">
+          ${escapeHtml(s.person)}
+        </div>
+
+        ${
+          canManageLayout()
+            ? `
+              <div class="seat-inline-actions">
+                <button class="pill-inline ${isSel ? "active" : ""}" type="button">
+                  ${isSel ? "선택됨" : "선택"}
+                </button>
+
+                <button class="pill-inline" type="button" data-rename="${s.id}">
+                  라벨
+                </button>
+
+                <button class="pill-inline danger" type="button" data-del="${s.id}">
+                  삭제
+                </button>
               </div>
+            `
+            : ``
+        }
+      </div>
 
-              <div class="seat-manage-texts">
-                <div class="seat-manage-name ${isEmptyPerson(s.person) ? "is-empty" : ""}">
-                  ${escapeHtml(s.person)}
-                </div>
-              </div>
-
-              <div class="seat-manage-timer">
-                ${
-                  hasPerson
-                    ? `<span class="time-chip"
-                        data-timer="seat"
-                        data-start="${start}"
-                        data-target="seat:${s.id}">
-                        00:00:00
-                      </span>`
-                    : `<span class="seat-manage-empty-dash">—</span>`
-                }
-              </div>
-            </div>
-
-            ${
-              canManageLayout()
-                ? `
-                  <div class="seat-manage-actions">
-                    <button class="icon-btn" data-rename="${s.id}" title="라벨 변경">
-                      <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
-                        <path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7"/>
-                        <path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-
-                    <button class="icon-btn danger" data-del="${s.id}" title="좌석 삭제">
-                      <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6l-1 14H6L5 6"/>
-                        <path d="M10 11v6"/>
-                        <path d="M14 11v6"/>
-                        <path d="M9 6V4h6v2"/>
-                      </svg>
-                    </button>
-                  </div>
-                `
-                : ``
-            }
-          </div>
-        `);
+      <div class="seat-manage-timer">
+        ${
+          hasPerson
+            ? `<span class="time-chip"
+                data-timer="seat"
+                data-start="${start}"
+                data-target="seat:${s.id}">
+                00:00:00
+              </span>`
+            : `<span class="seat-manage-empty-dash">—</span>`
+        }
+      </div>
+    </div>
+  </div>
+`);
       });
   }
 

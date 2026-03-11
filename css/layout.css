@@ -217,7 +217,7 @@ input{
 input:focus{ border-color:rgba(77,163,255,.6); }
 
 .btn{
-  height:44px;
+  height:40px;
   padding:0 14px;
   border-radius:12px;
   border:1px solid var(--border);
@@ -493,68 +493,7 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   text-overflow: ellipsis;
   min-width: 0;
 }
-.seat-manage-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 1px 2px;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  background: rgba(255,255,255,0.02);
-}
 
-.seat-manage-main {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex: 1;
-  min-width: 0;
-}
-
-.seat-manage-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 900;
-  color: #60a5fa;
-  border: 2px solid #3b82f6;
-  background: rgba(59,130,246,0.08);
-  flex-shrink: 0;
-}
-
-.seat-manage-texts {
-  min-width: 0;
-  flex: 1;
-}
-
-.seat-manage-name {
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.seat-manage-name.is-empty {
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.55);
-}
-
-.seat-manage-timer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 120px;
-  flex-shrink: 0;
-}
 
 .seat-manage-empty-dash {
   font-size: 18px;
@@ -562,12 +501,6 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   color: rgba(255,255,255,0.35);
 }
 
-.seat-manage-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
 .icon-btn {
   width: 36px;
   height: 36px;
@@ -660,20 +593,6 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   min-width: 0;
 }
 
-.mobile-seat-badge {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 14px;
-  color: #60a5fa;
-  border: 2px solid #3b82f6;
-  background: rgba(59,130,246,0.08);
-  flex-shrink: 0;
-}
 
 .mobile-seat-texts {
   min-width: 0;
@@ -758,4 +677,210 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 12px;
+}
+
+.seat-inline-actions{
+  display:flex;
+  gap:8px;
+  margin-left:10px;
+}
+
+.seat-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.02);
+  margin-bottom: 10px;
+}
+
+.seat-manage-row.selected {
+  border-color: rgba(59,130,246,0.8);
+  box-shadow: 0 0 0 1px rgba(59,130,246,0.25) inset;
+}
+
+.seat-manage-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.seat-manage-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.seat-manage-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seat-manage-name.is-empty {
+  font-size: 16px;
+  color: rgba(255,255,255,0.55);
+}
+
+.seat-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.pill-inline {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.9);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pill-inline.active {
+  border-color: rgba(59,130,246,0.8);
+  background: rgba(59,130,246,0.16);
+  color: #93c5fd;
+}
+
+.pill-inline.danger {
+  border-color: rgba(255,90,110,0.5);
+  color: #ff5a6e;
+}
+
+.seat-manage-timer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.seat-manage-empty-dash {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+}
+.mobile-seat-row.compact {
+  padding: 1px 12px;
+}
+
+.mobile-seat-mainline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.mobile-seat-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.mobile-seat-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-seat-name.is-empty {
+  color: rgba(255,255,255,0.55);
+}
+
+.mobile-seat-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+/* 이전 2줄 구조 숨김용 */
+.mobile-seat-row.compact .mobile-seat-badge,
+.mobile-seat-row.compact .mobile-seat-title,
+.mobile-seat-row.compact .mobile-seat-person,
+.mobile-seat-row.compact .mobile-row-actions,
+.mobile-seat-row.compact .mobile-seat-texts,
+.mobile-seat-row.compact .mobile-seat-left,
+.mobile-seat-row.compact .mobile-seat-top {
+  all: unset;
+}
+
+/* 버튼 높이 살짝 맞춤 */
+.mobile-seat-inline-actions .mobile-pill-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+.mobile-wait-row.compact {
+  padding: 2px 12px;
+}
+
+.mobile-wait-mainline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.mobile-wait-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.mobile-wait-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-wait-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.mobile-wait-row.compact .wait-order-badge,
+.mobile-wait-row.compact .mobile-wait-top,
+.mobile-wait-row.compact .mobile-wait-left,
+.mobile-wait-row.compact .mobile-row-actions {
+  display: none !important;
+}
+
+.mobile-wait-inline-actions .mobile-pill-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
 }
