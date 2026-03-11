@@ -20,6 +20,7 @@ const signupModal = document.getElementById("signupModal");
 const signupConfirm = document.getElementById("signupConfirm");
 
 let selectedGender = "none";
+let pendingUser = null;
 
 /* ===============================
    GENDER UI
@@ -55,33 +56,46 @@ function isInAppBrowser() {
   return /KAKAOTALK|Instagram|FBAN|FBAV|Line|NAVER|Whale/i.test(ua);
 }
 
+function showError(error, fallback = "알 수 없는 오류") {
+  const code = error?.code || "";
+  const message = error?.message || fallback;
+  console.error("auth error:", error);
+  alert(`로그인 실패\n${code || message}`);
+}
+
+function goHub() {
+  location.href = "./hub.html";
+}
+
 /* ===============================
-   COMMON LOGIN FINISH
+   LOGIN FINISH
 =============================== */
 async function finishLogin(user) {
   if (!user) return;
+
+  pendingUser = user;
 
   const uid = user.uid;
   const userRef = doc(db, "users", uid);
   const snap = await getDoc(userRef);
 
-  // 첫 로그인 유저
+  // 첫 로그인 사용자
   if (!snap.exists()) {
     signupModal.classList.remove("hidden");
     return;
   }
 
-  // 기존 유저
+  // 기존 사용자
   await updateDoc(userRef, {
     email: user.email || "",
     lastLogin: serverTimestamp()
   });
 
-  location.href = "./hub.html";
+  goHub();
 }
 
 /* ===============================
-   REDIRECT RESULT HANDLER
+   REDIRECT RESULT
 =============================== */
 async function handleRedirectLogin() {
   try {
@@ -91,19 +105,17 @@ async function handleRedirectLogin() {
 
     await finishLogin(result.user);
   } catch (error) {
-    console.error("redirect login error:", error);
-    alert(`로그인 실패\n${error.code || error.message || "알 수 없는 오류"}`);
+    showError(error);
   }
 }
 
 /* ===============================
-   LOGIN
+   LOGIN CLICK
 =============================== */
 async function login() {
   try {
-    // 인앱브라우저에서는 팝업/리디렉트가 불안정할 수 있음
     if (isInAppBrowser()) {
-      alert("카카오톡/인스타 등 앱 내부 브라우저에서는 로그인이 실패할 수 있습니다.\n크롬 또는 사파리에서 다시 열어주세요.");
+      alert("카카오톡/인스타 앱 내부 브라우저에서는 로그인이 실패할 수 있습니다.\n사파리 또는 크롬에서 다시 열어주세요.");
       return;
     }
 
@@ -115,30 +127,29 @@ async function login() {
     const result = await signInWithPopup(auth, provider);
     await finishLogin(result.user);
   } catch (error) {
-    console.error("login error:", error);
-    alert(`로그인 실패\n${error.code || error.message || "알 수 없는 오류"}`);
+    showError(error);
   }
 }
 
 /* ===============================
-   SAVE PROFILE (FIRST LOGIN)
+   FIRST SIGNUP SAVE
 =============================== */
 async function saveProfile() {
   try {
     const nickname = document.getElementById("nicknameInput")?.value.trim() || "";
     const phone = document.getElementById("phoneInput")?.value.trim() || "";
+    const user = auth.currentUser || pendingUser;
 
     if (nickname.length < 2 || nickname.length > 7) {
       alert("닉네임은 2~7자로 입력해주세요.");
       return;
     }
 
-    if (!auth.currentUser) {
+    if (!user) {
       alert("로그인 정보가 없습니다. 다시 시도해주세요.");
       return;
     }
 
-    const user = auth.currentUser;
     const uid = user.uid;
 
     await setDoc(doc(db, "users", uid), {
@@ -153,7 +164,7 @@ async function saveProfile() {
       lastLogin: serverTimestamp()
     });
 
-    location.href = "./hub.html";
+    goHub();
   } catch (error) {
     console.error("save profile error:", error);
     alert(`회원 정보 저장 실패\n${error.code || error.message || "알 수 없는 오류"}`);
