@@ -6,16 +6,29 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0, viewport-fit=cover"
   />
-  <title>Han Pit – Index</title>
-
+  <title>Han Pit - Index</title>
   <link rel="stylesheet" href="./css/index.css" />
 </head>
-
 <body>
-  <div class="page">
-    <div id="indexRoot"></div>
-  </div>
+  <header class="index-topbar">
+    <div class="topbar-left">
+      <button id="backBtn" class="back-btn" type="button" aria-label="Go back to hub">
+        <span class="back-icon">←</span>
+        <span>Back</span>
+      </button>
+    </div>
 
-  <script src="./js/index.js"></script>
+    <div class="topbar-center">
+      <div id="topbarTournamentName" class="topbar-title">Tournament Events</div>
+    </div>
+
+    <div class="topbar-right"></div>
+  </header>
+
+  <main class="index-page">
+    <div id="indexRoot" class="index-root"></div>
+  </main>
+
+  <script type="module" src="./js/index.js"></script>
 </body>
 </html>

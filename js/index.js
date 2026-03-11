@@ -1,6 +1,21 @@
+import { auth, db } from "./firebase.js";
+
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+import {
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 console.log("🔥 index.js loaded");
 
 const root = document.getElementById("indexRoot");
+const backBtn = document.getElementById("backBtn");
+const topbarTournamentName = document.getElementById("topbarTournamentName");
 
 /* ===============================
    테스트 이벤트 데이터
@@ -33,6 +48,14 @@ const events = [
 ];
 
 /* ===============================
+   ROUTE
+=============================== */
+function getTournamentId() {
+  const params = new URLSearchParams(location.search);
+  return params.get("eventId") || sessionStorage.getItem("eventId") || "";
+}
+
+/* ===============================
    UTIL
 =============================== */
 function parseDateTime(date, time) {
@@ -51,6 +74,46 @@ function formatDateTitle(dateStr) {
   });
 }
 
+function parseTournamentDate(str) {
+  if (!str || typeof str !== "string") return null;
+
+  const parts = str.split(".");
+  if (parts.length !== 3) return null;
+
+  const [yy, mm, dd] = parts.map(Number);
+  if (!yy || !mm || !dd) return null;
+
+  const fullYear = 2000 + yy;
+  return new Date(fullYear, mm - 1, dd, 23, 59, 59, 999);
+}
+
+function isTournamentActive(tournament) {
+  if (!tournament) return true;
+
+  const now = new Date();
+  const start = parseTournamentDate(tournament.startDate);
+  const end = parseTournamentDate(tournament.endDate);
+
+  if (!start || !end) return true;
+
+  const startOfDay = new Date(start);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  if (now < startOfDay) return false;
+  if (now > end) return false;
+
+  return true;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 /* ===============================
    STATUS
 =============================== */
@@ -61,31 +124,25 @@ function calcStatus(card) {
   const close = parseDateTime(date, card.dataset.close);
 
   const pill = card.querySelector(".pill");
+  if (!pill) return;
 
   card.classList.remove("scheduled", "opened", "running", "closed");
 
   const openTime = new Date(start.getTime() - 30 * 60 * 1000);
 
   if (now < openTime) {
-
     card.classList.add("scheduled");
     pill.textContent = "SCHEDULED";
     pill.className = "pill scheduled";
-
   } else if (now >= openTime && now < start) {
-
     card.classList.add("opened");
     pill.textContent = "OPENED";
     pill.className = "pill opened";
-
   } else if (now >= start && now < close) {
-
     card.classList.add("running");
     pill.textContent = "RUNNING";
     pill.className = "pill running";
-
   } else {
-
     card.classList.add("closed");
     pill.textContent = "CLOSED";
     pill.className = "pill closed";
@@ -96,17 +153,21 @@ function calcStatus(card) {
    RENDER
 =============================== */
 function render() {
+  if (!root) {
+    console.warn("❌ indexRoot not found");
+    return;
+  }
+
   root.innerHTML = "";
 
   const grouped = {};
 
-  events.forEach(e => {
+  events.forEach((e) => {
     if (!grouped[e.date]) grouped[e.date] = [];
     grouped[e.date].push(e);
   });
 
   Object.entries(grouped).forEach(([date, list]) => {
-
     const header = document.createElement("div");
     header.className = "date-header";
     header.innerHTML = `
@@ -115,8 +176,7 @@ function render() {
     `;
     root.appendChild(header);
 
-    list.forEach(e => {
-
+    list.forEach((e) => {
       const card = document.createElement("div");
       card.className = "event-card";
       card.dataset.date = e.date;
@@ -127,19 +187,19 @@ function render() {
 
       card.innerHTML = `
         <div class="event-header">
-          <div class="event-title">${e.title}</div>
+          <div class="event-title">${escapeHtml(e.title)}</div>
           <span class="pill"></span>
         </div>
 
         <div class="event-info">
           <div class="info-box">
             <div class="info-label">Time</div>
-            ${e.start}
+            ${escapeHtml(e.start)}
           </div>
 
           <div class="info-box">
             <div class="info-label">Reg Closes</div>
-            ${e.close}
+            ${escapeHtml(e.close)}
           </div>
 
           <div class="info-box">
@@ -156,12 +216,199 @@ function render() {
 }
 
 /* ===============================
+   TOURNAMENT PERIOD GUARD
+=============================== */
+let currentTournament = null;
+let stopTournamentWatch = null;
+let periodBlocked = false;
+
+function routeToHub(message) {
+  if (periodBlocked) return;
+  periodBlocked = true;
+
+  if (message) {
+    alert(message);
+  }
+
+  location.replace("./hub.html");
+}
+
+async function initTournamentPeriodWatch() {
+  const tournamentId = getTournamentId();
+
+  if (!tournamentId) {
+    if (topbarTournamentName) {
+      topbarTournamentName.textContent = "Tournament Events";
+    }
+    return;
+  }
+
+  sessionStorage.setItem("tournamentId", tournamentId);
+
+  const tournamentRef = doc(db, "tournaments", tournamentId);
+
+  try {
+    const snap = await getDoc(tournamentRef);
+
+    if (!snap.exists()) {
+      if (topbarTournamentName) {
+        topbarTournamentName.textContent = "Tournament Events";
+      }
+      return;
+    }
+
+    currentTournament = {
+      id: snap.id,
+      ...(snap.data() || {})
+    };
+
+    if (topbarTournamentName) {
+      topbarTournamentName.textContent =
+        currentTournament.name || "Tournament Events";
+    }
+
+    if (!isTournamentActive(currentTournament)) {
+      routeToHub("대회 기간이 아니거나 종료되어 허브로 이동합니다.");
+      return;
+    }
+
+    stopTournamentWatch = onSnapshot(
+      tournamentRef,
+      (docSnap) => {
+        if (!docSnap.exists()) {
+          routeToHub("대회 정보가 없어 허브로 이동합니다.");
+          return;
+        }
+
+        currentTournament = {
+          id: docSnap.id,
+          ...(docSnap.data() || {})
+        };
+
+        if (topbarTournamentName) {
+          topbarTournamentName.textContent =
+            currentTournament.name || "Tournament Events";
+        }
+
+        if (!isTournamentActive(currentTournament)) {
+          routeToHub("대회 기간이 종료되어 허브로 이동합니다.");
+        }
+      },
+      (error) => {
+        console.error("❌ tournament watch error:", error);
+      }
+    );
+  } catch (error) {
+    console.error("❌ initTournamentPeriodWatch error:", error);
+  }
+}
+
+/* ===============================
+   SHARED WAITING (FIRESTORE)
+   admin은 자동등록 제외
+   uid 기준 중복 방지
+=============================== */
+async function autoJoinSharedWaitingOnIndex(user) {
+  const tournamentId = getTournamentId();
+  if (!user || !tournamentId) return;
+
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      console.warn("❌ user profile not found");
+      return;
+    }
+
+    const userProfile = userSnap.data() || {};
+    console.log("INDEX role check:", userProfile.role, user.uid, user.email);
+
+    if (userProfile.role === "admin") {
+      console.log("ℹ️ admin user - skip auto waiting join");
+      return;
+    }
+
+    const nickname = String(userProfile.nickname || "").trim();
+    const email = String(userProfile.email || user.email || "").trim();
+
+    console.log("INDEX nickname/email:", nickname, email);
+
+    if (!nickname) {
+      console.warn("❌ nickname missing");
+      return;
+    }
+
+    const waitingRef = doc(db, "layout_shared", "global_waiting");
+    console.log("INDEX auto waiting target:", waitingRef.path);
+
+    const waitingSnap = await getDoc(waitingRef);
+
+    const waitingState = waitingSnap.exists()
+      ? (waitingSnap.data() || {})
+      : {
+          version: 2,
+          waiting: [],
+          updatedAt: Date.now()
+        };
+
+    const waitingList = Array.isArray(waitingState.waiting)
+      ? waitingState.waiting
+      : [];
+
+    const alreadyInWaiting = waitingList.some((item) => {
+      if (!item || typeof item !== "object") return false;
+      if (item.uid && item.uid === user.uid) return true;
+      return false;
+    });
+
+    console.log("INDEX alreadyInWaiting:", alreadyInWaiting);
+
+    if (alreadyInWaiting) {
+      console.log("ℹ️ already in shared waiting:", nickname);
+      return;
+    }
+
+    waitingList.push({
+      id: `w_${user.uid}`,
+      uid: user.uid,
+      email,
+      name: nickname,
+      addedAt: Date.now(),
+      source: "auto",
+      tournamentId
+    });
+
+    await setDoc(
+      waitingRef,
+      {
+        ...waitingState,
+        version: 2,
+        waiting: waitingList,
+        updatedAt: Date.now()
+      },
+      { merge: true }
+    );
+console.log("INDEX role check:", userProfile.role, user.uid, user.email);
+    console.log("✅ shared waiting joined:", nickname);
+  } catch (error) {
+    console.error("❌ autoJoinSharedWaitingOnIndex error:", error);
+  }
+}
+
+/* ===============================
    CLICK → LAYOUT
 =============================== */
-root.addEventListener("click", (e) => {
+root?.addEventListener("click", (e) => {
   const card = e.target.closest(".event-card");
   if (!card) return;
 
+  if (currentTournament && !isTournamentActive(currentTournament)) {
+    routeToHub("대회 기간이 종료되어 허브로 이동합니다.");
+    return;
+  }
+
+  const tournamentId = getTournamentId();
   const eventId = card.dataset.eventId;
   const boxId = card.dataset.boxId;
 
@@ -170,15 +417,33 @@ root.addEventListener("click", (e) => {
     return;
   }
 
-  console.log("👉 Go Layout:", eventId, boxId);
+  sessionStorage.setItem("tournamentId", tournamentId);
+  sessionStorage.setItem("eventId", eventId);
+  sessionStorage.setItem("boxId", boxId);
 
-// ✅ (2번) 백업 저장
-sessionStorage.setItem("eventId", eventId);
-sessionStorage.setItem("boxId", boxId);
+  location.href =
+    `layout.html?tournamentId=${encodeURIComponent(tournamentId)}&eventId=${encodeURIComponent(eventId)}&boxId=${encodeURIComponent(boxId)}`;
+});
 
-// ✅ 인코딩까지 같이 (안전)
-location.href =
-  `layout.html?eventId=${encodeURIComponent(eventId)}&boxId=${encodeURIComponent(boxId)}`;
+/* ===============================
+   BACK
+=============================== */
+backBtn?.addEventListener("click", () => {
+  sessionStorage.removeItem("boxId");
+  location.href = "./hub.html";
+});
+
+/* ===============================
+   AUTH
+=============================== */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    location.replace("./login.html");
+    return;
+  }
+
+  await initTournamentPeriodWatch();
+  await autoJoinSharedWaitingOnIndex(user);
 });
 
 /* ===============================
@@ -189,3 +454,13 @@ render();
 setInterval(() => {
   document.querySelectorAll(".event-card").forEach(calcStatus);
 }, 1000);
+
+setInterval(() => {
+  if (currentTournament && !isTournamentActive(currentTournament)) {
+    routeToHub("대회 기간이 종료되어 허브로 이동합니다.");
+  }
+}, 60000);
+
+window.addEventListener("beforeunload", () => {
+  if (stopTournamentWatch) stopTournamentWatch();
+});

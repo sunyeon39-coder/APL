@@ -7,164 +7,127 @@
     content="width=device-width, initial-scale=1.0, viewport-fit=cover"
   />
   <title>Han Pit – Hub</title>
-
-  <style>
-    /* ===== Base ===== */
-    * {
-      box-sizing: border-box;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
-    }
-    body {
-      margin: 0;
-      background: radial-gradient(1200px 600px at 50% -200px, #1a2040, #0e1324);
-      color: #111;
-    }
-
-    /* ===== Top Bar ===== */
-    .hub-top {
-      position: relative;
-      z-index: 2000;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 18px;
-      border-bottom: 1px solid rgba(255,255,255,.1);
-      color: #fff;
-    }
-    .hub-top h1 { margin: 0; font-size: 22px; }
-
-    .hub-actions { display: flex; gap: 10px; }
-
-    .top-btn {
-      border: none;
-      border-radius: 999px;
-      padding: 10px 18px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .top-btn.logout {
-      background: #000;
-      color: #fff;
-      pointer-events: auto;
-    }
-
-    /* ===== Main ===== */
-    .hub-main { padding: 20px; }
-
-    .event-list {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .event-row {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      background: #fff;
-      border-radius: 14px;
-      padding: 20px;
-      box-shadow: 0 6px 18px rgba(0,0,0,.08);
-      cursor: pointer;
-    }
-
-    .event-left {
-      width: 90px;
-      height: 90px;
-      border-radius: 10px;
-      background: #000;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 22px;
-      flex-shrink: 0;
-    }
-
-    .event-center { flex: 1; }
-    .event-center .date {
-      margin-top: 8px;
-      font-weight: 700;
-      color: #16a34a;
-    }
-
-    .detail-btn {
-      background: #000;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 12px 18px;
-    }
-
-    @media (max-width: 768px) {
-      .event-row {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .detail-btn {
-        width: 100%;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="./css/hub.css" />
 </head>
-
 <body>
+  <header class="hub-top">
+    <h1 class="brand">Han Pit</h1>
 
-  <!-- ===== Top ===== -->
-  <div class="hub-top">
-    <h1>Han Pit</h1>
     <div class="hub-actions">
-      <button class="top-btn logout" id="logoutBtn">Logout</button>
+      <button id="profileBtn" class="top-btn profile" type="button">Profile</button>
+      <button id="adminBtn" class="top-btn admin hidden" type="button">Access Manage</button>
+      <button id="logoutBtn" class="top-btn logout" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="hub-main">
+    <section id="eventList" class="event-list"></section>
+  </main>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="modal-backdrop">
+    <div class="modal-card">
+      <h2>내 프로필</h2>
+
+      <div class="form-group">
+        <label for="profileEmail">이메일</label>
+        <input id="profileEmail" type="text" disabled />
+      </div>
+
+      <div class="form-group">
+        <label for="profileNickname">닉네임</label>
+        <input id="profileNickname" type="text" maxlength="7" placeholder="닉네임 입력" />
+      </div>
+
+      <div class="form-group">
+        <label for="profileAccessCode">내 접근 코드</label>
+        <input id="profileAccessCode" type="text" disabled />
+      </div>
+
+      <div class="modal-actions">
+        <button id="closeProfileBtn" class="btn ghost" type="button">닫기</button>
+        <button id="saveProfileBtn" class="btn primary" type="button">저장</button>
+      </div>
     </div>
   </div>
 
-  <!-- ===== Main ===== -->
-  <main class="hub-main">
-    <div class="event-list" id="eventList">
-     <div class="event-row event-card" data-event-id="ept-paris-2026">
-        <div class="event-left">EPT</div>
-        <div class="event-center">
-          <h2>EPT Paris 2026</h2>
-          <div class="date">26.02.18 ~ 26.03.01</div>
-        </div>
-        <button class="detail-btn">자세히 보기 →</button>
+  <!-- Admin Modal -->
+  <div id="adminModal" class="modal-backdrop">
+    <div class="modal-card admin-modal-card">
+      <h2>접근 허용 관리</h2>
+
+      <div class="admin-layout">
+        <!-- 대회 관리 -->
+        <section class="admin-block">
+          <div class="admin-block-head">
+            <h3>대회 관리</h3>
+            <button id="newTournamentBtn" class="mini-btn" type="button">새 대회</button>
+          </div>
+
+          <div class="form-group">
+            <label for="adminEventSelect">대회 선택</label>
+            <select id="adminEventSelect"></select>
+          </div>
+
+          <div class="form-group">
+            <label for="adminTournamentId">대회 ID</label>
+            <input id="adminTournamentId" type="text" placeholder="예: ept-paris-2026" />
+          </div>
+
+          <div class="form-group">
+            <label for="adminTournamentName">대회명</label>
+            <input id="adminTournamentName" type="text" placeholder="예: EPT Paris 2026" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="adminTournamentStartDate">시작일</label>
+              <input id="adminTournamentStartDate" type="text" placeholder="26.02.18" />
+            </div>
+
+            <div class="form-group">
+              <label for="adminTournamentEndDate">종료일</label>
+              <input id="adminTournamentEndDate" type="text" placeholder="26.03.01" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="adminTournamentLogoText">로고 텍스트</label>
+              <input id="adminTournamentLogoText" type="text" placeholder="예: EPT" />
+            </div>
+
+            <div class="form-group">
+              <label for="adminEventCode">공용 코드</label>
+              <input id="adminEventCode" type="text" placeholder="예: EPT2026A" />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button id="saveTournamentBtn" class="btn primary" type="button">대회 저장</button>
+            <button id="deleteTournamentBtn" class="btn danger" type="button">대회 삭제</button>
+          </div>
+        </section>
+
+        <!-- 유저 허용 관리 -->
+        <section class="admin-block">
+          <h3>가입 유저 목록</h3>
+
+          <div class="form-group compact">
+            <label for="adminSearchInput">유저 검색</label>
+            <input id="adminSearchInput" type="text" placeholder="닉네임 또는 이메일 검색" />
+          </div>
+
+          <div id="adminUserList" class="user-list"></div>
+        </section>
+      </div>
+
+      <div class="modal-actions">
+        <button id="closeAdminBtn" class="btn ghost" type="button">닫기</button>
       </div>
     </div>
-  </main>
+  </div>
 
-<script>
-  /* ===============================
-     LOGOUT
-  =============================== */
-  document.getElementById("logoutBtn").onclick = () => {
-    location.href = "./login.html";
-  };
-
-  /* ===============================
-     CARD CLICK → INDEX (🔥 FIX)
-     이벤트 위임 방식
-  =============================== */
-  const eventList = document.getElementById("eventList");
-
-  eventList.addEventListener("click", (e) => {
-    const card = e.target.closest(".event-card");
-    if (!card) return;
-
-    const eventId = card.dataset.eventId;
-    if (!eventId) return;
-
-    console.log("👉 go index:", eventId);
-    location.href = `index.html?eventId=${eventId}`;
-  });
-
-  /* MOBILE CLICK SAFE */
-  document.body.style.pointerEvents = "auto";
-</script>
-
-
-
+  <script type="module" src="./js/hub.js"></script>
 </body>
 </html>
