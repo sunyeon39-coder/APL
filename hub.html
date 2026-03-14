@@ -52,6 +52,43 @@
   </div>
 
   <!-- Admin Modal -->
+     <!-- User Manage Modal -->
+  <div id="userManageModal" class="modal-backdrop user-manage-backdrop">
+    <div class="modal-card user-manage-card">
+      <div class="user-manage-handle" aria-hidden="true"></div>
+
+      <div class="user-manage-head">
+        <div>
+          <h2 id="manageUserName">유저 관리</h2>
+          <div id="manageUserEmail" class="user-manage-email">이메일</div>
+        </div>
+        <button id="closeUserManageBtn" class="icon-close-btn" type="button" aria-label="닫기">✕</button>
+      </div>
+
+      <div id="manageUserMeta" class="user-manage-meta"></div>
+
+      <div class="user-manage-section">
+        <div class="user-manage-section-title">권한 관리</div>
+        <div class="user-manage-actions">
+          <button id="manageAllowBtn" class="row-btn allow wide" type="button">직접 허용</button>
+          <button id="manageRevokeBtn" class="row-btn revoke wide" type="button">허용 해제</button>
+        </div>
+      </div>
+
+      <div class="user-manage-section">
+        <div class="user-manage-section-title">코드 관리</div>
+        <div class="user-manage-actions">
+          <button id="manageAssignCodeBtn" class="row-btn assign wide" type="button">코드 부여</button>
+          <button id="manageRemoveCodeBtn" class="row-btn remove-code wide" type="button">코드 제거</button>
+          <button id="manageViewCodeBtn" class="row-btn view wide" type="button">코드 보기</button>
+        </div>
+      </div>
+
+      <div class="modal-actions user-manage-footer">
+        <button id="closeUserManageFooterBtn" class="btn ghost" type="button">닫기</button>
+      </div>
+    </div>
+  </div>
   <div id="adminModal" class="modal-backdrop">
     <div class="modal-card admin-modal-card">
       <h2>접근 허용 관리</h2>
@@ -122,10 +159,11 @@
         </section>
       </div>
 
-      <div class="modal-actions">
-        <button id="closeAdminBtn" class="btn ghost" type="button">닫기</button>
-      </div>
-    </div>
+      <div class="admin-footer">
+  <div class="modal-actions">
+    <button id="closeAdminBtn" class="btn ghost" type="button">닫기</button>
+  </div>
+</div>
   </div>
 
   <script type="module" src="./js/hub.js"></script>

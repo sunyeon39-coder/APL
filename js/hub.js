@@ -50,10 +50,25 @@ const deleteTournamentBtn = $("deleteTournamentBtn");
 
 const adminUserList = $("adminUserList");
 
+const userManageModal = $("userManageModal");
+const closeUserManageBtn = $("closeUserManageBtn");
+const closeUserManageFooterBtn = $("closeUserManageFooterBtn");
+
+const manageUserName = $("manageUserName");
+const manageUserEmail = $("manageUserEmail");
+const manageUserMeta = $("manageUserMeta");
+
+const manageAllowBtn = $("manageAllowBtn");
+const manageRevokeBtn = $("manageRevokeBtn");
+const manageAssignCodeBtn = $("manageAssignCodeBtn");
+const manageRemoveCodeBtn = $("manageRemoveCodeBtn");
+const manageViewCodeBtn = $("manageViewCodeBtn");
+
 let currentUser = null;
 let currentUserProfile = null;
 let tournamentsCache = [];
 let usersCache = [];
+let selectedManageUid = null;
 
 const fallbackTournaments = [
   {
@@ -415,6 +430,46 @@ function getFilteredUsers() {
     return nickname.includes(keyword) || email.includes(keyword);
   });
 }
+function getUserByUid(uid) {
+  return usersCache.find((u) => u.uid === uid) || null;
+}
+
+function renderUserManageModal(uid) {
+  const selectedEventId = adminEventSelect.value;
+  const selectedTournament = tournamentsCache.find((t) => t.id === selectedEventId);
+  const user = getUserByUid(uid);
+
+  if (!user) return;
+
+  selectedManageUid = uid;
+
+  const directAllowed = user.allowedEvents?.[selectedEventId] === true;
+  const codeMatched =
+    !!user.accessCode &&
+    !!selectedTournament?.requiredCode &&
+    user.accessCode === selectedTournament.requiredCode;
+
+  manageUserName.textContent = user.nickname || "이름 없음";
+  manageUserEmail.textContent = user.email || user.uid;
+
+  manageUserMeta.innerHTML = `
+    <span class="meta-pill">${escapeHtml(user.role)}</span>
+    <span class="meta-pill">${escapeHtml(user.accessCode || "코드 없음")}</span>
+    <span class="meta-pill ${directAllowed ? "ok" : "lock"}">
+      ${directAllowed ? "직접 허용됨" : "직접 허용 없음"}
+    </span>
+    <span class="meta-pill ${codeMatched ? "ok" : "lock"}">
+      ${codeMatched ? "코드 일치" : "코드 불일치"}
+    </span>
+  `;
+
+  openModal(userManageModal);
+}
+
+function closeUserManageModal() {
+  selectedManageUid = null;
+  closeModal(userManageModal);
+}
 
 function renderAdminUserList() {
   const selectedEventId = adminEventSelect.value;
@@ -434,31 +489,32 @@ function renderAdminUserList() {
       user.accessCode === selectedTournament.requiredCode;
 
     return `
-      <div class="user-row" data-uid="${escapeHtml(user.uid)}">
-        <div class="user-main">
-          <div class="user-name">${escapeHtml(user.nickname || "이름 없음")}</div>
-          <div class="user-email">${escapeHtml(user.email || user.uid)}</div>
-          <div class="user-meta">
-            <span class="meta-pill">${escapeHtml(user.role)}</span>
-            <span class="meta-pill">${escapeHtml(user.accessCode || "코드 없음")}</span>
-            <span class="meta-pill ${directAllowed ? "ok" : "lock"}">
-              ${directAllowed ? "직접 허용됨" : "직접 허용 없음"}
-            </span>
-            <span class="meta-pill ${codeMatched ? "ok" : "lock"}">
-              ${codeMatched ? "코드 일치" : "코드 불일치"}
-            </span>
-          </div>
-        </div>
-
-        <div class="user-actions">
-          <button class="row-btn allow" type="button" data-action="allow" data-uid="${escapeHtml(user.uid)}">직접 허용</button>
-          <button class="row-btn revoke" type="button" data-action="revoke" data-uid="${escapeHtml(user.uid)}">허용 해제</button>
-          <button class="row-btn assign" type="button" data-action="assignCode" data-uid="${escapeHtml(user.uid)}">코드 부여</button>
-          <button class="row-btn remove-code" type="button" data-action="removeCode" data-uid="${escapeHtml(user.uid)}">코드 제거</button>
-          <button class="row-btn view" type="button" data-action="viewCode" data-uid="${escapeHtml(user.uid)}">코드 보기</button>
-        </div>
+  <div class="user-row" data-uid="${escapeHtml(user.uid)}">
+    <div class="user-main">
+      <div class="user-name">${escapeHtml(user.nickname || "이름 없음")}</div>
+      <div class="user-email">${escapeHtml(user.email || user.uid)}</div>
+      <div class="user-meta">
+        <span class="meta-pill">${escapeHtml(user.role)}</span>
+        <span class="meta-pill">${escapeHtml(user.accessCode || "코드 없음")}</span>
+        <span class="meta-pill ${directAllowed ? "ok" : "lock"}">
+          ${directAllowed ? "직접 허용됨" : "직접 허용 없음"}
+        </span>
+        <span class="meta-pill ${codeMatched ? "ok" : "lock"}">
+          ${codeMatched ? "코드 일치" : "코드 불일치"}
+        </span>
       </div>
-    `;
+    </div>
+
+    <button
+      class="user-manage-trigger"
+      type="button"
+      data-action="openManage"
+      data-uid="${escapeHtml(user.uid)}"
+    >
+      관리
+    </button>
+  </div>
+`;
   }).join("");
 }
 
@@ -744,25 +800,24 @@ deleteTournamentBtn.addEventListener("click", deleteTournamentCurrent);
 adminEventSelect.addEventListener("change", () => {
   syncSelectedTournamentForm();
   renderAdminUserList();
+
+  if (selectedManageUid) {
+    renderUserManageModal(selectedManageUid);
+  }
 });
 
 adminSearchInput.addEventListener("input", renderAdminUserList);
 
-adminUserList.addEventListener("click", async (e) => {
+adminUserList.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-action]");
   if (!btn) return;
 
   const action = btn.dataset.action;
   const uid = btn.dataset.uid;
-  const eventId = adminEventSelect.value;
 
-  if (!uid || !eventId) return;
-
-  if (action === "allow") return grantEventDirectly(uid, eventId);
-  if (action === "revoke") return revokeEventDirectly(uid, eventId);
-  if (action === "assignCode") return assignEventCodeToUser(uid, eventId);
-  if (action === "removeCode") return removeUserCode(uid);
-  if (action === "viewCode") return showUserCode(uid);
+  if (action === "openManage" && uid) {
+    renderUserManageModal(uid);
+  }
 });
 
 profileModal.addEventListener("click", (e) => {
@@ -771,6 +826,48 @@ profileModal.addEventListener("click", (e) => {
 
 adminModal.addEventListener("click", (e) => {
   if (e.target === adminModal) closeModal(adminModal);
+});
+closeUserManageBtn.addEventListener("click", closeUserManageModal);
+closeUserManageFooterBtn.addEventListener("click", closeUserManageModal);
+
+manageAllowBtn.addEventListener("click", async () => {
+  const eventId = adminEventSelect.value;
+  if (!selectedManageUid || !eventId) return;
+  await grantEventDirectly(selectedManageUid, eventId);
+  renderUserManageModal(selectedManageUid);
+});
+
+manageRevokeBtn.addEventListener("click", async () => {
+  const eventId = adminEventSelect.value;
+  if (!selectedManageUid || !eventId) return;
+  await revokeEventDirectly(selectedManageUid, eventId);
+  renderUserManageModal(selectedManageUid);
+});
+
+manageAssignCodeBtn.addEventListener("click", async () => {
+  const eventId = adminEventSelect.value;
+  if (!selectedManageUid || !eventId) return;
+  await assignEventCodeToUser(selectedManageUid, eventId);
+  renderUserManageModal(selectedManageUid);
+});
+
+manageRemoveCodeBtn.addEventListener("click", async () => {
+  if (!selectedManageUid) return;
+
+  const ok = confirm("이 유저의 코드를 제거할까요?");
+  if (!ok) return;
+
+  await removeUserCode(selectedManageUid);
+  renderUserManageModal(selectedManageUid);
+});
+
+manageViewCodeBtn.addEventListener("click", () => {
+  if (!selectedManageUid) return;
+  showUserCode(selectedManageUid);
+});
+
+userManageModal.addEventListener("click", (e) => {
+  if (e.target === userManageModal) closeUserManageModal();
 });
 
 /* ===============================
