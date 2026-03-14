@@ -1,7 +1,9 @@
 import { db, auth, getMessagingSafe } from "./firebase.js";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   onSnapshot,
   serverTimestamp
@@ -41,6 +43,7 @@ import {
   const EVENT_DOC_ID = `${EVENT_ID}__${BOX_ID}`;
   const EVENT_REF = doc(db, "layout_events", EVENT_DOC_ID);
   const WAITING_REF = doc(db, "layout_shared", "global_waiting");
+  const LAYOUT_EVENTS_REF = collection(db, "layout_events");
 
   const VAPID_KEY = "BAZXsr3GQtq_nPLrF7C89mr3ejM7DbS-cBBfWNZzHfcHggNier7C2fbIG0uex3DZl8ykVxbqrli54cCdLkena94";
   const ALERT_VOLUME = 0.12;
@@ -58,6 +61,8 @@ import {
   let soundPromptShown = false;
   let activeNotificationId = "";
   let timerHandle = null;
+
+  let globalSeatOccupancy = [];
 
   const eventState = {
     version: 2,
@@ -174,6 +179,50 @@ import {
 
   function canManageLayout() {
     return isAdminUser === true;
+  }
+
+  function buildGlobalSeatOccupancy(items) {
+    const list = [];
+
+    items.forEach((item) => {
+      const data = typeof item.data === "function" ? (item.data() || {}) : (item || {});
+      const seats = Array.isArray(data.seats) ? data.seats : [];
+      const eventId = String(data.eventId || "").trim();
+      const boxId = String(data.boxId || "").trim();
+
+      seats.forEach((seat) => {
+        const person = String(seat?.person || "").trim();
+        if (!person || person === "비어있음") return;
+
+        const label = seat.label ?? seat.no ?? "?";
+        const seatedAt = Number(seat.seatedAt || 0) || Date.now();
+
+        list.push({
+          name: person,
+          uid: seat.personUid || "",
+          email: seat.personEmail || "",
+          eventId,
+          boxId,
+          seatLabel: String(label),
+          seatId: String(seat.id || ""),
+          seatedAt
+        });
+      });
+    });
+
+    list.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+    return list;
+  }
+
+  async function loadGlobalSeatOccupancy() {
+    try {
+      const snap = await getDocs(LAYOUT_EVENTS_REF);
+      globalSeatOccupancy = buildGlobalSeatOccupancy(snap.docs);
+      renderPanel();
+      updateTimers();
+    } catch (err) {
+      console.error("loadGlobalSeatOccupancy error:", err);
+    }
   }
 
   async function loadMyUserProfile() {
@@ -710,32 +759,6 @@ import {
     return { x, y };
   }
 
-  function scanAllSeatOccupancy() {
-    const items = [];
-
-    eventState.seats.forEach((seat) => {
-      const person = seat && seat.person ? String(seat.person) : "";
-      if (!person || person === "비어있음") return;
-
-      const label = seat.label ?? seat.no ?? "?";
-      const seatedAt = Number(seat.seatedAt || 0) || Date.now();
-
-      items.push({
-        name: person,
-        uid: seat.personUid || "",
-        email: seat.personEmail || "",
-        eventId: EVENT_ID,
-        boxId: BOX_ID,
-        seatLabel: String(label),
-        seatId: String(seat.id || ""),
-        seatedAt
-      });
-    });
-
-    items.sort((a, b) => a.name.localeCompare(b.name, "ko"));
-    return items;
-  }
-
   function promptSeatLabel(defaultLabel) {
     if (!canManageLayout()) return null;
 
@@ -1123,12 +1146,10 @@ import {
                     }
                   </div>
 
-                                    ${
+                  ${
                     canManageLayout()
                       ? `
                       <div class="mobile-seat-inline-actions">
-     
-
                         ${
                           hasPerson
                             ? `<button class="mobile-pill-btn warn" data-clear-seat="${s.id}">
@@ -1211,8 +1232,8 @@ import {
                     ? `
                     <div class="mobile-wait-inline-actions">
                       <button class="mobile-pill-btn" data-mobile-wait-select="${w.id}">
-  대기 선택
-</button>
+                        대기 선택
+                      </button>
 
                       <button class="mobile-pill-btn danger" data-del-w="${w.id}">
                         삭제
@@ -1362,7 +1383,7 @@ import {
       });
     });
 
-        wrap.querySelectorAll("[data-clear-seat]").forEach((btn) => {
+    wrap.querySelectorAll("[data-clear-seat]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         clearSeat(btn.getAttribute("data-clear-seat"));
@@ -1420,42 +1441,42 @@ import {
         const start = w.addedAt || Date.now();
 
         html.push(`
-  <div class="wait-manage-row ${isSel ? "selected" : ""}" data-wid="${w.id}" style="cursor:pointer;">
-    <div class="wait-manage-main">
-      <div class="wait-manage-inline">
-        <div class="wait-manage-name">
-          ${escapeHtml(w.name)}
-        </div>
+          <div class="wait-manage-row ${isSel ? "selected" : ""}" data-wid="${w.id}" style="cursor:pointer;">
+            <div class="wait-manage-main">
+              <div class="wait-manage-inline">
+                <div class="wait-manage-name">
+                  ${escapeHtml(w.name)}
+                </div>
 
-        ${
-          canManageLayout()
-            ? `
-            <div class="wait-inline-actions">
-              <button class="pill-inline" type="button">
-                선택
-              </button>
+                ${
+                  canManageLayout()
+                    ? `
+                    <div class="wait-inline-actions">
+                      <button class="pill-inline" type="button">
+                        선택
+                      </button>
 
-              <button class="pill-inline danger" type="button" data-del-w="${w.id}">
-                삭제
-              </button>
+                      <button class="pill-inline danger" type="button" data-del-w="${w.id}">
+                        삭제
+                      </button>
+                    </div>
+                    `
+                    : ``
+                }
+              </div>
+
+              <div class="wait-manage-timer">
+                <span
+                  class="time-chip"
+                  data-timer="wait"
+                  data-start="${start}"
+                  data-target="wait:${w.id}">
+                  00:00:00
+                </span>
+              </div>
             </div>
-            `
-            : ``
-        }
-      </div>
-
-      <div class="wait-manage-timer">
-        <span
-          class="time-chip"
-          data-timer="wait"
-          data-start="${start}"
-          data-target="wait:${w.id}">
-          00:00:00
-        </span>
-      </div>
-    </div>
-  </div>
-`);
+          </div>
+        `);
       });
     }
 
@@ -1497,7 +1518,7 @@ import {
 
   function renderSeatPanel() {
     const html = [];
-    const seatedAll = scanAllSeatOccupancy();
+    const seatedAll = globalSeatOccupancy;
     const waitingAll = waitingState.waiting || [];
 
     const left = [];
@@ -1520,80 +1541,68 @@ import {
       `);
     } else {
       eventState.seats
-  .slice()
-  .sort((a, b) => (a.order ?? a.no) - (b.order ?? b.no))
-  .forEach((s) => {
+        .slice()
+        .sort((a, b) => (a.order ?? a.no) - (b.order ?? b.no))
+        .forEach((s) => {
+          const isSel = ui.selectedSeatId === s.id;
+          const hasPerson = !isEmptyPerson(s.person);
+          const start = hasPerson ? (s.seatedAt || Date.now()) : null;
 
-    const isSel = ui.selectedSeatId === s.id;
-    const hasPerson = !isEmptyPerson(s.person);
-    const start = hasPerson ? (s.seatedAt || Date.now()) : null;
+          left.push(`
+            <div class="seat-manage-row ${isSel ? "selected" : ""}" data-sid="${s.id}" style="cursor:pointer;">
+              <div class="seat-manage-main">
+                <div class="seat-manage-inline">
+                  <div class="seat-manage-texts">
+                    <div class="seat-manage-title">
+                      Seat ${escapeHtml(s.label ?? s.no)}
+                    </div>
 
-    left.push(`
-      <div class="seat-manage-row ${isSel ? "selected" : ""}" data-sid="${s.id}" style="cursor:pointer;">
-
-        <div class="seat-manage-main">
-
-          <div class="seat-manage-inline">
-
-            <div class="seat-manage-texts">
-
-              <div class="seat-manage-title">
-                Seat ${escapeHtml(s.label ?? s.no)}
-              </div>
-
-              <div class="seat-manage-name ${isEmptyPerson(s.person) ? "is-empty" : ""}">
-                ${escapeHtml(s.person)}
-              </div>
-
-            </div>
-
-            ${
-              canManageLayout()
-                ? `
-                <div class="seat-inline-actions">
-
-                  <button class="pill-inline" type="button">
-                    선택
-                  </button>
+                    <div class="seat-manage-name ${isEmptyPerson(s.person) ? "is-empty" : ""}">
+                      ${escapeHtml(s.person)}
+                    </div>
+                  </div>
 
                   ${
-                    hasPerson
-                      ? `<button class="pill-inline warn" data-clear-seat="${s.id}">
-                          비우기
-                        </button>`
+                    canManageLayout()
+                      ? `
+                      <div class="seat-inline-actions">
+                        <button class="pill-inline" type="button">
+                          선택
+                        </button>
+
+                        ${
+                          hasPerson
+                            ? `<button class="pill-inline warn" data-clear-seat="${s.id}">
+                                비우기
+                              </button>`
+                            : ``
+                        }
+
+                        <button class="pill-inline danger" type="button" data-del="${s.id}">
+                          삭제
+                        </button>
+                      </div>
+                      `
                       : ``
                   }
-
-                  <button class="pill-inline danger" type="button" data-del="${s.id}">
-                    삭제
-                  </button>
-
                 </div>
-                `
-                : ``
-            }
 
-          </div>
-
-          <div class="seat-manage-timer">
-            ${
-              hasPerson
-                ? `<span class="time-chip"
-                    data-timer="seat"
-                    data-start="${start}"
-                    data-target="seat:${s.id}">
-                    00:00:00
-                  </span>`
-                : `<span class="seat-manage-empty-dash">—</span>`
-            }
-          </div>
-
-        </div>
-
-      </div>
-    `);
-
-  });
+                <div class="seat-manage-timer">
+                  ${
+                    hasPerson
+                      ? `<span class="time-chip"
+                          data-timer="seat"
+                          data-start="${start}"
+                          data-target="seat:${s.id}">
+                          00:00:00
+                        </span>`
+                      : `<span class="seat-manage-empty-dash">—</span>`
+                  }
+                </div>
+              </div>
+            </div>
+          `);
+        });
     }
 
     const right = [];
@@ -1720,11 +1729,11 @@ import {
     });
 
     panelContent.querySelectorAll("[data-clear-seat]").forEach((btn) => {
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    clearSeat(btn.getAttribute("data-clear-seat"));
-  });
-});
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        clearSeat(btn.getAttribute("data-clear-seat"));
+      });
+    });
 
     panelContent.querySelectorAll(".seat-jump-row").forEach((row) => {
       row.addEventListener("click", () => {
@@ -1837,6 +1846,18 @@ import {
       }
     );
 
+    onSnapshot(
+      LAYOUT_EVENTS_REF,
+      (snap) => {
+        globalSeatOccupancy = buildGlobalSeatOccupancy(snap.docs);
+        renderPanel();
+        updateTimers();
+      },
+      (err) => {
+        console.error("LAYOUT_EVENTS_REF snapshot error:", err);
+      }
+    );
+
     if (currentUser && !isAdminUser) {
       myNotificationRef = doc(db, "layout_notifications", currentUser.uid);
 
@@ -1922,6 +1943,8 @@ import {
     if (!remoteWaiting) {
       await saveWaitingState();
     }
+
+    await loadGlobalSeatOccupancy();
 
     bindRealtime();
     render();
