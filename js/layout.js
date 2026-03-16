@@ -975,12 +975,7 @@ import {
   function renderPC() {
     const canvas = document.createElement("div");
     canvas.className = "canvas pc-canvas";
-    canvas.innerHTML = `
-      <div class="canvas-hint">
-        <div class="hint-pill">EVENT: ${escapeHtml(EVENT_ID)}</div>
-        <div class="hint-pill">BOX: ${escapeHtml(BOX_ID)}</div>
-      </div>
-    `;
+   canvas.innerHTML = ``;
 
     app.appendChild(canvas);
 

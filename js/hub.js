@@ -13,7 +13,8 @@ import {
   setDoc,
   deleteDoc,
   collection,
-  deleteField
+  deleteField,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -69,6 +70,8 @@ let currentUserProfile = null;
 let tournamentsCache = [];
 let usersCache = [];
 let selectedManageUid = null;
+let stopTournamentsWatch = null;
+let stopUsersWatch = null;
 
 const fallbackTournaments = [
   {
@@ -82,7 +85,7 @@ const fallbackTournaments = [
 ];
 
 /* ===============================
-   LOCAL STORAGE KEYS (layout.js와 동일)
+   LOCAL STORAGE KEYS
 =============================== */
 const GLOBAL_WAITING_KEY = "boxboard_waiting_global_v2";
 
@@ -90,11 +93,11 @@ const GLOBAL_WAITING_KEY = "boxboard_waiting_global_v2";
    HELPERS
 =============================== */
 function openModal(el) {
-  el.classList.add("show");
+  el?.classList.add("show");
 }
 
 function closeModal(el) {
-  el.classList.remove("show");
+  el?.classList.remove("show");
 }
 
 function escapeHtml(text = "") {
@@ -148,8 +151,8 @@ function hasEventAccess(userProfile, tournament) {
   const allowedEvents = userProfile.allowedEvents || {};
   if (allowedEvents[tournament.id] === true) return true;
 
-  const userCode = (userProfile.accessCode || "").trim();
-  const requiredCode = (tournament.requiredCode || "").trim();
+  const userCode = String(userProfile.accessCode || "").trim();
+  const requiredCode = String(tournament.requiredCode || "").trim();
 
   if (userCode && requiredCode && userCode === requiredCode) return true;
 
@@ -157,7 +160,7 @@ function hasEventAccess(userProfile, tournament) {
 }
 
 function getSelectedTournament() {
-  const selectedId = adminEventSelect.value;
+  const selectedId = adminEventSelect?.value || "";
   return tournamentsCache.find((t) => t.id === selectedId) || null;
 }
 
@@ -165,6 +168,40 @@ function userStillHasAccessToSelectedEvent(user) {
   const tournament = getSelectedTournament();
   if (!user || !tournament) return false;
   return hasEventAccess(user, tournament);
+}
+
+function normalizeTournamentDoc(d) {
+  const data = d.data() || {};
+  return {
+    id: d.id,
+    name: data.name || d.id,
+    startDate: data.startDate || "",
+    endDate: data.endDate || "",
+    logoText: data.logoText || "HAN",
+    requiredCode: data.requiredCode || ""
+  };
+}
+
+function normalizeUserDoc(d) {
+  const data = d.data() || {};
+  return {
+    uid: d.id,
+    nickname: data.nickname || "",
+    email: data.email || "",
+    role: data.role || "user",
+    accessCode: data.accessCode || "",
+    allowedEvents: data.allowedEvents || {}
+  };
+}
+
+function sortTournaments(list) {
+  return [...list].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function routeToTournament(tournamentId) {
+  if (!tournamentId) return;
+  sessionStorage.setItem("tournamentId", tournamentId);
+  location.href = `./index.html?tournamentId=${encodeURIComponent(tournamentId)}`;
 }
 
 /* ===============================
@@ -185,13 +222,8 @@ function removeUserFromGlobalWaiting(user) {
     const itemUid = String(item.uid || "").trim();
     const itemName = String(item.name || "").trim();
 
-    if (targetUid && itemUid && itemUid === targetUid) {
-      return false;
-    }
-
-    if (targetName && itemName === targetName) {
-      return false;
-    }
+    if (targetUid && itemUid && itemUid === targetUid) return false;
+    if (targetName && itemName === targetName) return false;
 
     return true;
   });
@@ -214,7 +246,7 @@ function removeUserFromAllSeats(user) {
 
   let removedCount = 0;
 
-  for (let i = 0; i < localStorage.length; i++) {
+  for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
     if (!key) continue;
     if (!key.startsWith("boxboard_event_")) continue;
@@ -272,6 +304,8 @@ function cleanupUserFromLayoutState(user) {
    TOURNAMENT RENDER
 =============================== */
 function renderTournaments(tournaments, userProfile) {
+  if (!eventListEl) return;
+
   eventListEl.innerHTML = "";
 
   tournaments.forEach((tournament) => {
@@ -279,7 +313,7 @@ function renderTournaments(tournaments, userProfile) {
 
     const card = document.createElement("article");
     card.className = `event-card ${enabled ? "is-enabled" : "is-locked"}`;
-    card.dataset.eventId = tournament.id;
+    card.dataset.tournamentId = tournament.id;
 
     card.innerHTML = `
       <div class="event-left">${escapeHtml(tournament.logoText || "HAN")}</div>
@@ -304,8 +338,16 @@ function renderTournaments(tournaments, userProfile) {
     `;
 
     if (enabled) {
-      card.addEventListener("click", () => {
-        location.href = `./index.html?eventId=${encodeURIComponent(tournament.id)}`;
+      card.addEventListener("click", (e) => {
+        e.preventDefault();
+        routeToTournament(tournament.id);
+      });
+
+      const detailBtn = card.querySelector(".detail-btn");
+      detailBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        routeToTournament(tournament.id);
       });
     }
 
@@ -321,26 +363,15 @@ async function loadTournaments() {
     const snap = await getDocs(collection(db, "tournaments"));
 
     if (snap.empty) {
-      tournamentsCache = fallbackTournaments;
+      tournamentsCache = sortTournaments(fallbackTournaments);
       return tournamentsCache;
     }
 
-    tournamentsCache = snap.docs.map((d) => {
-      const data = d.data() || {};
-      return {
-        id: d.id,
-        name: data.name || d.id,
-        startDate: data.startDate || "",
-        endDate: data.endDate || "",
-        logoText: data.logoText || "HAN",
-        requiredCode: data.requiredCode || ""
-      };
-    });
-
+    tournamentsCache = sortTournaments(snap.docs.map(normalizeTournamentDoc));
     return tournamentsCache;
   } catch (err) {
     console.error("loadTournaments error:", err);
-    tournamentsCache = fallbackTournaments;
+    tournamentsCache = sortTournaments(fallbackTournaments);
     return tournamentsCache;
   }
 }
@@ -348,19 +379,7 @@ async function loadTournaments() {
 async function loadAllUsers() {
   try {
     const snap = await getDocs(collection(db, "users"));
-
-    usersCache = snap.docs.map((d) => {
-      const data = d.data() || {};
-      return {
-        uid: d.id,
-        nickname: data.nickname || "",
-        email: data.email || "",
-        role: data.role || "user",
-        accessCode: data.accessCode || "",
-        allowedEvents: data.allowedEvents || {}
-      };
-    });
-
+    usersCache = snap.docs.map(normalizeUserDoc);
     return usersCache;
   } catch (err) {
     console.error("loadAllUsers error:", err);
@@ -376,9 +395,94 @@ async function loadUserProfile(uid) {
 }
 
 /* ===============================
+   REALTIME WATCHERS
+=============================== */
+function bindTournamentsRealtime() {
+  if (stopTournamentsWatch) {
+    stopTournamentsWatch();
+    stopTournamentsWatch = null;
+  }
+
+  stopTournamentsWatch = onSnapshot(
+    collection(db, "tournaments"),
+    (snap) => {
+      if (snap.empty) {
+        tournamentsCache = sortTournaments(fallbackTournaments);
+      } else {
+        tournamentsCache = sortTournaments(snap.docs.map(normalizeTournamentDoc));
+      }
+
+      renderTournaments(tournamentsCache, currentUserProfile);
+
+      if (currentUserProfile?.role === "admin" && adminModal?.classList.contains("show")) {
+        const selectedId = adminTournamentId?.value?.trim() || adminEventSelect?.value || "";
+        populateTournamentSelect();
+
+        if (selectedId && tournamentsCache.some((t) => t.id === selectedId)) {
+          adminEventSelect.value = selectedId;
+          syncSelectedTournamentForm();
+        }
+
+        renderAdminUserList();
+
+        if (selectedManageUid) {
+          renderUserManageModal(selectedManageUid);
+        }
+      }
+    },
+    (err) => {
+      console.error("bindTournamentsRealtime error:", err);
+    }
+  );
+}
+
+function bindUsersRealtime() {
+  if (stopUsersWatch) {
+    stopUsersWatch();
+    stopUsersWatch = null;
+  }
+
+  stopUsersWatch = onSnapshot(
+    collection(db, "users"),
+    (snap) => {
+      usersCache = snap.docs.map(normalizeUserDoc);
+
+      const me = usersCache.find((u) => u.uid === currentUser?.uid);
+      if (me) {
+        currentUserProfile = {
+          ...currentUserProfile,
+          ...me
+        };
+      }
+
+      renderTournaments(tournamentsCache, currentUserProfile);
+
+      if (currentUserProfile?.role === "admin") {
+        adminBtn?.classList.remove("hidden");
+
+        if (adminModal?.classList.contains("show")) {
+          renderAdminUserList();
+
+          if (selectedManageUid) {
+            renderUserManageModal(selectedManageUid);
+          }
+        }
+      } else {
+        adminBtn?.classList.add("hidden");
+      }
+    },
+    (err) => {
+      console.error("bindUsersRealtime error:", err);
+    }
+  );
+}
+
+/* ===============================
    ADMIN TOURNAMENT FORM
 =============================== */
 function populateTournamentSelect() {
+  if (!adminEventSelect) return;
+
   adminEventSelect.innerHTML = tournamentsCache
     .map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`)
     .join("");
@@ -392,7 +496,7 @@ function populateTournamentSelect() {
 }
 
 function syncSelectedTournamentForm() {
-  const selectedId = adminEventSelect.value;
+  const selectedId = adminEventSelect?.value || "";
   const tournament = tournamentsCache.find((t) => t.id === selectedId);
 
   if (!tournament) {
@@ -421,21 +525,22 @@ function resetTournamentForm() {
    ADMIN USER LIST
 =============================== */
 function getFilteredUsers() {
-  const keyword = adminSearchInput.value.trim().toLowerCase();
+  const keyword = String(adminSearchInput?.value || "").trim().toLowerCase();
   if (!keyword) return usersCache;
 
   return usersCache.filter((user) => {
-    const nickname = (user.nickname || "").toLowerCase();
-    const email = (user.email || "").toLowerCase();
+    const nickname = String(user.nickname || "").toLowerCase();
+    const email = String(user.email || "").toLowerCase();
     return nickname.includes(keyword) || email.includes(keyword);
   });
 }
+
 function getUserByUid(uid) {
   return usersCache.find((u) => u.uid === uid) || null;
 }
 
 function renderUserManageModal(uid) {
-  const selectedEventId = adminEventSelect.value;
+  const selectedEventId = adminEventSelect?.value || "";
   const selectedTournament = tournamentsCache.find((t) => t.id === selectedEventId);
   const user = getUserByUid(uid);
 
@@ -472,7 +577,9 @@ function closeUserManageModal() {
 }
 
 function renderAdminUserList() {
-  const selectedEventId = adminEventSelect.value;
+  if (!adminUserList) return;
+
+  const selectedEventId = adminEventSelect?.value || "";
   const selectedTournament = tournamentsCache.find((t) => t.id === selectedEventId);
   const users = getFilteredUsers();
 
@@ -489,32 +596,32 @@ function renderAdminUserList() {
       user.accessCode === selectedTournament.requiredCode;
 
     return `
-  <div class="user-row" data-uid="${escapeHtml(user.uid)}">
-    <div class="user-main">
-      <div class="user-name">${escapeHtml(user.nickname || "이름 없음")}</div>
-      <div class="user-email">${escapeHtml(user.email || user.uid)}</div>
-      <div class="user-meta">
-        <span class="meta-pill">${escapeHtml(user.role)}</span>
-        <span class="meta-pill">${escapeHtml(user.accessCode || "코드 없음")}</span>
-        <span class="meta-pill ${directAllowed ? "ok" : "lock"}">
-          ${directAllowed ? "직접 허용됨" : "직접 허용 없음"}
-        </span>
-        <span class="meta-pill ${codeMatched ? "ok" : "lock"}">
-          ${codeMatched ? "코드 일치" : "코드 불일치"}
-        </span>
-      </div>
-    </div>
+      <div class="user-row" data-uid="${escapeHtml(user.uid)}">
+        <div class="user-main">
+          <div class="user-name">${escapeHtml(user.nickname || "이름 없음")}</div>
+          <div class="user-email">${escapeHtml(user.email || user.uid)}</div>
+          <div class="user-meta">
+            <span class="meta-pill">${escapeHtml(user.role)}</span>
+            <span class="meta-pill">${escapeHtml(user.accessCode || "코드 없음")}</span>
+            <span class="meta-pill ${directAllowed ? "ok" : "lock"}">
+              ${directAllowed ? "직접 허용됨" : "직접 허용 없음"}
+            </span>
+            <span class="meta-pill ${codeMatched ? "ok" : "lock"}">
+              ${codeMatched ? "코드 일치" : "코드 불일치"}
+            </span>
+          </div>
+        </div>
 
-    <button
-      class="user-manage-trigger"
-      type="button"
-      data-action="openManage"
-      data-uid="${escapeHtml(user.uid)}"
-    >
-      관리
-    </button>
-  </div>
-`;
+        <button
+          class="user-manage-trigger"
+          type="button"
+          data-action="openManage"
+          data-uid="${escapeHtml(user.uid)}"
+        >
+          관리
+        </button>
+      </div>
+    `;
   }).join("");
 }
 
@@ -546,6 +653,7 @@ async function saveNickname() {
     alert("닉네임이 저장되었습니다.");
     closeModal(profileModal);
     renderAdminUserList();
+    renderTournaments(tournamentsCache, currentUserProfile);
   } catch (err) {
     console.error(err);
     alert("닉네임 저장에 실패했습니다.");
@@ -577,13 +685,6 @@ async function saveTournament() {
       { merge: true }
     );
 
-    tournamentsCache = await loadTournaments();
-    populateTournamentSelect();
-    adminEventSelect.value = id;
-    syncSelectedTournamentForm();
-    renderAdminUserList();
-    renderTournaments(tournamentsCache, currentUserProfile);
-
     alert("대회가 저장되었습니다.");
   } catch (err) {
     console.error(err);
@@ -605,12 +706,6 @@ async function deleteTournamentCurrent() {
 
   try {
     await deleteDoc(doc(db, "tournaments", id));
-
-    tournamentsCache = await loadTournaments();
-    populateTournamentSelect();
-    renderAdminUserList();
-    renderTournaments(tournamentsCache, currentUserProfile);
-
     alert("대회가 삭제되었습니다.");
   } catch (err) {
     console.error(err);
@@ -684,7 +779,7 @@ async function revokeEventDirectly(uid, eventId) {
 async function assignEventCodeToUser(uid, eventId) {
   try {
     const tournament = tournamentsCache.find((t) => t.id === eventId);
-    const requiredCode = (tournament?.requiredCode || "").trim();
+    const requiredCode = String(tournament?.requiredCode || "").trim();
 
     if (!requiredCode) {
       alert("선택한 대회에 설정된 코드가 없습니다.");
@@ -750,7 +845,7 @@ function showUserCode(uid) {
 /* ===============================
    EVENTS
 =============================== */
-logoutBtn.addEventListener("click", async () => {
+logoutBtn?.addEventListener("click", async () => {
   try {
     await signOut(auth);
     location.href = "./login.html";
@@ -760,7 +855,7 @@ logoutBtn.addEventListener("click", async () => {
   }
 });
 
-profileBtn.addEventListener("click", () => {
+profileBtn?.addEventListener("click", () => {
   if (!currentUser || !currentUserProfile) return;
 
   profileEmail.value = currentUser.email || "";
@@ -769,7 +864,7 @@ profileBtn.addEventListener("click", () => {
   openModal(profileModal);
 });
 
-adminBtn.addEventListener("click", async () => {
+adminBtn?.addEventListener("click", async () => {
   if (currentUserProfile?.role !== "admin") return;
 
   if (!tournamentsCache.length) {
@@ -784,20 +879,20 @@ adminBtn.addEventListener("click", async () => {
   openModal(adminModal);
 });
 
-closeProfileBtn.addEventListener("click", () => closeModal(profileModal));
-saveProfileBtn.addEventListener("click", saveNickname);
+closeProfileBtn?.addEventListener("click", () => closeModal(profileModal));
+saveProfileBtn?.addEventListener("click", saveNickname);
 
-closeAdminBtn.addEventListener("click", () => closeModal(adminModal));
+closeAdminBtn?.addEventListener("click", () => closeModal(adminModal));
 
-newTournamentBtn.addEventListener("click", () => {
+newTournamentBtn?.addEventListener("click", () => {
   resetTournamentForm();
   adminTournamentId.focus();
 });
 
-saveTournamentBtn.addEventListener("click", saveTournament);
-deleteTournamentBtn.addEventListener("click", deleteTournamentCurrent);
+saveTournamentBtn?.addEventListener("click", saveTournament);
+deleteTournamentBtn?.addEventListener("click", deleteTournamentCurrent);
 
-adminEventSelect.addEventListener("change", () => {
+adminEventSelect?.addEventListener("change", () => {
   syncSelectedTournamentForm();
   renderAdminUserList();
 
@@ -806,9 +901,9 @@ adminEventSelect.addEventListener("change", () => {
   }
 });
 
-adminSearchInput.addEventListener("input", renderAdminUserList);
+adminSearchInput?.addEventListener("input", renderAdminUserList);
 
-adminUserList.addEventListener("click", (e) => {
+adminUserList?.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-action]");
   if (!btn) return;
 
@@ -820,38 +915,39 @@ adminUserList.addEventListener("click", (e) => {
   }
 });
 
-profileModal.addEventListener("click", (e) => {
+profileModal?.addEventListener("click", (e) => {
   if (e.target === profileModal) closeModal(profileModal);
 });
 
-adminModal.addEventListener("click", (e) => {
+adminModal?.addEventListener("click", (e) => {
   if (e.target === adminModal) closeModal(adminModal);
 });
-closeUserManageBtn.addEventListener("click", closeUserManageModal);
-closeUserManageFooterBtn.addEventListener("click", closeUserManageModal);
 
-manageAllowBtn.addEventListener("click", async () => {
-  const eventId = adminEventSelect.value;
+closeUserManageBtn?.addEventListener("click", closeUserManageModal);
+closeUserManageFooterBtn?.addEventListener("click", closeUserManageModal);
+
+manageAllowBtn?.addEventListener("click", async () => {
+  const eventId = adminEventSelect?.value || "";
   if (!selectedManageUid || !eventId) return;
   await grantEventDirectly(selectedManageUid, eventId);
   renderUserManageModal(selectedManageUid);
 });
 
-manageRevokeBtn.addEventListener("click", async () => {
-  const eventId = adminEventSelect.value;
+manageRevokeBtn?.addEventListener("click", async () => {
+  const eventId = adminEventSelect?.value || "";
   if (!selectedManageUid || !eventId) return;
   await revokeEventDirectly(selectedManageUid, eventId);
   renderUserManageModal(selectedManageUid);
 });
 
-manageAssignCodeBtn.addEventListener("click", async () => {
-  const eventId = adminEventSelect.value;
+manageAssignCodeBtn?.addEventListener("click", async () => {
+  const eventId = adminEventSelect?.value || "";
   if (!selectedManageUid || !eventId) return;
   await assignEventCodeToUser(selectedManageUid, eventId);
   renderUserManageModal(selectedManageUid);
 });
 
-manageRemoveCodeBtn.addEventListener("click", async () => {
+manageRemoveCodeBtn?.addEventListener("click", async () => {
   if (!selectedManageUid) return;
 
   const ok = confirm("이 유저의 코드를 제거할까요?");
@@ -861,12 +957,12 @@ manageRemoveCodeBtn.addEventListener("click", async () => {
   renderUserManageModal(selectedManageUid);
 });
 
-manageViewCodeBtn.addEventListener("click", () => {
+manageViewCodeBtn?.addEventListener("click", () => {
   if (!selectedManageUid) return;
   showUserCode(selectedManageUid);
 });
 
-userManageModal.addEventListener("click", (e) => {
+userManageModal?.addEventListener("click", (e) => {
   if (e.target === userManageModal) closeUserManageModal();
 });
 
@@ -887,14 +983,21 @@ onAuthStateChanged(auth, async (user) => {
 
     if (currentUserProfile?.role === "admin") {
       usersCache = await loadAllUsers();
-      adminBtn.classList.remove("hidden");
+      adminBtn?.classList.remove("hidden");
+      bindUsersRealtime();
     } else {
-      adminBtn.classList.add("hidden");
+      adminBtn?.classList.add("hidden");
     }
 
     renderTournaments(tournamentsCache, currentUserProfile);
+    bindTournamentsRealtime();
   } catch (err) {
     console.error(err);
     alert("허브 데이터를 불러오지 못했습니다.");
   }
+});
+
+window.addEventListener("beforeunload", () => {
+  if (stopTournamentsWatch) stopTournamentsWatch();
+  if (stopUsersWatch) stopUsersWatch();
 });

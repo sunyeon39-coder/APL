@@ -235,6 +235,8 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 }
 .btn.small{ height:34px; padding:0 4px; border-radius:6px; font-weight:800; }
 
+
+
 /* ================= MOBILE LIST ================= */
 .mobile{
   height:100%;
@@ -421,7 +423,7 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 .wait-manage-row {
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 20px;
-  padding: 5px 15px;
+  padding: 3px 15px;
   background: rgba(255,255,255,0.03);
   margin-bottom: 12px;
 }
@@ -448,7 +450,7 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 }
 
 .wait-manage-name {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
   color: #fff;
   min-width: 0;
@@ -805,7 +807,7 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 }
 
 .pill-inline {
-  min-height: 40px;
+  min-height: 30px;
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.12);
@@ -923,7 +925,7 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 }
 
 .mobile-wait-name {
-  font-size: 20px;
+  font-size: px;
   font-weight: 800;
   color: #fff;
   line-height: 1.2;
@@ -951,4 +953,273 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   min-height: 38px;
   padding: 0 14px;
   font-size: 14px;
+}
+/* ================= PREMIUM THEME OVERRIDES ================= */
+:root{
+  --bg1:#07111f;
+  --bg2:#0d172a;
+  --panel:rgba(255,255,255,.05);
+  --border:rgba(255,255,255,.10);
+  --text:#f7f8fc;
+  --muted:rgba(200,208,222,.72);
+  --accent:#d6b25e;
+  --danger:#f26d7d;
+  --ok:#5fd2a4;
+  --radius:20px;
+}
+
+html,body{
+  background:
+    radial-gradient(900px 520px at 8% -8%, rgba(214,178,94,.12), transparent 56%),
+    radial-gradient(960px 560px at 92% -14%, rgba(86,122,181,.18), transparent 56%),
+    linear-gradient(180deg, var(--bg1), var(--bg2) 42%, #060c17 100%);
+}
+
+button,input{
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
+}
+
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  height: 70px;
+  padding: 12px 16px;
+  background: rgba(7,13,25,.72);
+  backdrop-filter: blur(18px);
+}
+
+.logo{
+  font-size: 22px;
+  letter-spacing: -.04em;
+}
+
+.icon-btn,
+.pill-btn,
+.tab,
+.btn,
+.sheet-btn,
+.pill-inline,
+.mobile-pill-btn{
+  box-shadow: none;
+}
+
+.icon-btn,
+.pill-btn,
+.tab,
+.btn,
+.sheet-btn,
+.pill-inline,
+.mobile-pill-btn,
+.row,
+.panel-box,
+.card,
+.wait-manage-row,
+.seat-manage-row,
+.mobile-seat-row,
+.mobile-wait-row,
+.global-wait-row{
+  border-color: rgba(255,255,255,.1);
+}
+
+.icon-btn{
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.05);
+}
+
+.icon-btn:hover,
+.pill-btn:hover,
+.tab:hover,
+.btn:hover,
+.sheet-btn:hover,
+.pill-inline:hover,
+.mobile-pill-btn:hover{
+  transform: translateY(-1px);
+}
+
+.pill-btn,
+.tab,
+.btn,
+.sheet-btn.ghost,
+.pill-inline,
+.mobile-pill-btn{
+  background: rgba(255,255,255,.05);
+  color: var(--text);
+}
+
+.pill-btn{
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+main{
+  height: calc(100vh - 70px);
+  padding: 14px;
+}
+
+.canvas,
+.pc-canvas{
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,.1);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 1px,transparent 1px 34px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0 1px,transparent 1px 34px);
+  box-shadow: 0 26px 70px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+.canvas::before,
+.pc-canvas::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: linear-gradient(135deg, rgba(239,208,141,.07), transparent 26%, transparent 74%, rgba(255,255,255,.04));
+  pointer-events:none;
+}
+
+.hint-pill,
+.badge,
+.time-chip,
+.wait-order-badge,
+.global-wait-order{
+  border-color: rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+}
+
+.seat-box{
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.12);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025)),
+    linear-gradient(150deg, rgba(10,18,33,.96), rgba(18,28,47,.92));
+  box-shadow: 0 14px 28px rgba(0,0,0,.18);
+}
+
+.seat-box.selected{
+  border-color: rgba(239,208,141,.52);
+  box-shadow: 0 0 0 1px rgba(239,208,141,.18) inset, 0 18px 42px rgba(0,0,0,.26), 0 0 0 4px rgba(214,178,94,.10);
+}
+
+.pc-panel{
+  top:70px;
+  height:calc(100vh - 70px);
+  width:380px;
+  background: rgba(8,14,28,.88);
+  backdrop-filter: blur(18px);
+  border-left:1px solid rgba(255,255,255,.1);
+  box-shadow: -18px 0 40px rgba(0,0,0,.24);
+}
+
+.tabs{
+  padding:12px;
+  gap:10px;
+}
+
+.tab{
+  height:46px;
+  border-radius:999px;
+  font-weight:900;
+}
+
+.tab.active,
+.btn.primary,
+.sheet-btn,
+.pill-inline.primary,
+.mobile-pill-btn.primary,
+.badge.sel{
+  border-color: rgba(239,208,141,.38);
+  background: linear-gradient(135deg, rgba(239,208,141,.18), rgba(214,178,94,.08));
+  color: #fff4d6;
+}
+
+.btn.danger,
+.pill-inline.danger,
+.mobile-pill-btn.danger,
+.icon-btn.danger{
+  border-color: rgba(242,109,125,.34);
+  background: rgba(242,109,125,.12);
+  color: #ffd3d8;
+}
+
+.panel-body{
+  padding: 16px;
+}
+
+.row,
+.panel-box,
+.card,
+.wait-manage-row,
+.seat-manage-row,
+.mobile-seat-row,
+.mobile-wait-row{
+  border-radius: 18px;
+  background: rgba(255,255,255,.035);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+input{
+  height:46px;
+  border-radius:14px;
+  background: rgba(255,255,255,.045);
+}
+input:focus{
+  border-color: rgba(239,208,141,.45);
+  box-shadow: 0 0 0 4px rgba(214,178,94,.12);
+}
+
+.mobile-sheet{
+  padding: 16px 16px 20px;
+  background: rgba(8,14,28,.94);
+  backdrop-filter: blur(18px);
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+
+.mobile-sheet::before{
+  content:"";
+  width:52px;
+  height:5px;
+  border-radius:999px;
+  background: rgba(255,255,255,.18);
+  align-self:center;
+  margin-bottom: 4px;
+}
+
+.sheet-btn{
+  min-height:54px;
+}
+
+.panel-box h4,
+.panel-title,
+.card h3,
+.mobile-section-head h3{
+  letter-spacing: -.02em;
+}
+
+.global-wait-row,
+.mini-row{
+  border-top-color: rgba(255,255,255,.08);
+}
+
+.mobile-selection-banner{
+  background: rgba(214,178,94,.10);
+  border-color: rgba(214,178,94,.24);
+  color: #fff4d6;
+}
+
+.wait-manage-row.selected,
+.seat-manage-row.selected,
+.mobile-seat-row.selected,
+.mobile-wait-row.selected{
+  border-color: rgba(239,208,141,.5);
+  background: rgba(214,178,94,.08);
+  box-shadow: 0 0 0 1px rgba(239,208,141,.14) inset;
+}
+
+
+@media (max-width:1180px){
+  #mobileSheet{
+    background: rgba(8,14,28,.96);
+  }
 }

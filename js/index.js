@@ -16,6 +16,8 @@ import {
 
 console.log("🔥 index.js loaded");
 
+const APP_TIME_ZONE = "Asia/Seoul";
+
 const root = document.getElementById("indexRoot");
 const backBtn = document.getElementById("backBtn");
 const topbarTournamentName = document.getElementById("topbarTournamentName");
@@ -39,33 +41,96 @@ const eventCardList = document.getElementById("eventCardList");
 
 let events = [];
 let currentTournament = null;
-let stopTournamentWatch = null;
-let periodBlocked = false;
 let currentUserProfile = null;
-
 let currentSeatAssignment = null;
+let seatSummaryMap = new Map();
+
+let stopTournamentWatch = null;
 let stopMySeatNotificationWatch = null;
+let stopEventsWatch = null;
+let stopLayoutEventsWatch = null;
+let periodBlocked = false;
 
 /* ===============================
    ROUTE
 =============================== */
 function getTournamentId() {
   const params = new URLSearchParams(location.search);
-  return params.get("eventId") || sessionStorage.getItem("eventId") || "";
+  return (
+    params.get("tournamentId") ||
+    sessionStorage.getItem("tournamentId") ||
+    params.get("eventId") ||
+    sessionStorage.getItem("eventId") ||
+    ""
+  );
+}
+
+/* ===============================
+   TIME HELPERS
+=============================== */
+function getNowPartsInAppTimeZone() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(new Date());
+
+  const map = {};
+  for (const p of parts) {
+    if (p.type !== "literal") {
+      map[p.type] = p.value;
+    }
+  }
+
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    second: Number(map.second)
+  };
+}
+
+function getNowInAppTime() {
+  const p = getNowPartsInAppTimeZone();
+  return new Date(p.year, p.month - 1, p.day, p.hour, p.minute, p.second, 0);
+}
+
+function normalizeDateString(date) {
+  return String(date || "").trim().replaceAll(".", "-").replaceAll("/", "-");
+}
+
+function parseDateTime(date, time) {
+  const safeDate = normalizeDateString(date);
+  const safeTime = String(time || "").trim();
+
+  if (!safeDate || !safeTime) return null;
+
+  const [yy, mm, dd] = safeDate.split("-").map(Number);
+  const [hh, mi] = safeTime.split(":").map(Number);
+
+  if (!yy || !mm || !dd) return null;
+  if (!Number.isFinite(hh) || !Number.isFinite(mi)) return null;
+
+  const d = new Date(yy, mm - 1, dd, hh, mi, 0, 0);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /* ===============================
    UTIL
 =============================== */
-function parseDateTime(date, time) {
-  const [h, m] = String(time || "00:00").split(":").map(Number);
-  const d = new Date(`${date}T00:00:00`);
-  d.setHours(Number.isFinite(h) ? h : 0, Number.isFinite(m) ? m : 0, 0, 0);
-  return d;
-}
-
 function formatDateTitle(dateStr) {
-  return new Date(dateStr).toLocaleDateString("en-US", {
+  const safeDate = normalizeDateString(dateStr);
+  const d = parseDateTime(safeDate, "00:00");
+  if (!d) return String(dateStr || "Unknown Date");
+
+  return d.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     weekday: "long",
@@ -76,20 +141,24 @@ function formatDateTitle(dateStr) {
 function parseTournamentDate(str) {
   if (!str || typeof str !== "string") return null;
 
-  const parts = str.split(".");
+  const safe = normalizeDateString(str);
+  const parts = safe.split("-");
   if (parts.length !== 3) return null;
 
-  const [yy, mm, dd] = parts.map(Number);
-  if (!yy || !mm || !dd) return null;
+  let yy = Number(parts[0]);
+  const mm = Number(parts[1]);
+  const dd = Number(parts[2]);
 
-  const fullYear = 2000 + yy;
-  return new Date(fullYear, mm - 1, dd, 23, 59, 59, 999);
+  if (!yy || !mm || !dd) return null;
+  if (yy < 100) yy = 2000 + yy;
+
+  return new Date(yy, mm - 1, dd, 23, 59, 59, 999);
 }
 
 function isTournamentActive(tournament) {
   if (!tournament) return true;
 
-  const now = new Date();
+  const now = getNowInAppTime();
   const start = parseTournamentDate(tournament.startDate);
   const end = parseTournamentDate(tournament.endDate);
 
@@ -98,10 +167,7 @@ function isTournamentActive(tournament) {
   const startOfDay = new Date(start);
   startOfDay.setHours(0, 0, 0, 0);
 
-  if (now < startOfDay) return false;
-  if (now > end) return false;
-
-  return true;
+  return !(now < startOfDay || now > end);
 }
 
 function escapeHtml(str) {
@@ -122,20 +188,17 @@ function closeModal(el) {
 }
 
 function getStatus(date, start, close) {
-  const now = new Date();
+  const now = getNowInAppTime();
   const startTime = parseDateTime(date, start);
   const closeTime = parseDateTime(date, close);
+
+  if (!startTime || !closeTime) return "scheduled";
+
   const openTime = new Date(startTime.getTime() - 30 * 60 * 1000);
 
-  if (now < openTime) {
-    return "scheduled";
-  }
-  if (now >= openTime && now < startTime) {
-    return "opened";
-  }
-  if (now >= startTime && now < closeTime) {
-    return "running";
-  }
+  if (now < openTime) return "scheduled";
+  if (now >= openTime && now < startTime) return "opened";
+  if (now >= startTime && now < closeTime) return "running";
   return "closed";
 }
 
@@ -145,6 +208,81 @@ function getStatusLabel(status) {
   if (status === "running") return "RUNNING";
   if (status === "closed") return "CLOSED";
   return "SCHEDULED";
+}
+
+function normalizeEvents(docs) {
+  return docs
+    .map((d) => {
+      const data = d.data() || {};
+      return {
+        id: d.id,
+        boxId: String(data.boxId || "").trim(),
+        date: normalizeDateString(data.date || ""),
+        title: String(data.title || d.id).trim(),
+        start: String(data.start || "").trim(),
+        close: String(data.close || "").trim()
+      };
+    })
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.start.localeCompare(b.start);
+    });
+}
+
+function groupByDate(list) {
+  const grouped = new Map();
+  for (const item of list) {
+    if (!grouped.has(item.date)) {
+      grouped.set(item.date, []);
+    }
+    grouped.get(item.date).push(item);
+  }
+  return [...grouped.entries()];
+}
+
+/* ===============================
+   SEAT SUMMARY
+=============================== */
+function buildSeatSummaryMap(docs) {
+  const next = new Map();
+
+  docs.forEach((d) => {
+    const data = d.data() || {};
+    const eventId = String(data.eventId || "").trim();
+    const boxId = String(data.boxId || "").trim();
+    const seats = Array.isArray(data.seats) ? data.seats : [];
+
+    if (!eventId || !boxId) return;
+
+    const totalSeats = seats.length;
+    const occupiedSeats = seats.filter((seat) => {
+      const person = String(seat?.person || "").trim();
+      return person && person !== "비어있음";
+    }).length;
+
+    next.set(`${eventId}__${boxId}`, {
+      totalSeats,
+      occupiedSeats,
+      emptySeats: Math.max(0, totalSeats - occupiedSeats)
+    });
+  });
+
+  return next;
+}
+
+function getSeatSummary(eventId, boxId) {
+  return seatSummaryMap.get(`${eventId}__${boxId}`) || {
+    totalSeats: 0,
+    occupiedSeats: 0,
+    emptySeats: 0
+  };
+}
+
+function formatSeatSummary(eventId, boxId) {
+  const summary = getSeatSummary(eventId, boxId);
+
+  if (summary.totalSeats <= 0) return "No Seats";
+  return `${summary.totalSeats} Seats · ${summary.occupiedSeats} In Use`;
 }
 
 /* ===============================
@@ -179,14 +317,15 @@ function bindMySeatAssignment(user) {
       if (!snap.exists()) {
         currentSeatAssignment = null;
         render();
+        refreshCardStatuses();
         return;
       }
 
       const data = snap.data() || {};
-
       if (data.type !== "seat_assigned") {
         currentSeatAssignment = null;
         render();
+        refreshCardStatuses();
         return;
       }
 
@@ -201,6 +340,7 @@ function bindMySeatAssignment(user) {
       };
 
       render();
+      refreshCardStatuses();
     },
     (err) => {
       console.error("bindMySeatAssignment error:", err);
@@ -211,19 +351,6 @@ function bindMySeatAssignment(user) {
 /* ===============================
    RENDER
 =============================== */
-function groupByDate(list) {
-  const grouped = new Map();
-
-  list.forEach((item) => {
-    if (!grouped.has(item.date)) {
-      grouped.set(item.date, []);
-    }
-    grouped.get(item.date).push(item);
-  });
-
-  return [...grouped.entries()];
-}
-
 function render() {
   if (!root) return;
 
@@ -252,6 +379,7 @@ function render() {
 
     list.forEach((e) => {
       const status = getStatus(e.date, e.start, e.close);
+      const seatSummaryText = formatSeatSummary(e.id, e.boxId);
 
       const assignedHere =
         currentSeatAssignment &&
@@ -292,13 +420,32 @@ function render() {
 
           <div class="info-box">
             <div class="info-label">Table</div>
-            <div class="entries-table">Seats Table</div>
+            <div class="entries-table">${escapeHtml(seatSummaryText)}</div>
           </div>
         </div>
       `;
 
       root.appendChild(card);
     });
+  });
+}
+
+function refreshCardStatuses() {
+  document.querySelectorAll(".event-card").forEach((card) => {
+    const status = getStatus(
+      card.dataset.date,
+      card.dataset.start,
+      card.dataset.close
+    );
+
+    card.classList.remove("scheduled", "opened", "running", "closed");
+    card.classList.add(status);
+
+    const pill = card.querySelector(".pill");
+    if (pill) {
+      pill.className = `pill ${status}`;
+      pill.textContent = getStatusLabel(status);
+    }
   });
 }
 
@@ -317,10 +464,15 @@ function resetEventForm() {
 function makeNextEventDefaults() {
   const nextNo = events.length + 1;
   const tournamentId = getTournamentId();
+  const now = getNowInAppTime();
+
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
 
   eventCardId.value = `event_${nextNo}`;
   eventCardBoxId.value = `box_${nextNo}`;
-  eventCardDate.value = "2026-02-11";
+  eventCardDate.value = `${yyyy}-${mm}-${dd}`;
   eventCardTitle.value = `${tournamentId || "Event"} ${nextNo}`;
   eventCardStart.value = "21:00";
   eventCardClose.value = "21:30";
@@ -385,27 +537,55 @@ function renderEventAdminList() {
 }
 
 /* ===============================
-   LOAD EVENTS
+   LOAD / WATCH EVENTS
 =============================== */
 async function loadEvents() {
   const snap = await getDocs(getEventsCollectionRef());
+  events = normalizeEvents(snap.docs);
+}
 
-  events = snap.docs.map((d) => {
-    const data = d.data() || {};
-    return {
-      id: d.id,
-      boxId: data.boxId || "",
-      date: data.date || "",
-      title: data.title || d.id,
-      start: data.start || "",
-      close: data.close || ""
-    };
-  });
+function bindEventsRealtime() {
+  if (stopEventsWatch) {
+    stopEventsWatch();
+    stopEventsWatch = null;
+  }
 
-  events.sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return a.start.localeCompare(b.start);
-  });
+  stopEventsWatch = onSnapshot(
+    getEventsCollectionRef(),
+    (snap) => {
+      events = normalizeEvents(snap.docs);
+      render();
+      refreshCardStatuses();
+
+      if (eventCardSelect && eventAdminModal?.classList.contains("show")) {
+        const selectedId = eventCardId?.value?.trim() || eventCardSelect.value || "";
+        populateEventSelect(selectedId);
+        renderEventAdminList();
+      }
+    },
+    (err) => {
+      console.error("bindEventsRealtime error:", err);
+    }
+  );
+}
+
+function bindLayoutSeatSummaryRealtime() {
+  if (stopLayoutEventsWatch) {
+    stopLayoutEventsWatch();
+    stopLayoutEventsWatch = null;
+  }
+
+  stopLayoutEventsWatch = onSnapshot(
+    collection(db, "layout_events"),
+    (snap) => {
+      seatSummaryMap = buildSeatSummaryMap(snap.docs);
+      render();
+      refreshCardStatuses();
+    },
+    (err) => {
+      console.error("bindLayoutSeatSummaryRealtime error:", err);
+    }
+  );
 }
 
 /* ===============================
@@ -424,18 +604,13 @@ async function saveEventCard() {
       getEventDocRef(id),
       {
         boxId: eventCardBoxId.value.trim(),
-        date: eventCardDate.value.trim(),
+        date: normalizeDateString(eventCardDate.value.trim()),
         title: eventCardTitle.value.trim(),
         start: eventCardStart.value.trim(),
         close: eventCardClose.value.trim()
       },
       { merge: true }
     );
-
-    await loadEvents();
-    render();
-    populateEventSelect(id);
-    renderEventAdminList();
 
     alert("카드가 저장되었습니다.");
   } catch (err) {
@@ -457,11 +632,6 @@ async function deleteEventCardCurrent() {
 
   try {
     await deleteDoc(getEventDocRef(id));
-    await loadEvents();
-    render();
-    populateEventSelect();
-    renderEventAdminList();
-
     alert("카드가 삭제되었습니다.");
   } catch (err) {
     console.error(err);
@@ -476,10 +646,7 @@ function routeToHub(message) {
   if (periodBlocked) return;
   periodBlocked = true;
 
-  if (message) {
-    alert(message);
-  }
-
+  if (message) alert(message);
   location.replace("./hub.html");
 }
 
@@ -513,8 +680,7 @@ async function initTournamentPeriodWatch() {
     };
 
     if (topbarTournamentName) {
-      topbarTournamentName.textContent =
-        currentTournament.name || "Tournament Events";
+      topbarTournamentName.textContent = currentTournament.name || "Tournament Events";
     }
 
     if (!isTournamentActive(currentTournament)) {
@@ -536,8 +702,7 @@ async function initTournamentPeriodWatch() {
         };
 
         if (topbarTournamentName) {
-          topbarTournamentName.textContent =
-            currentTournament.name || "Tournament Events";
+          topbarTournamentName.textContent = currentTournament.name || "Tournament Events";
         }
 
         if (!isTournamentActive(currentTournament)) {
@@ -554,10 +719,7 @@ async function initTournamentPeriodWatch() {
 }
 
 /* ===============================
-   SHARED WAITING (FIRESTORE)
-   admin은 자동등록 제외
-   uid 기준 중복 방지
-   seat에 이미 배치된 유저는 자동등록 제외
+   SHARED WAITING
 =============================== */
 async function isUserAlreadySeated(userUid) {
   if (!userUid) return false;
@@ -574,9 +736,7 @@ async function isUserAlreadySeated(userUid) {
         return String(seat.personUid || "").trim() === String(userUid).trim();
       });
 
-      if (found) {
-        return true;
-      }
+      if (found) return true;
     }
 
     return false;
@@ -593,50 +753,25 @@ async function autoJoinSharedWaitingOnIndex(user) {
   try {
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      console.warn("❌ user profile not found");
-      return;
-    }
+    if (!userSnap.exists()) return;
 
     const userProfile = userSnap.data() || {};
     currentUserProfile = userProfile;
 
-    console.log("INDEX role check:", userProfile.role, user.uid, user.email);
-
-    if (userProfile.role === "admin") {
-      console.log("ℹ️ admin user - skip auto waiting join");
-      return;
-    }
+    if (userProfile.role === "admin") return;
 
     const nickname = String(userProfile.nickname || "").trim();
     const email = String(userProfile.email || user.email || "").trim();
-
-    if (!nickname) {
-      console.warn("❌ nickname missing");
-      return;
-    }
+    if (!nickname) return;
 
     const waitingRef = doc(db, "layout_shared", "global_waiting");
-    console.log("INDEX auto waiting target:", waitingRef.path);
-
     const alreadySeated = await isUserAlreadySeated(user.uid);
-    console.log("INDEX alreadySeated:", alreadySeated);
-
-    if (alreadySeated) {
-      console.log("ℹ️ already seated, skip auto waiting join:", nickname);
-      return;
-    }
+    if (alreadySeated) return;
 
     const waitingSnap = await getDoc(waitingRef);
-
     const waitingState = waitingSnap.exists()
       ? (waitingSnap.data() || {})
-      : {
-          version: 2,
-          waiting: [],
-          updatedAt: Date.now()
-        };
+      : { version: 2, waiting: [], updatedAt: Date.now() };
 
     const waitingList = Array.isArray(waitingState.waiting)
       ? waitingState.waiting
@@ -644,16 +779,10 @@ async function autoJoinSharedWaitingOnIndex(user) {
 
     const alreadyInWaiting = waitingList.some((item) => {
       if (!item || typeof item !== "object") return false;
-      if (item.uid && item.uid === user.uid) return true;
-      return false;
+      return item.uid && item.uid === user.uid;
     });
 
-    console.log("INDEX alreadyInWaiting:", alreadyInWaiting);
-
-    if (alreadyInWaiting) {
-      console.log("ℹ️ already in shared waiting:", nickname);
-      return;
-    }
+    if (alreadyInWaiting) return;
 
     waitingList.push({
       id: `w_${user.uid}`,
@@ -675,8 +804,6 @@ async function autoJoinSharedWaitingOnIndex(user) {
       },
       { merge: true }
     );
-
-    console.log("✅ shared waiting joined:", nickname);
   } catch (error) {
     console.error("❌ autoJoinSharedWaitingOnIndex error:", error);
   }
@@ -707,8 +834,7 @@ root?.addEventListener("click", (e) => {
   sessionStorage.setItem("eventId", eventId);
   sessionStorage.setItem("boxId", boxId);
 
-  location.href =
-    `layout.html?tournamentId=${encodeURIComponent(tournamentId)}&eventId=${encodeURIComponent(eventId)}&boxId=${encodeURIComponent(boxId)}`;
+  location.href = `layout.html?tournamentId=${encodeURIComponent(tournamentId)}&eventId=${encodeURIComponent(eventId)}&boxId=${encodeURIComponent(boxId)}`;
 });
 
 /* ===============================
@@ -763,6 +889,9 @@ eventCardList?.addEventListener("click", (e) => {
 async function init() {
   await loadEvents();
   render();
+  refreshCardStatuses();
+  bindEventsRealtime();
+  bindLayoutSeatSummaryRealtime();
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -787,22 +916,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 setInterval(() => {
-  document.querySelectorAll(".event-card").forEach((card) => {
-    const status = getStatus(
-      card.dataset.date,
-      card.dataset.start,
-      card.dataset.close
-    );
-
-    card.classList.remove("scheduled", "opened", "running", "closed");
-    card.classList.add(status);
-
-    const pill = card.querySelector(".pill");
-    if (pill) {
-      pill.className = `pill ${status}`;
-      pill.textContent = getStatusLabel(status);
-    }
-  });
+  refreshCardStatuses();
 }, 1000);
 
 setInterval(() => {
@@ -814,4 +928,6 @@ setInterval(() => {
 window.addEventListener("beforeunload", () => {
   if (stopTournamentWatch) stopTournamentWatch();
   if (stopMySeatNotificationWatch) stopMySeatNotificationWatch();
+  if (stopEventsWatch) stopEventsWatch();
+  if (stopLayoutEventsWatch) stopLayoutEventsWatch();
 });
