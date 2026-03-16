@@ -705,7 +705,7 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 }
 
 .mobile-wait-name {
-  font-size: 16px;
+  font-size: 1px;
   font-weight: 900;
   color: #fff;
   min-width: 0;
@@ -728,15 +728,15 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 
 .seat-inline-actions{
   display:flex;
-  gap:px;
+  gap:4px;
   margin-left:10px;
 }
 
 .seat-manage-row {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
-  padding: 4px 12px;
+  padding: 2px 14px;
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 18px;
   background: rgba(255,255,255,0.02);
@@ -754,7 +754,7 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   flex: 1;
   min-width: 0;
 }
@@ -762,34 +762,36 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 .seat-manage-inline {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
   flex: 1;
+  flex-wrap: nowrap; /* 줄바꿈 금지 */
+}
+
+.seat-manage-texts {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .seat-manage-title {
-  font-size: 15px;
-  font-weight: 300;
-  color: #f6f6f6;
-  line-height: 1.15;
-  margin-bottom: 3px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .seat-manage-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.2;
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.92);
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .seat-manage-name.is-empty {
-  font-size: 16px;
   color: rgba(255,255,255,0.55);
 }
 
@@ -797,20 +799,24 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
+  flex-wrap: nowrap;   /* 버튼 한 줄 유지 */
+  flex-shrink: 0;      /* 버튼 줄어들지 않게 */
+  margin-left: 0;
 }
 
 .pill-inline {
-  min-height: 3px;
-  padding: 1 1px;
+  min-height: 40px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.04);
   color: rgba(255,255,255,0.9);
-  font-size: 14px;
-  font-weight: 300;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
 }
 
 
@@ -823,14 +829,21 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-width: 140px;
+  min-width: 10px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.time-chip {
+  white-space: nowrap;
 }
 
 .seat-manage-empty-dash {
-  font-size: 18px;
-  font-weight: 00;
-  color: rgba(255,255,255,0.35);
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  line-height: 1;
 }
 .mobile-seat-row.compact {
   padding: 1px 12px;

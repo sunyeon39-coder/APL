@@ -1708,18 +1708,22 @@ import {
     }
 
     panelContent.querySelectorAll("[data-sid]").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        if (
-          e.target &&
-          (e.target.closest("[data-del]") || e.target.closest("[data-rename]"))
-        ) return;
+  el.addEventListener("click", (e) => {
+    if (
+      e.target &&
+      (
+        e.target.closest("[data-del]") ||
+        e.target.closest("[data-clear-seat]") ||
+        e.target.closest(".pill-inline")
+      )
+    ) return;
 
-        const sid = el.getAttribute("data-sid");
-        ui.selectedSeatId = ui.selectedSeatId === sid ? null : sid;
-        ui.selectedWaitingId = null;
-        render();
-      });
-    });
+    const sid = el.getAttribute("data-sid");
+    ui.selectedSeatId = ui.selectedSeatId === sid ? null : sid;
+    ui.selectedWaitingId = null;
+    render();
+  });
+});
 
     panelContent.querySelectorAll("[data-del]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
