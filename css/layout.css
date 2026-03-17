@@ -925,7 +925,7 @@ input:focus{ border-color:rgba(77,163,255,.6); }
 }
 
 .mobile-wait-name {
-  font-size: px;
+  font-size: 15px;
   font-weight: 800;
   color: #fff;
   line-height: 1.2;

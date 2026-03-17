@@ -908,6 +908,7 @@ onAuthStateChanged(auth, async (user) => {
 
   if (currentUserProfile?.role === "admin") {
     eventAdminBtn?.classList.remove("hidden");
+    seatMapEditBtn?.classList.remove("hidden");
   }
 
   await initTournamentPeriodWatch();
@@ -930,4 +931,337 @@ window.addEventListener("beforeunload", () => {
   if (stopMySeatNotificationWatch) stopMySeatNotificationWatch();
   if (stopEventsWatch) stopEventsWatch();
   if (stopLayoutEventsWatch) stopLayoutEventsWatch();
+});
+/* ===============================
+   SEAT MAP (ADD ONLY)
+=============================== */
+
+const seatMapBtn = document.getElementById("seatMapBtn");
+const seatMapModal = document.getElementById("seatMapModal");
+const seatMapCloseBtn = document.getElementById("seatMapCloseBtn");
+const seatMapCanvas = document.getElementById("seatMapCanvas");
+
+let seatMapLayout = [];
+let seatMapData = new Map();
+
+/* ===============================
+   LOAD MAP LAYOUT
+=============================== */
+
+async function loadSeatMapLayout(){
+
+try{
+
+const snap = await getDoc(doc(db,"layout_shared","floor_map"));
+
+if(!snap.exists()){
+
+seatMapLayout = [];
+return;
+
+}
+
+const data = snap.data() || {};
+
+seatMapLayout = Array.isArray(data.seats)
+? data.seats
+: [];
+
+}catch(err){
+
+console.error("loadSeatMapLayout error",err);
+
+}
+
+}
+
+/* ===============================
+   RENDER MAP
+=============================== */
+
+function renderSeatMap(){
+
+if(!seatMapCanvas) return;
+
+seatMapCanvas.innerHTML="";
+
+seatMapLayout.forEach(seat=>{
+
+const seatId = String(seat.id || "");
+const x = Number(seat.x || 0);
+const y = Number(seat.y || 0);
+
+const info = seatMapData.get(seatId);
+
+const el = document.createElement("div");
+el.className="map-seat";
+
+if(info){
+el.classList.add("filled");
+}
+
+el.style.left = x+"px";
+el.style.top = y+"px";
+
+el.innerText = seat.label || seatId;
+
+seatMapCanvas.appendChild(el);
+
+});
+
+}
+
+/* ===============================
+   WATCH SEAT DATA
+=============================== */
+
+function bindSeatMapRealtime(){
+
+onSnapshot(collection(db,"layout_events"),snap=>{
+
+seatMapData.clear();
+
+snap.docs.forEach(d=>{
+
+const data = d.data() || {};
+const seats = Array.isArray(data.seats) ? data.seats : [];
+
+seats.forEach(seat=>{
+
+const id = String(seat.id || seat.label || "");
+
+if(!id) return;
+
+seatMapData.set(id,{
+eventId:data.eventId,
+person:seat.person
+});
+
+});
+
+});
+
+renderSeatMap();
+
+});
+
+}
+
+/* ===============================
+   DRAG MAP EDIT (ADMIN)
+=============================== */
+
+function enableSeatDrag(){
+
+let target=null;
+let offsetX=0;
+let offsetY=0;
+
+seatMapCanvas.addEventListener("mousedown",(e)=>{
+
+const el = e.target.closest(".map-seat");
+if(!el) return;
+
+target = el;
+
+offsetX = e.offsetX;
+offsetY = e.offsetY;
+
+});
+
+window.addEventListener("mousemove",(e)=>{
+
+if(!target) return;
+
+const rect = seatMapCanvas.getBoundingClientRect();
+
+const x = e.clientX - rect.left - offsetX;
+const y = e.clientY - rect.top - offsetY;
+
+target.style.left = x+"px";
+target.style.top = y+"px";
+
+});
+
+window.addEventListener("mouseup",()=>{
+
+target=null;
+
+});
+
+}
+
+/* ===============================
+   BUTTON EVENTS
+=============================== */
+
+seatMapBtn?.addEventListener("click",async()=>{
+
+await loadSeatMapLayout();
+
+renderSeatMap();
+
+openModal(seatMapModal);
+
+});
+
+seatMapCloseBtn?.addEventListener("click",()=>{
+
+closeModal(seatMapModal);
+
+});
+
+/* ===============================
+   INIT SEAT MAP
+=============================== */
+
+bindSeatMapRealtime();
+
+enableSeatDrag();
+
+/* ===============================
+   MAP EDITOR
+=============================== */
+
+const seatMapEditBtn = document.getElementById("seatMapEditBtn");
+const seatMapEditorModal = document.getElementById("seatMapEditorModal");
+const seatMapEditorCloseBtn = document.getElementById("seatMapEditorCloseBtn");
+const seatMapEditorCanvas = document.getElementById("seatMapEditorCanvas");
+
+const addSeatBtn = document.getElementById("addSeatBtn");
+const saveMapBtn = document.getElementById("saveMapBtn");
+
+let editorSeats = [];
+
+/* load map */
+
+async function loadMapEditor(){
+
+const snap = await getDoc(doc(db,"layout_shared","floor_map"));
+
+if(!snap.exists()){
+
+editorSeats = [];
+
+}else{
+
+const data = snap.data() || {};
+editorSeats = data.seats || [];
+
+}
+
+renderEditor();
+
+}
+
+/* render */
+
+function renderEditor(){
+
+seatMapEditorCanvas.innerHTML="";
+
+editorSeats.forEach(seat=>{
+
+const el = document.createElement("div");
+el.className="map-seat";
+
+el.innerText = seat.label;
+
+el.style.left = seat.x+"px";
+el.style.top = seat.y+"px";
+
+enableDrag(el,seat);
+
+seatMapEditorCanvas.appendChild(el);
+
+});
+
+}
+
+/* drag */
+
+function enableDrag(el,seat){
+
+let offsetX=0;
+let offsetY=0;
+let dragging=false;
+
+el.addEventListener("mousedown",(e)=>{
+
+dragging=true;
+
+offsetX=e.offsetX;
+offsetY=e.offsetY;
+
+});
+
+window.addEventListener("mousemove",(e)=>{
+
+if(!dragging) return;
+
+const rect = seatMapEditorCanvas.getBoundingClientRect();
+
+seat.x = e.clientX - rect.left - offsetX;
+seat.y = e.clientY - rect.top - offsetY;
+
+el.style.left = seat.x+"px";
+el.style.top = seat.y+"px";
+
+});
+
+window.addEventListener("mouseup",()=>{
+
+dragging=false;
+
+});
+
+}
+
+/* add seat */
+
+addSeatBtn?.addEventListener("click",()=>{
+
+const id = String(editorSeats.length+1);
+
+editorSeats.push({
+id,
+label:id,
+x:100,
+y:100
+});
+
+renderEditor();
+
+});
+
+/* save */
+
+saveMapBtn?.addEventListener("click",async()=>{
+
+await setDoc(
+doc(db,"layout_shared","floor_map"),
+{ seats:editorSeats },
+{ merge:true }
+);
+
+alert("맵 저장 완료");
+
+});
+
+/* open editor */
+
+seatMapEditBtn?.addEventListener("click",async()=>{
+
+await loadMapEditor();
+
+openModal(seatMapEditorModal);
+
+});
+
+/* close */
+
+seatMapEditorCloseBtn?.addEventListener("click",()=>{
+
+closeModal(seatMapEditorModal);
+
 });

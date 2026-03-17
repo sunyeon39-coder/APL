@@ -46,7 +46,7 @@ import {
   const LAYOUT_EVENTS_REF = collection(db, "layout_events");
 
   const VAPID_KEY = "BAZXsr3GQtq_nPLrF7C89mr3ejM7DbS-cBBfWNZzHfcHggNier7C2fbIG0uex3DZl8ykVxbqrli54cCdLkena94";
-  const ALERT_VOLUME = 0.12;
+  const ALERT_VOLUME = 0.4;
   const SOUND_ENABLED_KEY = "boxboard_sound_enabled_v1";
 
   let currentUser = null;
