@@ -887,6 +887,46 @@ input:focus{ border-color:rgba(77,163,255,.6); }
   flex-wrap: wrap;
   flex-shrink: 0;
 }
+.mobile-seat-leftpack{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  flex:1;
+}
+
+.mobile-seat-no-pill{
+  flex:0 0 auto;
+  min-width:44px;
+  height:36px;
+  padding:0 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,0.14);
+  background:rgba(255,255,255,0.06);
+  color:rgba(247,248,252,0.92);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  font-weight:900;
+  line-height:1;
+}
+
+.mobile-seat-name{
+  min-width:0;
+  flex:1;
+  font-size:18px;
+  font-weight:800;
+  color:#fff;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.mobile-seat-name.is-empty{
+  color:rgba(255,255,255,0.55);
+}
 
 /* 이전 2줄 구조 숨김용 */
 .mobile-seat-row.compact .mobile-seat-badge,

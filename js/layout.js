@@ -1095,7 +1095,7 @@ import {
     seatCard.className = "card";
     seatCard.innerHTML = `
       <div class="mobile-section-head">
-        <h3>Seat 목록</h3>
+        <h3>Seat</h3>
         ${
           canManageLayout()
             ? `<button id="mobileAddSeatInline" class="btn primary">+ Seat 추가</button>`
@@ -1133,42 +1133,48 @@ import {
             <div class="mobile-seat-row compact ${isSel ? "selected" : ""}" data-mobile-seat="${s.id}">
               <div class="mobile-seat-mainline">
                 <div class="mobile-seat-inline">
-                  <div class="mobile-seat-person ${isEmptyPerson(s.person) ? "is-empty" : ""}">
-                    ${
-                      isEmptyPerson(s.person)
-                        ? `Seat ${escapeHtml(s.label ?? s.no)}`
-                        : escapeHtml(s.person)
-                    }
-                  </div>
+  <div class="mobile-seat-leftpack">
+    <div class="mobile-seat-no-pill">
+      ${escapeHtml(s.label ?? s.no)}
+    </div>
 
-                  ${
-                    canManageLayout()
-                      ? `
-                      <div class="mobile-seat-inline-actions">
-                        ${
-                          hasPerson
-                            ? `<button class="mobile-pill-btn warn" data-clear-seat="${s.id}">
-                                비우기
-                              </button>`
-                            : ``
-                        }
+    <div class="mobile-seat-name ${isEmptyPerson(s.person) ? "is-empty" : ""}">
+      ${
+        isEmptyPerson(s.person)
+          ? `Empty`
+          : escapeHtml(s.person)
+      }
+    </div>
+  </div>
 
-                        <button class="mobile-pill-btn danger" data-del="${s.id}">
-                          삭제
-                        </button>
+  ${
+    canManageLayout()
+      ? `
+      <div class="mobile-seat-inline-actions">
+        ${
+          hasPerson
+            ? `<button class="mobile-pill-btn warn" data-clear-seat="${s.id}">
+                비우기
+              </button>`
+            : ``
+        }
 
-                        ${
-                          selectedWaiting
-                            ? `<button class="mobile-pill-btn primary" data-mobile-assign="${s.id}">
-                                ${escapeHtml(selectedWaiting.name)} 배치
-                              </button>`
-                            : ``
-                        }
-                      </div>
-                      `
-                      : ``
-                  }
-                </div>
+        <button class="mobile-pill-btn danger" data-del="${s.id}">
+          삭제
+        </button>
+
+        ${
+          selectedWaiting
+            ? `<button class="mobile-pill-btn primary" data-mobile-assign="${s.id}">
+                ${escapeHtml(selectedWaiting.name)} 배치
+              </button>`
+            : ``
+        }
+      </div>
+      `
+      : ``
+  }
+</div>
 
                 <div class="mobile-seat-right">
                   ${
@@ -1187,7 +1193,7 @@ import {
     waitCard.className = "card";
     waitCard.innerHTML = `
       <div class="mobile-section-head">
-        <h3>대기 (공유)</h3>
+        <h3>대기</h3>
         ${
           canManageLayout()
             ? `<button id="mobileAddWaitingInline" class="btn primary">+ 대기 추가</button>`
@@ -1226,9 +1232,7 @@ import {
                   canManageLayout()
                     ? `
                     <div class="mobile-wait-inline-actions">
-                      <button class="mobile-pill-btn" data-mobile-wait-select="${w.id}">
-                        대기 선택
-                      </button>
+                     
 
                       <button class="mobile-pill-btn danger" data-del-w="${w.id}">
                         삭제
@@ -1447,9 +1451,7 @@ import {
                   canManageLayout()
                     ? `
                     <div class="wait-inline-actions">
-                      <button class="pill-inline" type="button">
-                        선택
-                      </button>
+                      
 
                       <button class="pill-inline danger" type="button" data-del-w="${w.id}">
                         삭제
