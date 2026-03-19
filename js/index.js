@@ -940,175 +940,195 @@ const seatMapBtn = document.getElementById("seatMapBtn");
 const seatMapModal = document.getElementById("seatMapModal");
 const seatMapCloseBtn = document.getElementById("seatMapCloseBtn");
 const seatMapCanvas = document.getElementById("seatMapCanvas");
+const seatMapScroll = document.getElementById("seatMapScroll");
 
 let seatMapLayout = [];
 let seatMapData = new Map();
+
+const MAP_BASE_WIDTH = 1400;
+const MAP_BASE_HEIGHT = 900;
+const MAP_SEAT_SIZE = 48;
+const MAP_PADDING = 120;
+
+/* ===============================
+   MAP SIZE HELPERS
+=============================== */
+
+function getSeatMapBounds(seats = []) {
+  if (!Array.isArray(seats) || seats.length === 0) {
+    return {
+      width: MAP_BASE_WIDTH,
+      height: MAP_BASE_HEIGHT
+    };
+  }
+
+  let maxX = 0;
+  let maxY = 0;
+
+  seats.forEach((seat) => {
+    const x = Number(seat?.x || 0);
+    const y = Number(seat?.y || 0);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  });
+
+  return {
+    width: Math.max(MAP_BASE_WIDTH, Math.ceil(maxX + MAP_SEAT_SIZE + MAP_PADDING)),
+    height: Math.max(MAP_BASE_HEIGHT, Math.ceil(maxY + MAP_SEAT_SIZE + MAP_PADDING))
+  };
+}
+
+function applySeatMapCanvasSize(canvasEl, seats = []) {
+  if (!canvasEl) return;
+
+  const bounds = getSeatMapBounds(seats);
+  canvasEl.style.width = `${bounds.width}px`;
+  canvasEl.style.height = `${bounds.height}px`;
+}
+
+function centerSeatMapViewport(scrollEl, canvasEl) {
+  if (!scrollEl || !canvasEl) return;
+
+  const maxLeft = Math.max(0, canvasEl.scrollWidth - scrollEl.clientWidth);
+  const maxTop = Math.max(0, canvasEl.scrollHeight - scrollEl.clientHeight);
+
+  scrollEl.scrollLeft = Math.min(maxLeft, Math.max(0, (canvasEl.scrollWidth - scrollEl.clientWidth) / 2));
+  scrollEl.scrollTop = Math.min(maxTop, Math.max(0, (canvasEl.scrollHeight - scrollEl.clientHeight) / 2));
+}
 
 /* ===============================
    LOAD MAP LAYOUT
 =============================== */
 
-async function loadSeatMapLayout(){
+async function loadSeatMapLayout() {
+  try {
+    const snap = await getDoc(doc(db, "layout_shared", "floor_map"));
 
-try{
+    if (!snap.exists()) {
+      seatMapLayout = [];
+      applySeatMapCanvasSize(seatMapCanvas, []);
+      return;
+    }
 
-const snap = await getDoc(doc(db,"layout_shared","floor_map"));
-
-if(!snap.exists()){
-
-seatMapLayout = [];
-return;
-
-}
-
-const data = snap.data() || {};
-
-seatMapLayout = Array.isArray(data.seats)
-? data.seats
-: [];
-
-}catch(err){
-
-console.error("loadSeatMapLayout error",err);
-
-}
-
+    const data = snap.data() || {};
+    seatMapLayout = Array.isArray(data.seats) ? data.seats : [];
+    applySeatMapCanvasSize(seatMapCanvas, seatMapLayout);
+  } catch (err) {
+    console.error("loadSeatMapLayout error", err);
+  }
 }
 
 /* ===============================
    RENDER MAP
 =============================== */
 
-function renderSeatMap(){
+function renderSeatMap() {
+  if (!seatMapCanvas) return;
 
-if(!seatMapCanvas) return;
+  seatMapCanvas.innerHTML = "";
+  applySeatMapCanvasSize(seatMapCanvas, seatMapLayout);
 
-seatMapCanvas.innerHTML="";
+  seatMapLayout.forEach((seat) => {
+    const seatId = String(seat.id || "");
+    const x = Number(seat.x || 0);
+    const y = Number(seat.y || 0);
 
-seatMapLayout.forEach(seat=>{
+    const info = seatMapData.get(seatId);
 
-const seatId = String(seat.id || "");
-const x = Number(seat.x || 0);
-const y = Number(seat.y || 0);
+    const el = document.createElement("div");
+    el.className = "map-seat";
 
-const info = seatMapData.get(seatId);
+    if (info) {
+      el.classList.add("filled");
+    }
 
-const el = document.createElement("div");
-el.className="map-seat";
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.innerText = seat.label || seatId;
 
-if(info){
-el.classList.add("filled");
-}
-
-el.style.left = x+"px";
-el.style.top = y+"px";
-
-el.innerText = seat.label || seatId;
-
-seatMapCanvas.appendChild(el);
-
-});
-
+    seatMapCanvas.appendChild(el);
+  });
 }
 
 /* ===============================
    WATCH SEAT DATA
 =============================== */
 
-function bindSeatMapRealtime(){
+function bindSeatMapRealtime() {
+  onSnapshot(collection(db, "layout_events"), (snap) => {
+    seatMapData.clear();
 
-onSnapshot(collection(db,"layout_events"),snap=>{
+    snap.docs.forEach((d) => {
+      const data = d.data() || {};
+      const seats = Array.isArray(data.seats) ? data.seats : [];
 
-seatMapData.clear();
+      seats.forEach((seat) => {
+        const id = String(seat.id || seat.label || "");
+        if (!id) return;
 
-snap.docs.forEach(d=>{
+        seatMapData.set(id, {
+          eventId: data.eventId,
+          person: seat.person
+        });
+      });
+    });
 
-const data = d.data() || {};
-const seats = Array.isArray(data.seats) ? data.seats : [];
-
-seats.forEach(seat=>{
-
-const id = String(seat.id || seat.label || "");
-
-if(!id) return;
-
-seatMapData.set(id,{
-eventId:data.eventId,
-person:seat.person
-});
-
-});
-
-});
-
-renderSeatMap();
-
-});
-
+    renderSeatMap();
+  });
 }
 
 /* ===============================
    DRAG MAP EDIT (ADMIN)
 =============================== */
 
-function enableSeatDrag(){
+function enableSeatDrag() {
+  if (!seatMapCanvas) return;
 
-let target=null;
-let offsetX=0;
-let offsetY=0;
+  let target = null;
+  let offsetX = 0;
+  let offsetY = 0;
 
-seatMapCanvas.addEventListener("mousedown",(e)=>{
+  seatMapCanvas.addEventListener("mousedown", (e) => {
+    const el = e.target.closest(".map-seat");
+    if (!el) return;
 
-const el = e.target.closest(".map-seat");
-if(!el) return;
+    target = el;
+    offsetX = e.offsetX;
+    offsetY = e.offsetY;
+  });
 
-target = el;
+  window.addEventListener("mousemove", (e) => {
+    if (!target) return;
 
-offsetX = e.offsetX;
-offsetY = e.offsetY;
+    const rect = seatMapCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - offsetX;
+    const y = e.clientY - rect.top - offsetY;
 
-});
+    target.style.left = `${x}px`;
+    target.style.top = `${y}px`;
+  });
 
-window.addEventListener("mousemove",(e)=>{
-
-if(!target) return;
-
-const rect = seatMapCanvas.getBoundingClientRect();
-
-const x = e.clientX - rect.left - offsetX;
-const y = e.clientY - rect.top - offsetY;
-
-target.style.left = x+"px";
-target.style.top = y+"px";
-
-});
-
-window.addEventListener("mouseup",()=>{
-
-target=null;
-
-});
-
+  window.addEventListener("mouseup", () => {
+    target = null;
+  });
 }
 
 /* ===============================
    BUTTON EVENTS
 =============================== */
 
-seatMapBtn?.addEventListener("click",async()=>{
+seatMapBtn?.addEventListener("click", async () => {
+  await loadSeatMapLayout();
+  renderSeatMap();
+  openModal(seatMapModal);
 
-await loadSeatMapLayout();
-
-renderSeatMap();
-
-openModal(seatMapModal);
-
+  requestAnimationFrame(() => {
+    centerSeatMapViewport(seatMapScroll, seatMapCanvas);
+  });
 });
 
-seatMapCloseBtn?.addEventListener("click",()=>{
-
-closeModal(seatMapModal);
-
+seatMapCloseBtn?.addEventListener("click", () => {
+  closeModal(seatMapModal);
 });
 
 /* ===============================
@@ -1116,7 +1136,6 @@ closeModal(seatMapModal);
 =============================== */
 
 bindSeatMapRealtime();
-
 enableSeatDrag();
 
 /* ===============================
@@ -1127,6 +1146,7 @@ const seatMapEditBtn = document.getElementById("seatMapEditBtn");
 const seatMapEditorModal = document.getElementById("seatMapEditorModal");
 const seatMapEditorCloseBtn = document.getElementById("seatMapEditorCloseBtn");
 const seatMapEditorCanvas = document.getElementById("seatMapEditorCanvas");
+const seatMapEditorScroll = document.getElementById("seatMapEditorScroll");
 
 const addSeatBtn = document.getElementById("addSeatBtn");
 const saveMapBtn = document.getElementById("saveMapBtn");
@@ -1135,133 +1155,118 @@ let editorSeats = [];
 
 /* load map */
 
-async function loadMapEditor(){
+async function loadMapEditor() {
+  const snap = await getDoc(doc(db, "layout_shared", "floor_map"));
 
-const snap = await getDoc(doc(db,"layout_shared","floor_map"));
+  if (!snap.exists()) {
+    editorSeats = [];
+  } else {
+    const data = snap.data() || {};
+    editorSeats = Array.isArray(data.seats) ? data.seats : [];
+  }
 
-if(!snap.exists()){
-
-editorSeats = [];
-
-}else{
-
-const data = snap.data() || {};
-editorSeats = data.seats || [];
-
-}
-
-renderEditor();
-
+  renderEditor();
 }
 
 /* render */
 
-function renderEditor(){
+function renderEditor() {
+  if (!seatMapEditorCanvas) return;
 
-seatMapEditorCanvas.innerHTML="";
+  seatMapEditorCanvas.innerHTML = "";
+  applySeatMapCanvasSize(seatMapEditorCanvas, editorSeats);
 
-editorSeats.forEach(seat=>{
+  editorSeats.forEach((seat) => {
+    const el = document.createElement("div");
+    el.className = "map-seat";
 
-const el = document.createElement("div");
-el.className="map-seat";
+    el.innerText = seat.label;
+    el.style.left = `${seat.x}px`;
+    el.style.top = `${seat.y}px`;
 
-el.innerText = seat.label;
-
-el.style.left = seat.x+"px";
-el.style.top = seat.y+"px";
-
-enableDrag(el,seat);
-
-seatMapEditorCanvas.appendChild(el);
-
-});
-
+    enableDrag(el, seat);
+    seatMapEditorCanvas.appendChild(el);
+  });
 }
 
 /* drag */
 
-function enableDrag(el,seat){
+function enableDrag(el, seat) {
+  let offsetX = 0;
+  let offsetY = 0;
+  let dragging = false;
 
-let offsetX=0;
-let offsetY=0;
-let dragging=false;
+  el.addEventListener("mousedown", (e) => {
+    dragging = true;
+    offsetX = e.offsetX;
+    offsetY = e.offsetY;
+  });
 
-el.addEventListener("mousedown",(e)=>{
+  window.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
 
-dragging=true;
+    const rect = seatMapEditorCanvas.getBoundingClientRect();
 
-offsetX=e.offsetX;
-offsetY=e.offsetY;
+    seat.x = e.clientX - rect.left - offsetX;
+    seat.y = e.clientY - rect.top - offsetY;
 
-});
+    el.style.left = `${seat.x}px`;
+    el.style.top = `${seat.y}px`;
+  });
 
-window.addEventListener("mousemove",(e)=>{
-
-if(!dragging) return;
-
-const rect = seatMapEditorCanvas.getBoundingClientRect();
-
-seat.x = e.clientX - rect.left - offsetX;
-seat.y = e.clientY - rect.top - offsetY;
-
-el.style.left = seat.x+"px";
-el.style.top = seat.y+"px";
-
-});
-
-window.addEventListener("mouseup",()=>{
-
-dragging=false;
-
-});
-
+  window.addEventListener("mouseup", () => {
+    if (!dragging) return;
+    dragging = false;
+    applySeatMapCanvasSize(seatMapEditorCanvas, editorSeats);
+  });
 }
 
 /* add seat */
 
-addSeatBtn?.addEventListener("click",()=>{
+addSeatBtn?.addEventListener("click", () => {
+  const id = String(editorSeats.length + 1);
 
-const id = String(editorSeats.length+1);
+  editorSeats.push({
+    id,
+    label: id,
+    x: 100,
+    y: 100
+  });
 
-editorSeats.push({
-id,
-label:id,
-x:100,
-y:100
-});
+  renderEditor();
 
-renderEditor();
-
+  requestAnimationFrame(() => {
+    if (!seatMapEditorScroll || !seatMapEditorCanvas) return;
+    seatMapEditorScroll.scrollLeft = Math.max(0, editorSeats[editorSeats.length - 1].x - 120);
+    seatMapEditorScroll.scrollTop = Math.max(0, editorSeats[editorSeats.length - 1].y - 120);
+  });
 });
 
 /* save */
 
-saveMapBtn?.addEventListener("click",async()=>{
+saveMapBtn?.addEventListener("click", async () => {
+  await setDoc(
+    doc(db, "layout_shared", "floor_map"),
+    { seats: editorSeats },
+    { merge: true }
+  );
 
-await setDoc(
-doc(db,"layout_shared","floor_map"),
-{ seats:editorSeats },
-{ merge:true }
-);
-
-alert("맵 저장 완료");
-
+  alert("맵 저장 완료");
 });
 
 /* open editor */
 
-seatMapEditBtn?.addEventListener("click",async()=>{
+seatMapEditBtn?.addEventListener("click", async () => {
+  await loadMapEditor();
+  openModal(seatMapEditorModal);
 
-await loadMapEditor();
-
-openModal(seatMapEditorModal);
-
+  requestAnimationFrame(() => {
+    centerSeatMapViewport(seatMapEditorScroll, seatMapEditorCanvas);
+  });
 });
 
 /* close */
 
-seatMapEditorCloseBtn?.addEventListener("click",()=>{
-
-closeModal(seatMapEditorModal);
-
+seatMapEditorCloseBtn?.addEventListener("click", () => {
+  closeModal(seatMapEditorModal);
 });

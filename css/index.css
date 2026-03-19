@@ -794,34 +794,109 @@ body {
 
 /* ===== Seat Map ===== */
 
+.seat-map-modal-card {
+  width: min(96vw, 1320px);
+  max-height: calc(100dvh - 28px);
+  overflow: hidden;
+}
+
+.seat-map-admin-card {
+  width: min(96vw, 1200px);
+  max-height: calc(100dvh - 28px);
+  overflow: hidden;
+}
+
+.seat-map-scroll-shell{
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.08);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02)),
+    linear-gradient(150deg, rgba(8,15,29,.96), rgba(16,27,47,.92));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+  overflow: hidden;
+}
+
+.seat-map-scroll-shell.editor{
+  border-radius: 20px;
+}
+
+.seat-map-scroll{
+  width: 100%;
+  height: min(72dvh, 760px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.seat-map-scroll::-webkit-scrollbar{
+  width: 10px;
+  height: 10px;
+}
+
+.seat-map-scroll::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.16);
+  border-radius: 999px;
+}
+
+.seat-map-scroll::-webkit-scrollbar-track{
+  background: rgba(255,255,255,.04);
+}
+
 .seat-map-canvas{
   position: relative;
-  width: 100%;
-  height: 700px;
+  min-width: 100%;
+  min-height: 100%;
+  width: 1400px;
+  height: 900px;
   border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.04);
-  overflow: hidden;
+  background:
+    radial-gradient(900px 420px at 15% 10%, rgba(214,178,94,.08), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.02)),
+    linear-gradient(150deg, rgba(8,15,29,.96), rgba(16,27,47,.92));
+  overflow: visible;
+}
+
+.seat-map-canvas::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,.04) 0 1px,
+      transparent 1px 48px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,.04) 0 1px,
+      transparent 1px 48px
+    );
+  pointer-events:none;
+  border-radius: inherit;
 }
 
 .map-seat{
   position: absolute;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.16);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  font-weight: 900;
   cursor: pointer;
   user-select: none;
+  color: rgba(247,248,252,.94);
+  box-shadow: 0 8px 20px rgba(0,0,0,.18);
+  backdrop-filter: blur(8px);
 }
 
 .map-seat.filled{
   background: #5fd2a4;
   color: #02120a;
+  border-color: rgba(95,210,164,.7);
 }
 
 .seat-map-editor-toolbar{
@@ -863,174 +938,21 @@ body {
     display: none;
   }
 
-  .topbar-title {
-    font-size: 20px;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-align: center;
-  }
-
-  .back-btn,
-  .manage-btn {
-    min-height: 36px;
-    height: 36px;
-    padding: 0 12px;
-    font-size: 12px;
-    border-radius: 14px;
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
-  .back-icon {
-    font-size: 14px;
-  }
-
-  .index-page {
-    padding: 14px 14px 22px;
-  }
-
-  .date-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    margin: 6px 0 12px;
-  }
-
-  .date-title {
-    font-size: 20px;
-    line-height: 1.15;
-  }
-
-  .date-count {
-    font-size: 12px;
-  }
-
-  .event-card {
-    padding: 14px;
-    border-radius: 18px;
-    margin-bottom: 12px;
-  }
-
-  .event-header {
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-
-  .event-title {
-    font-size: 18px;
-    line-height: 1.15;
-    word-break: break-word;
-  }
-
-  .pill {
-    min-width: auto;
-    padding: 6px 10px;
-    font-size: 11px;
-    flex: 0 0 auto;
-  }
-
-  .my-seat-badge {
-    margin-top: 8px;
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-
-  .event-info,
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .info-box {
-    min-height: 72px;
-    padding: 12px;
-    border-radius: 16px;
-    font-size: 22px;
-  }
-
-  .info-label {
-    margin-bottom: 6px;
-    font-size: 11px;
-  }
-
-  .entries-table {
-    min-height: 40px;
-    border-radius: 12px;
-    font-size: 13px;
-  }
-
-  .modal-card {
-    width: min(94vw, 430px);
-    padding: 18px;
-    border-radius: 20px;
-  }
-
-  .seat-map-preview-head,
-  .seat-map-modal-head {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .seat-map-preview-head h2,
-  .seat-map-modal-head h2 {
-    font-size: 22px;
-  }
-
-  .seat-map-grid,
-  .seat-map-grid.preview {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .map-seat-cell {
-    min-height: 64px;
-    padding: 8px;
-    border-radius: 14px;
-  }
-
-  .map-seat-no {
-    font-size: 11px;
-  }
-
-  .map-seat-event {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.05;
-  }
-
-  .map-seat-box {
-    margin-top: 4px;
-    font-size: 10px;
-  }
-
-  .map-seat-empty {
-    margin-top: 6px;
-    font-size: 10px;
-  }
-
-  .seat-map-color-row {
-    grid-template-columns: 1fr;
-  }
-
   .seat-map-modal-card,
   .seat-map-admin-card {
     width: 100%;
     max-width: 100%;
     max-height: calc(100dvh - 20px);
+    padding: 18px;
   }
 
-  .seat-map-canvas {
-    height: 520px;
+  .seat-map-scroll{
+    height: min(68dvh, 620px);
   }
 
   .map-seat {
-    width: 68px;
-    height: 68px;
+    width: 38px;
+    height: 38px;
     font-size: 12px;
   }
 }
@@ -1117,13 +1039,13 @@ body {
     font-size: 9px;
   }
 
-  .seat-map-canvas {
-    height: 460px;
+  .seat-map-scroll{
+    height: min(64dvh, 520px);
   }
 
   .map-seat {
-    width: 60px;
-    height: 60px;
+    width: 38px;
+    height: 38px;
     font-size: 11px;
   }
 }
